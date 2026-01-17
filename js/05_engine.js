@@ -135,13 +135,20 @@ function finalizeWeights(dpsResults) {
 
     var delta_str = 25;
     var w_str = ((dpsResults["str"] - baseDps) / delta_str) / dps_per_ap;
+    if (w_str<0) w_str=0;
 
     var delta_agi = 25;
     var w_agi = ((dpsResults["agi"] - baseDps) / delta_agi) / dps_per_ap;
+    if (w_agi<0) w_agi=0;
 
     var w_hit = (dpsResults["hit"] - baseDps) / dps_per_ap;
+    if (w_hit<0) w_hit=0;
     var w_crit = (dpsResults["crit"] - baseDps) / dps_per_ap;
+    if (w_crit<0) w_crit=0;
     var w_haste = (dpsResults["haste"] - baseDps) / dps_per_ap;
+    if (w_haste<0) w_haste=0;
+
+
 
     var container = document.getElementById("weightResults");
     if (container) {
