@@ -31,8 +31,27 @@ function runSimulation() {
             var allResults = [];
 
             // Always run stochastic simulations
+            // Loop logic
             for (var i = 0; i < config.iterations; i++) {
-                var res = runCoreSimulation(config);
+                
+                // Config Cloning & Time Smearing Logic
+                // Wir erstellen eine flache Kopie der Config, damit wir simTime manipulieren können,
+                // ohne das Original für die nächste Runde zu verfälschen.
+                var currentConfig = Object.assign({}, config); 
+
+                if (config.varyDuration && config.iterations > 1) {
+                    // Spread range: +/- 20 seconds
+                    // Bei 21 Iterationen sind das 2 Sekunden Schritte.
+                    var stepSize = 2.0; 
+                    var midPoint = Math.floor(config.iterations / 2);
+                    var offset = (i - midPoint) * stepSize;
+                    currentConfig.simTime = config.simTime + offset;
+                    
+                    // Sicherheitshalber: Keine negative Zeit
+                    if (currentConfig.simTime < 10) currentConfig.simTime = 10;
+                }
+
+                var res = runCoreSimulation(currentConfig);
                 allResults.push(res);
 
                 // Update progress bar periodically
@@ -69,17 +88,19 @@ function runSimulation() {
 function runStatWeights() {
     var baseConfig = getSimInputs();
     
-    // FORCE DETERMINISTIC FOR WEIGHTS
-    // This removes RNG noise entirely, making weights accurate with just 1 run per scenario.
-    baseConfig.calcMode = 'averaged';
-    if (baseConfig.calcMode === 'averaged' || baseConfig.calcMode === 'averaged') {
-        baseConfig.iterations = 1;
-    } 
-       
-    var iter = baseConfig.iterations;
-    //baseConfig.simTime = 180; // 180 erzwingen für stabilere Werte
+    // FORCE AVERAGED MODE & TIME SMEARING
+    // Wir nutzen 'averaged', damit auch Crit-Schaden geglättet ist.
+    baseConfig.calcMode = 'averaged'; 
+    
+    // Time Smearing: Wir simulieren 21 verschiedene Kampflängen rund um 300s
+    // Iteration 0 = 280s ... Iteration 10 = 300s ... Iteration 20 = 320s
+    baseConfig.iterations = 21; 
+    baseConfig.varyDuration = true; // Neues Flag für die Engine
+    baseConfig.simTime = 300; 
 
-    showProgress("Calculating Stat Weights (Deterministic)...");
+    var iter = baseConfig.iterations;
+
+    showProgress("Calculating Stat Weights (Averaged, 280s-320s range)...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
