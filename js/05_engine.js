@@ -98,7 +98,7 @@ function runStatWeights() {
     // ÄNDERUNG: 200 Iterationen für Time Smearing (Glättung)
     // Bei +/- 20s Range (Total 40s) ergibt das Schritte von 0.2s.
     // Das eliminiert Breakpoints und ist performanter als 1500 RNG-Läufe.
-    baseConfig.iterations = baseConfig.statWeightIt; 
+    // baseConfig.iterations = baseConfig.statWeightIt; 
     
     baseConfig.varyDuration = true; 
     //baseConfig.simTime = 300; // Basis 300s (5 Min)
@@ -166,7 +166,7 @@ function runStatWeights() {
                     var offset = (progress - 0.5) * timeRange; // -20 bis +20
                     
                     stepConfig.simTime = runCfg.simTime + offset;
-                    // Keine negativen Zeiten zulassen
+                    // Keine negativen Zeiten zulassenw
                     if (stepConfig.simTime < 10) stepConfig.simTime = 10;
                     
                     // WICHTIG: Hier wird nun runCoreSimulation im 'averaged' Modus aufgerufen
@@ -715,8 +715,11 @@ function runCoreSimulation(cfg) {
 
         if (t >= swingTimer - 0.001) {
 
-            var performSwing = function (isExtra) {
-                // Damage Roll (RNG handled inside helper)
+            var performSwing = function (isExtra, probabilityScale) {
+                // Scale für Averaged Mode (Standard 1.0)
+                var pScale = (typeof probabilityScale !== 'undefined') ? probabilityScale : 1.0;
+
+                // Damage Roll
                 var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg); 
                 var currentAP = getCurrentAP();
 
@@ -741,119 +744,180 @@ function runCoreSimulation(cfg) {
                 var glanceC = isBoss ? 40.0 : 10.0;
                 var critC = Math.max(0, cfg.inputCrit - (isBoss ? 4.8 : 0));
 
-                // Prepare Table used for Events (Buckets)
-                var table = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: glanceC, crit: critC };
-                var hitType = rng.attackTable("Auto", table);
-
-                // Counters (Events)
-                if (hitType === "MISS") { if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++; }
-                else if (hitType === "DODGE") { if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++; }
-                else if (hitType === "PARRY") { if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++; }
-                else if (hitType === "BLOCK") { if (!missCounts.Block) missCounts.Block = 0; missCounts.Block++; }
-                else if (hitType === "GLANCE") { if (!glanceCounts.Auto) glanceCounts.Auto = 0; glanceCounts.Auto++; }
-                else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
-                if (!counts.Auto) counts.Auto = 0; counts.Auto++;
-
-                // Damage Modifiers
-                var blockValue = isBoss ? 38 : 0;
-                var glancePenalty = isBoss ? 0.35 : 0.05;
-
                 if (cfg.calcMode === 'averaged') {
-                    // --- AVERAGED MODE (FIXED FOR CRIT CAP) ---
+                    // --- AVERAGED MODE ---
+                    // 1. Avoidance
+                    var avoidChance = missC + dodgeC + parryC;
+                    var hitFactor = Math.max(0, 100.0 - avoidChance) / 100.0;
                     
-                    // 1. Calculate Effective Crit Chance (Crit Cap)
-                    // The sum of Miss, Dodge, Parry, Block, Glance eats up table space.
-                    // Whatever is left is the room available for Crits.
-                    var tableSum = missC + dodgeC + parryC + blockC + glanceC;
-                    var spaceForCrit = Math.max(0, 100.0 - tableSum);
-                    var effectiveCritChance = Math.min(critC, spaceForCrit);
-
-                    // 2. Glancing: Apply weighted penalty to ALL hits
+                    // 2. Glancing
+                    var glancePenalty = isBoss ? 0.35 : 0.05;
                     var avgGlanceMod = 1.0 - ((glanceC / 100.0) * glancePenalty);
-                    rawDmg *= avgGlanceMod;
+                    
+                    // 3. Crit (Cap beachten)
+                    var tableSpaceUsed = avoidChance + blockC + glanceC;
+                    var critSpace = Math.max(0, 100.0 - tableSpaceUsed);
+                    var effectiveCrit = Math.min(critC, critSpace);
+                    var avgCritMod = 1.0 + (effectiveCrit / 100.0);
 
-                    // 3. Crit: Apply weighted bonus using EFFECTIVE Chance
-                    // (1 + Chance * Bonus). Bonus is 100% (x2), so factor is 1.0
-                    var avgCritMod = 1.0 + (effectiveCritChance / 100.0);
+                    // Faktoren anwenden
+                    rawDmg *= hitFactor;
+                    rawDmg *= avgGlanceMod;
                     rawDmg *= avgCritMod;
 
-                    // 4. Block: Deduct weighted block value if blocked
-                    if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
+                    // Block (Weighted Reduction)
+                    if (blockC > 0) {
+                        var blockValue = isBoss ? 38 : 0;
+                        rawDmg = Math.max(0, rawDmg - (blockValue * (blockC / 100.0)));
+                    }
 
-                } else {
-                    // --- STANDARD / DETERMINISTIC MODE ---
-                    if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
-                    else if (hitType === "GLANCE") rawDmg *= (1 - glancePenalty);
-                    else if (hitType === "CRIT") rawDmg *= 2.0;
-                }
+                    // SCALE anwenden (für rekursive Aufrufe wie HoJ)
+                    rawDmg *= pScale;
 
-                // Process Hit (Event Logic remains same)
-                if (hitType !== "MISS" && hitType !== "DODGE" && hitType !== "PARRY") {
+                    // Execute Damage
                     var dr = getDamageReduction(t, auras.ff);
                     rawDmg *= (1 - dr);
+                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", "Hit(Avg)", false, false);
 
-                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
+                    // --- PROCS (Smoothed) ---
+                    // Wir skalieren die Proc-Chance mit der Trefferwahrscheinlichkeit (hitFactor) und dem pScale
+                    var procScale = hitFactor * pScale; 
 
-                    // --- PROCS ---
-                    if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
+                    // 1. Buffs (Nutzen weiterhin Buckets, aber skaliert)
+                    if (cfg.tal_omen > 0 && rng.proc("Omen", 10 * procScale)) {
                         auras.clearcasting = t + 15.0;
                         logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
-                    if (cfg.hasT05_4p && rng.proc("T05", 2)) {
-                        var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
-                        energy = Math.min(100, energy + EnergyGain);
-                        logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
+                    if (cfg.hasT05_4p) {
+                         // T0.5 Energy: 2% Chance -> Math Avg
+                         var eGain = (energy <= 80 ? 20 : 100 - energy);
+                         energy += eGain * 0.02 * procScale;
                     }
                     if (auras.talonBuff > t) {
-                         var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
-                         energy = Math.min(100, energy + EnergyGain);
-                         logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
+                         var eGain = (energy <= 97 ? 3.0 : 100 - energy);
+                         energy += eGain * 1.0 * procScale;
                     }
-                    if (auras.cenarionHaste > t && stacks.cenarion > 0) {
+                    if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * procScale)) {
                         stacks.cenarion--;
                         if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
                     }
 
-                    // Trinkets
-                    if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
+                    // Trinkets & Enchants
+                    if (cfg.t_shieldrender && rng.proc("Shieldrender", 7 * procScale)) {
                         auras.shieldrender = t + 3.0;
-                        logAction( "Shieldrender", "Ignore Armor", "Proc", 0, false, false);
+                        logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                     }
-                    if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
-                        logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
-                        performSwing(true);
+                    
+                    // Extra Attacks (HoJ / WF) -> Rekursion mit Scale!
+                    if (cfg.t_hoj && !isExtra) {
+                        // Chance 2% -> Wir rufen performSwing auf, aber nur mit 2% Schaden
+                        performSwing(true, 0.02 * procScale);
                     }
-                    if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
-                        var MaelstromDmg = rollDamageRange(200, 301);
-                        dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
-                        if (rng.proc("MaelstromCrit", critC)) {
-                            dealDamage( "Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
-                        }
+                    if (cfg.buff_wf_totem && !isExtra) {
+                        // Chance 20%
+                        performSwing(true, 0.20 * procScale);
                     }
-                    if (cfg.t_coil && rng.proc("Coil", 5)) {
-                        var CoilDamage = rollDamageRange(50, 71);
-                        dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
-                        if (rng.proc("CoilCrit", critC)) {
-                            dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
-                        }
+
+                    // Damage Procs (Maelstrom, Coil, Venoms)
+                    if (cfg.t_maelstrom) {
+                        // Chance 3% (200-301 Dmg)
+                        var avgMael = 250.5 * (1 + (critC/100.0)); // Avg Dmg * CritMod
+                        dealDamage("Maelstrom", avgMael * 0.03 * procScale, "Nature", "Proc(Avg)", false, false);
                     }
-                    if (cfg.t_venoms && rng.proc("Venoms", 20)) {
+                    if (cfg.t_coil) {
+                        // Chance 5%? (Code 5 oder 20? Original war 5)
+                        var avgCoil = 60.5 * (1 + (critC/100.0));
+                        dealDamage("Heating Coil", avgCoil * 0.05 * procScale, "Fire", "Proc(Avg)", false, false);
+                    }
+                    if (cfg.t_venoms && rng.proc("Venoms", 20 * procScale)) {
                         if (stacks.venom < 2) stacks.venom++;
                         auras.venom = t + 12.0;
-                        logAction( "Venoms", "Stack " + stacks.venom, "Proc", 0, false, false);
-                        var dotDmgPerTick = stacks.venom * 120 / 4;
-                        removeEvent("dot_tick", "venom");
-                        for (var tick = 1; tick <= 4; tick++) {
-                            addEvent(t + (tick * 3.0), "dot_tick", { name: "venom", dmg: dotDmgPerTick, label: "Venoms" });
-                        }
+                        // DoT Logik vereinfacht: Wir refreshen nur, Schaden ist separat
                     }
-                    if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80)) {
+                    if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * procScale)) {
                         stacks.swarmguard++;
-                        logAction("Proc", "Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
                     }
-                    if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
-                        logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
-                        performSwing(true);
+
+                } else {
+                    // --- STANDARD MODE (Legacy) ---
+                    // Prepare Table used for Events (Buckets)
+                    var table = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: glanceC, crit: critC };
+                    var hitType = rng.attackTable("Auto", table);
+
+                    // Counters (Events)
+                    if (hitType === "MISS") { if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++; }
+                    else if (hitType === "DODGE") { if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++; }
+                    else if (hitType === "PARRY") { if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++; }
+                    else if (hitType === "BLOCK") { if (!missCounts.Block) missCounts.Block = 0; missCounts.Block++; }
+                    else if (hitType === "GLANCE") { if (!glanceCounts.Auto) glanceCounts.Auto = 0; glanceCounts.Auto++; }
+                    else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
+                    if (!counts.Auto) counts.Auto = 0; counts.Auto++;
+
+                    var blockValue = isBoss ? 38 : 0;
+                    var glancePenalty = isBoss ? 0.35 : 0.05;
+
+                    if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
+                    else if (hitType === "GLANCE") rawDmg *= (1 - glancePenalty);
+                    else if (hitType === "CRIT") rawDmg *= 2.0;
+
+                    if (hitType !== "MISS" && hitType !== "DODGE" && hitType !== "PARRY") {
+                        var dr = getDamageReduction(t, auras.ff);
+                        rawDmg *= (1 - dr);
+
+                        dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
+
+                        // Procs (Standard)
+                        if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
+                            auras.clearcasting = t + 15.0;
+                            logAction("Proc", "Clearcasting", "Proc", 0, false, false);
+                        }
+                        if (cfg.hasT05_4p && rng.proc("T05", 2)) {
+                            var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
+                            energy = Math.min(100, energy + EnergyGain);
+                            logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
+                        }
+                        if (auras.talonBuff > t) {
+                             var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
+                             energy = Math.min(100, energy + EnergyGain);
+                             logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
+                        }
+                        if (auras.cenarionHaste > t && stacks.cenarion > 0) {
+                            stacks.cenarion--;
+                            if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
+                        }
+                        if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
+                            auras.shieldrender = t + 3.0;
+                            logAction( "Shieldrender", "Ignore Armor", "Proc", 0, false, false);
+                        }
+                        if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
+                            logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
+                            performSwing(true);
+                        }
+                        if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
+                            var MaelstromDmg = rollDamageRange(200, 301);
+                            dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
+                            if (rng.proc("MaelstromCrit", critC)) dealDamage( "Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
+                        }
+                        if (cfg.t_coil && rng.proc("Coil", 5)) {
+                            var CoilDamage = rollDamageRange(50, 71);
+                            dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
+                            if (rng.proc("CoilCrit", critC)) dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
+                        }
+                        if (cfg.t_venoms && rng.proc("Venoms", 20)) {
+                            if (stacks.venom < 2) stacks.venom++;
+                            auras.venom = t + 12.0;
+                            var dotDmgPerTick = stacks.venom * 120 / 4;
+                            removeEvent("dot_tick", "venom");
+                            for (var tick = 1; tick <= 4; tick++) addEvent(t + (tick * 3.0), "dot_tick", { name: "venom", dmg: dotDmgPerTick, label: "Venoms" });
+                        }
+                        if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80)) {
+                            stacks.swarmguard++;
+                            logAction("Proc", "Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
+                        }
+                        if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
+                            logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
+                            performSwing(true);
+                        }
                     }
                 }
             };
@@ -1023,69 +1087,130 @@ function runCoreSimulation(cfg) {
                     energy -= castCost;
                     if (isOoc) { auras.clearcasting = 0; logAction("Omen", "Consumed", "Fade", 0, false, false); }
 
-                    // --- YELLOW ATTACK TABLE (Two-Roll) ---
+                    // --- YELLOW ATTACK TABLE & SMOOTHING ---
                     var isBoss = (cfg.enemyLevel == 63);
                     var isFront = (cfg.rota_position === "front");
                     var canBlock = (cfg.enemy_can_block === 1);
 
-                    // 1. Hit Roll
+                    // 1. Calculate Probabilities
                     var missC = Math.max(0, (isBoss ? 9.0 : 5.0) - baseHit - cfg.tal_nat_wep);
                     var dodgeC = isBoss ? 6.5 : 5.0;
                     var parryC = (isFront) ? (isBoss ? 14.0 : 5.0) : 0;
                     var blockC = (isFront && canBlock) ? 5.0 : 0;
                     
-                    // Table for Roll 1
-                    var yellowTable = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: 0, crit: 0 }; 
-                    var res = rng.attackTable("Yellow_" + action, yellowTable);
+                    var avoidTotal = missC + dodgeC + parryC;
+                    var hitChance = Math.max(0, 100.0 - avoidTotal) / 100.0;
                     
-                    // 2. Crit Roll (only if HIT or BLOCK)
-                    // Note: Blocked attacks can technically not crit in Vanilla, but here treated as Block+Damage.
-                    // If result is HIT, we check for Crit.
-                    if (res === "HIT" || res === "BLOCK") {
-                        var critChance = cfg.inputCrit - (isBoss ? 4.8 : 0);
-                        // Genesis 5p Bonus
-                        if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
-                            critChance += 15;
+                    var critChance = cfg.inputCrit - (isBoss ? 4.8 : 0);
+                    // Genesis 5p Crit Bonus
+                    if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
+                        critChance += 15;
+                    }
+
+                    // Variables for Outcome
+                    var res = "HIT";
+                    var dmgMult = 1.0;
+                    var cpGen = (["Claw", "Rake", "Shred"].includes(action)) ? 1 : 0;
+                    var procChanceMod = 1.0; // Modifies proc rates based on hit chance
+
+                    if (cfg.calcMode === 'averaged') {
+                        // =================================================
+                        // AVERAGED MODE (Glättung)
+                        // =================================================
+                        // Wir treffen immer (res = "HIT"), skalieren aber den Schaden.
+                        res = "HIT"; 
+                        
+                        // 1. Energie Glättung (Refund weighted)
+                        // Normal: Pay 100%. If Miss/Dodge/Parry, refund 80%.
+                        // Avg Cost = 100% - (ChanceToMiss * 80%)
+                        // Refund = CastCost * 0.8 * (Avoidance / 100)
+                        var avgRefund = castCost * 0.8 * (avoidTotal / 100.0);
+                        
+                        if (action === "Ferocious Bite") {
+                            // FB verbraucht im "Average" Fall die gesamte Energie, 
+                            // da der Schaden unten entsprechend skaliert wird.
+                            avgRefund = 0; 
                         }
                         
-                        if (rng.proc("YellowCrit_" + action, critChance)) {
-                            res = "CRIT"; // Upgrade HIT to CRIT
-                            // NOTE: Blocked Crits (Blocked+Crit) are complex, simplifying to CRIT here as Block reduces dmg later.
-                            // If it was blocked, we keep it blocked but apply crit mult? 
-                            // Standard behavior: Crit pushes Block off table usually, or distinct. 
-                            // Simplifying: If Crit Proc -> It is a Crit.
+                        // Direkt gutschreiben
+                        energy += avgRefund;
+                        logAction(action, "AvgRefund", "Ref", 0, false, false, avgRefund);
+
+                        // 2. Schaden Glättung (Hit & Crit)
+                        // Formel: HitChance * (1 + CritChance)
+                        // Wir nehmen hier das Two-Roll Modell an (Crit check nach Hit), wie im Original-Code.
+                        var avgCritMod = 1.0 + (critChance / 100.0);
+                        dmgMult = hitChance * avgCritMod;
+
+                        // 3. Proc & CP Glättung (Hybrid)
+                        // Da CPs ganze Zahlen sein müssen, nutzen wir Wahrscheinlichkeiten,
+                        // aber skaliert mit der HitChance.
+                        procChanceMod = hitChance;
+
+                    } else {
+                        // =================================================
+                        // STANDARD MODE (RNG / Buckets)
+                        // =================================================
+                        var yellowTable = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: 0, crit: 0 }; 
+                        res = rng.attackTable("Yellow_" + action, yellowTable);
+
+                        // Crit Check (Two-Roll style if HIT)
+                        if (res === "HIT" || res === "BLOCK") {
+                            if (rng.proc("YellowCrit_" + action, critChance)) {
+                                res = "CRIT"; 
+                            }
+                        }
+
+                        // Refunds
+                        if (res === "MISS" || res === "DODGE" || res === "PARRY") {
+                            var refund = (castCost * 0.8);
+                            energy += refund;
+                            if (res === "MISS") missCounts[action] = (missCounts[action] || 0) + 1;
+                            else if (res === "DODGE") dodgeCounts[action] = (dodgeCounts[action] || 0) + 1;
+                            else if (res === "PARRY") { if (!missCounts.Parry) missCounts.Parry = 0; missCounts.Parry++; }
+                            logAction(action, "Refund", res, 0, false, false, -castCost + refund);
+                            
+                            // Abbruch für Schaden
+                            dmgMult = 0;
+                        } else {
+                            // Hit logic
+                            if (res === "CRIT") dmgMult = 2.0;
+                            // Block logic handled later in damage calc
                         }
                     }
 
-                    // Refund Logic
-                    if (res === "MISS" || res === "DODGE" || res === "PARRY") {
-                        var refund = (castCost * 0.8);
-                        energy += refund;
-                        if (energy > 100) energy = 100;
-                        if (res === "MISS") missCounts[action] = (missCounts[action] || 0) + 1;
-                        else if (res === "DODGE") dodgeCounts[action] = (dodgeCounts[action] || 0) + 1;
-                        else if (res === "PARRY") { if (!missCounts.Parry) missCounts.Parry = 0; missCounts.Parry++; }
-                        logAction(action, "Refund", res, 0, false, false, -castCost + refund);
-                    } else {
-                        // Landed Hit
-                        var cpGen = (["Claw", "Rake", "Shred"].includes(action)) ? 1 : 0;
-                        if (res === "CRIT") {
-                            if (cpGen > 0 && cfg.tal_primal_fury > 0) {
-                                // Primal Fury 50% / 100%
-                                var chance = cfg.tal_primal_fury * 50;
-                                if (rng.proc("PrimalFury", chance)) cpGen++;
+                    // --- DAMAGE CALCULATION & EXECUTION ---
+                    // Wird nur ausgeführt, wenn dmgMult > 0 (also kein Full Miss im Standard Modus)
+                    if (dmgMult > 0) {
+                        
+                        if (res === "CRIT") critCounts[action] = (critCounts[action] || 0) + 1; // Nur Statistik für Standard Modus
+                        
+                        // Primal Fury (CP Generation)
+                        // Im Averaged Mode nutzen wir procChanceMod um Misses zu simulieren
+                        if (cpGen > 0 && cfg.tal_primal_fury > 0) {
+                            // Im Standard Mode: Nur bei CRIT.
+                            // Im Averaged Mode: Wir simulieren Crit-Events proportional zur CritChance.
+                            var isCritEvent = (res === "CRIT");
+                            
+                            if (cfg.calcMode === 'averaged') {
+                                // Wir würfeln "virtuell" ob es ein Crit war für CP Zwecke
+                                if (rng.proc("PrimalFury_Sim", critChance * procChanceMod)) isCritEvent = true;
                             }
-                            critCounts[action] = (critCounts[action] || 0) + 1;
+                            
+                            if (isCritEvent) {
+                                // 50% Chance pro Punkt (also 100% bei 2 Punkten)
+                                if (rng.proc("PrimalFury", cfg.tal_primal_fury * 50)) cpGen++;
+                            }
                         }
 
-                        // Damage Calc
+                        // Base Damage Calculation
                         var curAP = getCurrentAP();
                         var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
                         var apBonus = (curAP - base.baseAp) / 14.0;
                         var normalDmg = baseDmgRoll + apBonus;
                         if (auras.tigersFury > t) normalDmg += 50;
 
-                        // Genesis 5p Bonus Dmg (Consumed)
+                        // Genesis Consumption
                         if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
                             normalDmg *= 1.15;
                             auras.genesisProc = 0; 
@@ -1107,7 +1232,6 @@ function runCoreSimulation(cfg) {
                             abilityDmg = 2.25 * normalDmg + 180;
                             if (cfg.tal_imp_shred > 0) abilityDmg *= (1 + cfg.tal_imp_shred * 0.05);
                             
-                            // Idol of Laceration Refund
                             if (auras.laceration > t) {
                                 var EnergyRefund = (energy >= 85) ? (100 - energy) : 15;
                                 energy = Math.min(100, energy + EnergyRefund);
@@ -1118,10 +1242,14 @@ function runCoreSimulation(cfg) {
                         else if (action === "Rake") {
                             abilityDmg = 61 + (0.115 * curAP);
                             abilityDmg *= modPredatoryStrikes;
+                            // DoT Teil
                             var dotTotal = 102 + (0.09 * curAP);
                             dotTotal *= modPredatoryStrikes;
-                            var tickVal = dotTotal / 3;
+                            
+                            // Im Averaged Mode skalieren wir auch den DoT Schaden mit der HitChance
+                            if (cfg.calcMode === 'averaged') dotTotal *= hitChance;
 
+                            var tickVal = dotTotal / 3;
                             var rInterval = cfg.idol_savagery ? 2.7 : 3.0; 
                             var rDur = cfg.idol_savagery ? 8.1 : 9.0;
 
@@ -1136,9 +1264,14 @@ function runCoreSimulation(cfg) {
                             var apPart = (curAP - base.baseAp);
                             var tickDmg = 47 + (cp - 1) * 31 + (cpScaled / 100 * apPart);
                             if (cfg.tal_open_wounds > 0) tickDmg *= (1 + 0.15 * cfg.tal_open_wounds);
+                            
+                            // Averaged Mode: DoT Schaden skalieren wir NICHT hier, da Rip immer trifft,
+                            // wenn es ausgeführt wird (Check war oben). 
+                            // ABER: Falls Rip verfehlen KANN (Yellow Hit), dann müssen wir skalieren.
+                            // Ja, Rip ist ein Angriff.
+                            if (cfg.calcMode === 'averaged') tickDmg *= hitChance;
 
                             var ripInterval = cfg.idol_savagery ? 1.8 : 2.0;
-
                             auras.rip = t + (ticks * ripInterval);
                             for (var i = 1; i <= ticks; i++) {
                                 addEvent(t + (i * ripInterval), "dot_tick", { name: "rip", dmg: tickDmg, label: "Rip" });
@@ -1153,9 +1286,9 @@ function runCoreSimulation(cfg) {
                             if (cfg.tal_feral_aggression > 0) abilityDmg *= (1 + cfg.tal_feral_aggression * 0.03);
                             cpGen = 0;
 
-                            // Cenarion 8p: 20% chance per CP
                             if (cfg.set_cenarion_8p) {
-                                if (rng.proc("Cenarion8p", 20 * cp)) {
+                                // Proc Chance scaled by Hit Chance in Averaged Mode
+                                if (rng.proc("Cenarion8p", 20 * cp * procChanceMod)) {
                                     auras.cenarionHaste = t + 999;
                                     stacks.cenarion = 5;
                                     logAction("Cenarion", "5 Haste Charges", "Proc", 0, false, false);
@@ -1163,23 +1296,15 @@ function runCoreSimulation(cfg) {
                             }
                         }
 
+                        // Apply Multipliers
                         abilityDmg *= modNaturalWeapons;
+                        abilityDmg *= dmgMult; // Enthält Crit (x2 oder Avg) und Hit (x1 oder Avg)
 
-                        if (cfg.calcMode === 'averaged') {
-                            // --- AVERAGED MODE ---
-                            // Always apply Crit Multiplier Average
-                            // Bonus is 100% (Factor 1.0)
-                            // Use the calculated critChance variable from above
-                            abilityDmg *= (1.0 + (critChance / 100.0));
-                            
-                            // Block Handling (Weighted reduction not possible for flat value easily without changing structure)
-                            // So we stick to: If bucket says block, we subtract block value.
-                            if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
-                        } else {
-                            // --- STANDARD ---
-                            if (res === "CRIT") abilityDmg *= 2.0;
-                            if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
-                        }
+                        // Block Reduction (für Standard Modus und Avg Modus)
+                        if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
+                        // Im Averaged Mode ziehen wir Block gewichtet ab? 
+                        // Einfachheitshalber: Wenn Bucket sagt BLOCK, ziehen wir ab.
+                        // Besser für Smoothness: Wir ignorieren Block-Value Varianz hier, da minimaler Impact bei Feral.
 
                         if (!isBleed && action !== "Rip") {
                             var dr = getDamageReduction(t, auras.ff);
@@ -1189,116 +1314,156 @@ function runCoreSimulation(cfg) {
                         if (abilityDmg > 0) {
                             var realCost = castCost;
                             if (action === "Ferocious Bite") realCost += extraE;
-                            dealDamage(action, abilityDmg, isBleed ? "Bleed" : "Physical", res, (res === "CRIT"), false, -realCost);
+                            // Wir loggen immer als HIT im Averaged mode
+                            var logRes = (cfg.calcMode === 'averaged') ? "Hit(Avg)" : res;
+                            dealDamage(action, abilityDmg, isBleed ? "Bleed" : "Physical", logRes, (res === "CRIT"), false, -realCost);
                         }
 
-                        // --- PROCS ON CAST ---
-                        // Talon 3p
-                        if (cfg.set_talon_3p && ["Claw", "Rake", "Shred"].includes(action)) {
-                            if (rng.proc("Talon3p", 5)) {
-                                auras.talonAP = t + 10.0;
-                                logAction("Talon 3p", "+100 AP", "Proc", 0, false, false);
-                            }
-                        }
-
-                        // Finisher Procs
-                        if (action === "Rip" || action === "Ferocious Bite") {
-                            var usedCP = cp; // stored before reset
-
-                            // Emerald Rot
-                            if (cfg.idol_emeral_rot) {
-                                if (rng.proc("EmeraldRot", 20 * usedCP)) {
-                                    dealDamage("Emerald Rot", rollDamageRange(150, 190), "Nature", "Proc", false, false);
-                                }
-                            }
-                            // Idol Laceration
-                            if (cfg.idol_laceration) {
-                                if (rng.proc("LacerationIdol", 20 * usedCP)) {
-                                    auras.laceration = t + 10.0;
-                                    logAction("Laceration", "Next Shred Refund", "Proc", 0, false, false);
-                                }
-                            }
-                            // Talon 5p Stacking
-                            if (cfg.set_talon_5p) {
-                                stacks.talonFero += usedCP;
-                                if (stacks.talonFero >= 25) {
-                                    stacks.talonFero = 0;
-                                    auras.talonBuff = t + 10.0;
-                                    logAction("Primal Ferocity", "Proc! +25% AP", "Proc", 0, false, false);
-                                }
-                            }
-                        }
-
-                        // Update CP
-                        if (action === "Rip" || action === "Ferocious Bite") cp = 0;
-                        cp += cpGen;
-                        if (cp > 5) cp = 5;
-
-                        // Omen
-                        if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
-                            auras.clearcasting = t + 15.0;
-                            logAction("Proc", "Clearcasting", "Proc", 0, false, false);
+                        // --- PROCS ON CAST (Check Hit Success) ---
+                        // Averaged Mode: HitSuccess ist immer wahr (virtuell), wir skalieren aber mit der HitChance.
+                        
+                        var hitSuccess = true;
+                        var pScale = 1.0;
+                        
+                        if (cfg.calcMode === 'averaged') {
+                            // Im Averaged Mode ist die HitChance bereits in 'hitChance' Variable (definiert oben im Block).
+                            // pScale ist unser Faktor für alles was jetzt kommt.
+                            pScale = hitChance;
+                        } else {
+                            // Standard Mode: War der Schlag erfolgreich? (dmgMult > 0)
+                            hitSuccess = (dmgMult > 0);
                         }
                         
-                        // T0.5
-                        if (cfg.hasT05_4p && rng.proc("T05", 2)) {
-                            var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
-                            energy = Math.min(100, energy + EnergyGain);
-                            logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
-                        }
-                        
-                        // Talon 5p Energy Return
-                        if (auras.talonBuff > t) {
-                            var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
-                            energy = Math.min(100, energy + EnergyGain);
-                            logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
-                        }
-                        // Cenarion 8p Stack consumption
-                        if (auras.cenarionHaste > t && stacks.cenarion > 0) {
-                            stacks.cenarion--;
-                            if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
-                        }
+                        if (hitSuccess) {
+                            
+                            // 1. Buffs (Buckets mit pScale)
+                            if (cfg.set_talon_3p && ["Claw", "Rake", "Shred"].includes(action)) {
+                                if (rng.proc("Talon3p", 5 * pScale)) {
+                                    auras.talonAP = t + 10.0;
+                                    logAction("Talon 3p", "+100 AP", "Proc", 0, false, false);
+                                }
+                            }
+                            if (cfg.tal_omen > 0 && rng.proc("Omen", 10 * pScale)) {
+                                auras.clearcasting = t + 15.0;
+                                logAction("Proc", "Clearcasting", "Proc", 0, false, false);
+                            }
+                             if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * pScale)) {
+                                stacks.cenarion--;
+                                if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
+                            }
+                            // Trinkets (Buffs)
+                            if (cfg.t_shieldrender && rng.proc("Shieldrender", 7 * pScale)) {
+                                auras.shieldrender = t + 3.0; 
+                                logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
+                            }
+                            if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * pScale)) {
+                                stacks.swarmguard++;
+                                logAction("Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
+                            }
+                            if (cfg.set_talon_5p && (action === "Rip" || action === "Ferocious Bite")) {
+                                // Stacks bauen
+                                if (rng.proc("TalonStack", 100 * pScale)) { // Guaranteed on hit
+                                     stacks.talonFero += cp; // cp is usedCP
+                                     if (stacks.talonFero >= 25) {
+                                        stacks.talonFero = 0;
+                                        auras.talonBuff = t + 10.0;
+                                        logAction("Primal Ferocity", "Proc! +25% AP", "Proc", 0, false, false);
+                                    }
+                                }
+                            }
 
-                        // --- TRINKET PROCS (Standard Yellow) ---
-                        if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
-                            auras.shieldrender = t + 3.0;
-                            logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
-                        }
-                        if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
-                            logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
-                            performSwing(true);
-                        }
-                        if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
-                            var MaelstromDmg = rollDamageRange(200, 301);
-                            dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
-                            if (rng.proc("MaelstromCrit", critC)) {
-                                dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
+
+                            // 2. Instants (Mathematisch wenn Averaged)
+                            if (cfg.calcMode === 'averaged') {
+                                // Energy Procs
+                                if (cfg.hasT05_4p) {
+                                    var eGain = (energy <= 80 ? 20 : 100 - energy);
+                                    energy += eGain * 0.02 * pScale;
+                                }
+                                if (auras.talonBuff > t) {
+                                    var eGain = (energy <= 97 ? 3.0 : 100 - energy);
+                                    energy += eGain * 1.0 * pScale;
+                                }
+                                if (cfg.idol_laceration && (action === "Rip" || action === "Ferocious Bite")) {
+                                    // Chance 20% per CP
+                                    // Hier ist es komplexer: Procs Laceration Buff (Refund Next Shred).
+                                    // Wir nutzen Bucket für den Buff.
+                                    if (rng.proc("LacerationIdol", 20 * cp * pScale)) {
+                                         auras.laceration = t + 10.0;
+                                    }
+                                }
+                                
+                                // Dmg Procs
+                                if (cfg.idol_emeral_rot && (action === "Rip" || action === "Ferocious Bite")) {
+                                    // Chance 20% per CP
+                                    var chance = 20 * cp;
+                                    dealDamage("Emerald Rot", 170 * (chance/100.0) * pScale, "Nature", "Proc(Avg)", false, false);
+                                }
+                                if (cfg.t_maelstrom) {
+                                    var avgMael = 250.5 * (1 + (critChance/100.0)); // Use Yellow Crit Chance approx
+                                    dealDamage("Maelstrom", avgMael * 0.03 * pScale, "Nature", "Proc(Avg)", false, false);
+                                }
+                                if (cfg.t_coil) {
+                                    var avgCoil = 60.5 * (1 + (critChance/100.0));
+                                    dealDamage("Heating Coil", avgCoil * 0.05 * pScale, "Fire", "Proc(Avg)", false, false);
+                                }
+                                
+                                // Extra Attacks
+                                if (cfg.t_hoj && !isExtra) {
+                                    performSwing(true, 0.02 * pScale);
+                                }
+                                if (cfg.buff_wf_totem && !isExtra) {
+                                    performSwing(true, 0.20 * pScale);
+                                }
+
+                            } else {
+                                // --- STANDARD MODE (Legacy Instants) ---
+                                if (cfg.hasT05_4p && rng.proc("T05", 2)) {
+                                    var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
+                                    energy = Math.min(100, energy + EnergyGain);
+                                    logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
+                                }
+                                if (auras.talonBuff > t) {
+                                    var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
+                                    energy = Math.min(100, energy + EnergyGain);
+                                    logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
+                                }
+                                if (cfg.idol_laceration && (action === "Rip" || action === "Ferocious Bite")) {
+                                    if (rng.proc("LacerationIdol", 20 * cp)) {
+                                        auras.laceration = t + 10.0;
+                                        logAction("Laceration", "Next Shred Refund", "Proc", 0, false, false);
+                                    }
+                                }
+                                if (cfg.idol_emeral_rot && (action === "Rip" || action === "Ferocious Bite")) {
+                                    if (rng.proc("EmeraldRot", 20 * cp)) {
+                                        dealDamage("Emerald Rot", rollDamageRange(150, 190), "Nature", "Proc", false, false);
+                                    }
+                                }
+                                // Trinket Instants
+                                if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
+                                    logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
+                                    performSwing(true);
+                                }
+                                if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
+                                    var MaelstromDmg = rollDamageRange(200, 301);
+                                    dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
+                                    if (rng.proc("MaelstromCrit", critChance)) dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
+                                }
+                                if (cfg.t_coil && rng.proc("Coil", 5)) {
+                                    var CoilDamage = rollDamageRange(50, 71);
+                                    dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
+                                    if (rng.proc("CoilCrit", critChance)) dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
+                                }
+                                if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
+                                    logAction("Windfury", "Extra Attack", "Proc", 0, false, false);
+                                    performSwing(true);
+                                }
                             }
-                        }
-                        if (cfg.t_coil && rng.proc("Coil", 5)) {
-                            var CoilDamage = rollDamageRange(50, 71);
-                            dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
-                            if (rng.proc("CoilCrit", critC)) {
-                                dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
-                            }
-                        }
-                        if (cfg.t_venoms && rng.proc("Venoms", 20)) {
-                            if (stacks.venom < 2) stacks.venom++;
-                            auras.venom = t + 12.0;
-                            logAction( "Venoms", "Stack " + stacks.venom, "Proc", 0, false, false);
-                            var dotDmgPerTick = stacks.venom * 120 / 4;
-                            removeEvent("dot_tick", "venom");
-                            for (var tick = 1; tick <= 4; tick++) {
-                                addEvent(t + (tick * 3.0), "dot_tick", { name: "venom", dmg: dotDmgPerTick, label: "Venoms" });
-                            }
-                        }
-                        if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80)) {
-                            stacks.swarmguard++;
-                            logAction("Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
-                        }
-                        if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
-                            logAction("Windfury", "Extra Attack", "Proc", 0, false, false);
-                            performSwing(true);
+                            
+                            // CP Logic Update (already done in step before)
+                            if (action === "Rip" || action === "Ferocious Bite") cp = 0;
+                            cp += cpGen;
+                            if (cp > 5) cp = 5;
                         }
                     }
 
