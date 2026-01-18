@@ -85,24 +85,27 @@ function runSimulation() {
 // STAT WEIGHTS ENTRY POINT
 // ============================================================================
 
+// ============================================================================
+// STAT WEIGHTS ENTRY POINT
+// ============================================================================
+
 function runStatWeights() {
     var baseConfig = getSimInputs();
     
-    // FIX: 'averaged' führt zu "Treppenstufen" (0 EP oder riesige Sprünge).
-    // Wir nutzen 'stochastic' (RNG) mit SEHR vielen Iterationen, um Wahrscheinlichkeiten 
-    // korrekt in DPS zu übersetzen (Gesetz der großen Zahlen).
-    baseConfig.calcMode = 'stochastic'; 
+    // ÄNDERUNG: Deterministischer Modus ('averaged') statt 'stochastic'
+    baseConfig.calcMode = 'averaged'; 
     
-    // Wir erhöhen auf 1500 Iterationen, um die Schwankungen des RNG zu minimieren.
-    // Das liefert stabile, realistische Werte für Crit/Agi.
-    baseConfig.iterations = 1500; 
+    // ÄNDERUNG: 200 Iterationen für Time Smearing (Glättung)
+    // Bei +/- 20s Range (Total 40s) ergibt das Schritte von 0.2s.
+    // Das eliminiert Breakpoints und ist performanter als 1500 RNG-Läufe.
+    baseConfig.iterations = 200; 
     
     baseConfig.varyDuration = true; 
     baseConfig.simTime = 300; // Basis 300s (5 Min)
 
     var iter = baseConfig.iterations;
 
-    showProgress("Calculating Stat Weights (Stochastic, 1500 Iterations per Stat)...");
+    showProgress("Calculating Stat Weights (Averaged Time-Smearing)...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
@@ -147,18 +150,19 @@ function runStatWeights() {
                 // Range für Time Smearing: +/- 20 Sekunden (Total 40s Spread)
                 var timeRange = 40.0; 
                 
+                // Deterministische Schleife über die Zeitfenster
                 for (var i = 0; i < iter; i++) {
                     var stepConfig = Object.assign({}, runCfg);
                     
-                    if (baseConfig.varyDuration && iter > 1) {
-                        // Linearer Spread von -20s bis +20s über alle Iterationen
-                        var progress = i / (iter - 1); // 0.0 bis 1.0
-                        var offset = (progress - 0.5) * timeRange; // -20 bis +20
-                        
-                        stepConfig.simTime = runCfg.simTime + offset;
-                        if (stepConfig.simTime < 10) stepConfig.simTime = 10;
-                    }
-
+                    // Linearer Spread von -20s bis +20s über alle Iterationen
+                    var progress = i / (iter - 1); // 0.0 bis 1.0
+                    var offset = (progress - 0.5) * timeRange; // -20 bis +20
+                    
+                    stepConfig.simTime = runCfg.simTime + offset;
+                    // Keine negativen Zeiten zulassen
+                    if (stepConfig.simTime < 10) stepConfig.simTime = 10;
+                    
+                    // WICHTIG: Hier wird nun runCoreSimulation im 'averaged' Modus aufgerufen
                     runResults.push(runCoreSimulation(stepConfig));
                 }
                 
