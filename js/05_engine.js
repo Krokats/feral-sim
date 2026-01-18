@@ -73,6 +73,7 @@ function runStatWeights() {
     // This removes RNG noise entirely, making weights accurate with just 1 run per scenario.
     baseConfig.calcMode = 'deterministic';
     baseConfig.iterations = 1; 
+    var iter = baseConfig.iterations;
 
     showProgress("Calculating Stat Weights (Deterministic)...");
 
