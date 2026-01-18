@@ -289,7 +289,15 @@
                                             <div class="card-body">
                                                 <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="60"></div>
                                                 <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
-
+                                                <div class="input-group">
+                                                    <label>Calculation Mode</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="sim_calc_mode">
+                                                            <option value="stochastic" selected>Stochastic (RNG)</option>
+                                                            <option value="deterministic">Deterministic (Fixed)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 <div class="separator"></div>
 
                                                 <div class="input-group">

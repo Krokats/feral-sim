@@ -676,6 +676,13 @@ function setupUIListeners() {
     // Init Rotation Help
     renderRotationHelp();
 
+    // Calc Mode Toggle Logic
+    var calcModeEl = document.getElementById("sim_calc_mode");
+    if (calcModeEl) {
+        calcModeEl.addEventListener("change", updateCalcModeUI);
+        // Init call
+        updateCalcModeUI();
+    }
 
 }
 
@@ -745,6 +752,23 @@ function updateRotationConstraints() {
         if(inpOverTFDur) inpOverTFDur.disabled = true;
         if(parentToggle) { parentToggle.style.opacity = "0.5"; parentToggle.style.pointerEvents = "none"; }
         if(parentDur) { parentDur.style.opacity = "0.5"; parentDur.style.pointerEvents = "none"; }
+    }
+}
+
+function updateCalcModeUI() {
+    var mode = document.getElementById("sim_calc_mode") ? document.getElementById("sim_calc_mode").value : "stochastic";
+    var iterInput = document.getElementById("simCount");
+    
+    if (iterInput) {
+        if (mode === 'deterministic') {
+            iterInput.disabled = true;
+            iterInput.style.opacity = "0.5";
+            iterInput.title = "Deterministic mode always runs 1 iteration.";
+        } else {
+            iterInput.disabled = false;
+            iterInput.style.opacity = "1";
+            iterInput.title = "";
+        }
     }
 }
 

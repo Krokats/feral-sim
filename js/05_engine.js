@@ -20,6 +20,9 @@ function runSimulation() {
 
     // Ensure at least 1 iteration
     if (config.iterations < 1) config.iterations = 1;
+    
+    // Force 1 iteration for deterministic mode
+    if (config.calcMode === 'deterministic') config.iterations = 1;
 
     showProgress("Simulating...");
 
@@ -65,11 +68,13 @@ function runSimulation() {
 
 function runStatWeights() {
     var baseConfig = getSimInputs();
-    var iter = baseConfig.iterations;
-    if (iter < 10000) iter = 10000; // Minimum for weights
-    baseConfig.iterations = iter;
+    
+    // FORCE DETERMINISTIC FOR WEIGHTS
+    // This removes RNG noise entirely, making weights accurate with just 1 run per scenario.
+    baseConfig.calcMode = 'deterministic';
+    baseConfig.iterations = 1; 
 
-    showProgress("Calculating Stat Weights...");
+    showProgress("Calculating Stat Weights (Deterministic)...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
@@ -279,7 +284,10 @@ function getSimInputs() {
         t_venoms: getCheck("trinket_venoms") === 1,
         t_maelstrom: getCheck("trinket_maelstrom") === 1,
         t_hoj: getCheck("trinket_hoj") === 1,
-        t_coil: getCheck("trinket_coil") === 1
+        t_coil: getCheck("trinket_coil") === 1,
+
+        // Calculation Mode
+        calcMode: getSel("sim_calc_mode") || "stochastic"
     };
 }
 
@@ -292,6 +300,9 @@ function runCoreSimulation(cfg) {
     // -----------------------------------------
     // 1. STATS & INITIALIZATION
     // -----------------------------------------
+
+    // Initialize RNG Handler
+    var rng = new RNGHandler(cfg.calcMode);
 
     var raceStats = {
         "Tauren": { baseAp: 295, baseCrit: 3.65, minDmg: 72, maxDmg: 97 },
@@ -548,7 +559,9 @@ function runCoreSimulation(cfg) {
         logAction(source, type, res, val, isCrit, isTick, eChangeOverride || 0);
     }
 
-    function rollDamageRange(min, max) { return min + Math.random() * (max - min); }
+    //function rollDamageRange(min, max) { return min + Math.random() * (max - min); }
+    // UPDATED: Use RNG Handler
+    function rollDamageRange(min, max) { return rng.dmg(min, max); }
 
     // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
@@ -593,10 +606,18 @@ function runCoreSimulation(cfg) {
 
                         // Genesis (T2.5) 5p: Proc on Tick
                         // Rake (6%), Rip (10%)
-                        if (cfg.set_genesis_5p) {
+                        /*if (cfg.set_genesis_5p) {
                             var chance = (name === "rake") ? 0.06 : 0.10;
                             if (Math.random() < chance) {
                                 auras.genesisProc = t + 30.0; // Empower Next Cast
+                                logAction("Genesis", "Proc (Next Cast Empowered)", "Proc", 0, false, false);
+                            }
+                        }*/
+                       // Genesis (T2.5) 5p: Proc on Tick
+                        if (cfg.set_genesis_5p) {
+                            var chance = (name === "rake") ? 6.0 : 10.0;
+                            if (rng.proc("GenesisTick", chance)) {
+                                auras.genesisProc = t + 30.0; 
                                 logAction("Genesis", "Proc (Next Cast Empowered)", "Proc", 0, false, false);
                             }
                         }
@@ -637,8 +658,8 @@ function runCoreSimulation(cfg) {
         if (t >= swingTimer - 0.001) {
 
             var performSwing = function (isExtra) {
-                //var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
-                var baseDmgRoll = (base.minDmg + base.maxDmg) / 2; // Avg. instead of random roll
+                // Damage Roll (RNG handled inside helper)
+                var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg); 
                 var currentAP = getCurrentAP();
 
                 if (isExtra) currentAP += 315; // WF Bonus
@@ -649,156 +670,109 @@ function runCoreSimulation(cfg) {
                 if (auras.tigersFury > t) rawDmg += 50;
                 rawDmg *= modNaturalWeapons;
 
-                // Attack Table
-                var roll = Math.random() * 100;
-                var hitType = "HIT";
-                // Dynamische Werte basierend auf Level (Gegnerlevel in cfg.enemyLevel)
+                // --- ATTACK TABLE (White) ---
                 var isBoss = (cfg.enemyLevel == 63);
                 var isFront = (cfg.rota_position === "front");
                 var canBlock = (cfg.enemy_can_block === 1);
 
-                var blockChance = (isFront && canBlock) ? 5.0 : 0;
-                var blockValue = isBoss ? 38 : 0; // Beispielwerte für Schadensreduktion
+                // Stats
+                var missC = Math.max(0, (isBoss ? 8.6 : 5.0) - cfg.inputHit);
+                var dodgeC = isBoss ? 6.5 : 5.0;
+                var parryC = (isFront) ? (isBoss ? 14.0 : 5.0) : 0;
+                var blockC = (isFront && canBlock) ? 5.0 : 0;
+                var glanceC = isBoss ? 40.0 : 10.0;
+                var critC = Math.max(0, cfg.inputCrit - (isBoss ? 4.8 : 0));
 
-                // 1. MISS (Basis 5% gegen 60, 8.6% gegen 63)
-                var missChance = isBoss ? 8.6 : 5.0;
-                missChance = Math.max(0, missChance - cfg.inputHit); // Apply total Hit
+                // Prepare Table
+                var table = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: glanceC, crit: critC };
+                var hitType = rng.attackTable("Auto", table);
 
-                // 2. DODGE (Basis 5% gegen 60, 6.5% gegen 63)
-                var dodgeChance = isBoss ? 6.5 : 5.0;
+                // Counters
+                if (hitType === "MISS") { if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++; }
+                else if (hitType === "DODGE") { if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++; }
+                else if (hitType === "PARRY") { if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++; }
+                else if (hitType === "BLOCK") { if (!missCounts.Block) missCounts.Block = 0; missCounts.Block++; }
+                else if (hitType === "GLANCE") { if (!glanceCounts.Auto) glanceCounts.Auto = 0; glanceCounts.Auto++; }
+                else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
+                if (!counts.Auto) counts.Auto = 0; counts.Auto++;
 
-                var parryChance = 0;
-                if (isFront) {
-                    parryChance = isBoss ? 14.0 : 5.0;
-                }
+                // Damage Modifiers
+                var blockValue = isBoss ? 38 : 0;
+                var glancePenalty = isBoss ? 0.35 : 0.05;
 
-                // 3. GLANCING (10% gegen 60, 40% gegen 63)
-                var glanceChance = isBoss ? 40.0 : 10.0;
-                var glancePenalty = isBoss ? 0.35 : 0.05; // 35% Abzug vs 5% Abzug
+                if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
+                else if (hitType === "GLANCE") rawDmg *= (1 - glancePenalty);
+                else if (hitType === "CRIT") rawDmg *= 2.0;
 
-                // 4. CRIT
-                var critChance = cfg.inputCrit;
-                // Gegen Bosse gibt es eine Crit-Unterdrückung von 4.8%
-                if (isBoss) critChance -= 4.8;
-
-                // --- SINGLE ROLL ATTACK TABLE ---
-                var currentLimit = 0;
-
-                if (roll < (currentLimit += missChance)) {
-                    hitType = "MISS"; if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++;
-                } else if (roll < (currentLimit += dodgeChance)) {
-                    hitType = "DODGE"; if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++;
-                } else if (roll < (currentLimit += parryChance)) {
-                    hitType = "PARRY"; if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++;
-                } else if (roll < (currentLimit += blockChance)) {
-                    hitType = "BLOCK";
-                    rawDmg = Math.max(0, rawDmg - blockValue); // Schaden reduzieren statt 0
-                    if (!missCounts.Block) missCounts.Block = 0; missCounts.Block++;
-                } else if (roll < (currentLimit += glanceChance)) {
-                    hitType = "GLANCE";
-                    rawDmg *= (1 - glancePenalty); // Dynamischer Abzug
-                    if (!glanceCounts.Auto) glanceCounts.Auto = 0; glanceCounts.Auto++;
-                } else if (roll < (currentLimit += critChance)) {
-                    hitType = "CRIT";
-                    rawDmg *= 2.0;
-                    if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++;
-                }
-
+                // Process Hit
                 if (hitType !== "MISS" && hitType !== "DODGE" && hitType !== "PARRY") {
                     var dr = getDamageReduction(t, auras.ff);
                     rawDmg *= (1 - dr);
 
                     dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
 
-                    // Omen
-                    if (cfg.tal_omen > 0 && Math.random() < 0.10) {
+                    // --- PROCS ---
+                    if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
                         auras.clearcasting = t + 15.0;
                         logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
-                    // T0.5
-                    if (cfg.hasT05_4p && Math.random() < 0.02) {
-                        var EnergyGain = 0.0;
-                        if (energy <= 80) {
-                            EnergyGain = 20;
-                        } else {
-                            EnergyGain = 100 - energy;
-                        }
+                    if (cfg.hasT05_4p && rng.proc("T05", 2)) {
+                        var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
                         energy = Math.min(100, energy + EnergyGain);
                         logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
                     }
-                    // Talon 5p Energy Return
                     if (auras.talonBuff > t) {
-                        var EnergyGain = 0.0;
-                        if (energy <= 97) {
-                            EnergyGain = 3.0;
-                        } else {
-                            EnergyGain = 100 - energy;
-                        }
-                        energy = Math.min(100, energy + EnergyGain);
-                        logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
+                         var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
+                         energy = Math.min(100, energy + EnergyGain);
+                         logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
                     }
-                    // Cenarion 8p Stack consumption
                     if (auras.cenarionHaste > t && stacks.cenarion > 0) {
                         stacks.cenarion--;
                         if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
                     }
 
-                    // --- TRINKET PROCS ---
-                    if (cfg.t_shieldrender && Math.random() < 0.07) {
+                    // Trinkets
+                    if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
                         auras.shieldrender = t + 3.0;
                         logAction( "Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                     }
-                    if (cfg.t_hoj && !isExtra && Math.random() < 0.02) {
+                    if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
                         logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
                         performSwing(true);
                     }
-                    if (cfg.t_maelstrom && Math.random() < 0.03) { // Approx chance
+                    if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
                         var MaelstromDmg = rollDamageRange(200, 301);
                         dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
-                        var rollCritMael = Math.random() * 100;
-                        if (rollCritMael < critChance) {
+                        if (rng.proc("MaelstromCrit", critC)) {
                             dealDamage( "Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
                         }
                     }
-                    if (cfg.t_coil && Math.random() < 0.05) {
+                    if (cfg.t_coil && rng.proc("Coil", 5)) {
                         var CoilDamage = rollDamageRange(50, 71);
                         dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
-                        var rollCritCoil = Math.random() * 100;
-                        if (rollCritCoil < critChance) {
+                        if (rng.proc("CoilCrit", critC)) {
                             dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
                         }
                     }
-                    if (cfg.t_venoms && Math.random() < 0.20) { // Approx chance
+                    if (cfg.t_venoms && rng.proc("Venoms", 20)) {
                         if (stacks.venom < 2) stacks.venom++;
                         auras.venom = t + 12.0;
                         logAction( "Venoms", "Stack " + stacks.venom, "Proc", 0, false, false);
-                        // Start Dot Dmg, 1 Stack = 120 Dmg, 2 Stacks = 240 Dmg, Ticks alle 3 Sekunden
-                        var dotDmgPerTick = stacks.venom * 120 / 4; // 4 Ticks over 12s
-
-                        // die alten Dot-Timer entfernen (vereinfachte Annahme)
+                        var dotDmgPerTick = stacks.venom * 120 / 4;
                         removeEvent("dot_tick", "venom");
-
-                        // neue Dot-Timer hinzufügen
                         for (var tick = 1; tick <= 4; tick++) {
                             addEvent(t + (tick * 3.0), "dot_tick", { name: "venom", dmg: dotDmgPerTick, label: "Venoms" });
                         }
                     }
-                    // Swarmguard is ein On Use Item für 30 sekunden, dann procc-chance von 80% auf hits
-                    if (auras.swarmguard > t && Math.random() < 0.80) { // Chance on hit?
-                        // Prompt: "chance on melee... to apply armor pen"
-                        if (auras.swarmguard > t && stacks.swarmguard < 6) {
-                            stacks.swarmguard++;
-                            logAction("Proc", "Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
-                        }
+                    if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80)) {
+                        stacks.swarmguard++;
+                        logAction("Proc", "Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
                     }
-
-                    // Windfury
-                    if (cfg.buff_wf_totem && !isExtra && Math.random() < 0.20) {
+                    if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
                         logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
                         performSwing(true);
                     }
                 }
-                if (!counts.Auto) counts.Auto = 0; counts.Auto++;
             };
 
             performSwing(false);
@@ -966,85 +940,72 @@ function runCoreSimulation(cfg) {
                     energy -= castCost;
                     if (isOoc) { auras.clearcasting = 0; logAction("Omen", "Consumed", "Fade", 0, false, false); }
 
-                    var missC = Math.max(0, 9.0 - baseHit - cfg.tal_nat_wep);
-                    var dodgeC = 6.5;
-                    var critC = cfg.inputCrit;
-
-                    // Genesis 5p Empower
-                    if (auras.genesisProc > t && (action === "Shred" || action === "Rake" || action === "Claw")) {
-                        critC += 15;
-                    }
-
-                    // --- TWO-ROLL SYSTEM FÜR YELLOW HITS ---
+                    // --- YELLOW ATTACK TABLE (Two-Roll) ---
                     var isBoss = (cfg.enemyLevel == 63);
                     var isFront = (cfg.rota_position === "front");
                     var canBlock = (cfg.enemy_can_block === 1);
 
-                    var missC = isBoss ? 9.0 : 5.0;
-                    missC = Math.max(0, missC - baseHit - cfg.tal_nat_wep);
+                    // 1. Hit Roll
+                    var missC = Math.max(0, (isBoss ? 9.0 : 5.0) - baseHit - cfg.tal_nat_wep);
                     var dodgeC = isBoss ? 6.5 : 5.0;
-                    var parryC = (cfg.rota_position === "front") ? (isBoss ? 14.0 : 5.0) : 0;
-                    var canBlock = (cfg.enemy_can_block === 1);
-
+                    var parryC = (isFront) ? (isBoss ? 14.0 : 5.0) : 0;
                     var blockC = (isFront && canBlock) ? 5.0 : 0;
-                    var blockVal = isBoss ? 38 : 0; // Tested on Heroic Training Dummy
-
-
-                    var rollHit = Math.random() * 100;
-                    var res = "HIT";
-
-                    if (rollHit < missC) {
-                        res = "MISS";
-                    } else if (rollHit < missC + dodgeC) {
-                        res = "DODGE";
-                    } else if (rollHit < missC + dodgeC + parryC) {
-                        res = "PARRY";
-                    } else if (rollHit < missC + dodgeC + parryC + blockC) {
-                        res = "BLOCK";
-                        // Der Schaden wird später in der Berechnung um blockVal reduziert
-                    } else {
-                        // Wenn getroffen, zweiter Roll für Crit
-                        var rollCrit = Math.random() * 100;
-                        var actualCritChance = cfg.inputCrit;
-                        if (isBoss) actualCritChance -= 4.8; // Crit-Unterdrückung
-
-                        if (rollCrit < actualCritChance) {
-                            res = "CRIT";
+                    
+                    // Table for Roll 1
+                    var yellowTable = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: 0, crit: 0 }; 
+                    var res = rng.attackTable("Yellow_" + action, yellowTable);
+                    
+                    // 2. Crit Roll (only if HIT or BLOCK)
+                    // Note: Blocked attacks can technically not crit in Vanilla, but here treated as Block+Damage.
+                    // If result is HIT, we check for Crit.
+                    if (res === "HIT" || res === "BLOCK") {
+                        var critChance = cfg.inputCrit - (isBoss ? 4.8 : 0);
+                        // Genesis 5p Bonus
+                        if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
+                            critChance += 15;
+                        }
+                        
+                        if (rng.proc("YellowCrit_" + action, critChance)) {
+                            res = "CRIT"; // Upgrade HIT to CRIT
+                            // NOTE: Blocked Crits (Blocked+Crit) are complex, simplifying to CRIT here as Block reduces dmg later.
+                            // If it was blocked, we keep it blocked but apply crit mult? 
+                            // Standard behavior: Crit pushes Block off table usually, or distinct. 
+                            // Simplifying: If Crit Proc -> It is a Crit.
                         }
                     }
 
-
+                    // Refund Logic
                     if (res === "MISS" || res === "DODGE" || res === "PARRY") {
                         var refund = (castCost * 0.8);
-                        energy += (castCost * 0.8);
+                        energy += refund;
                         if (energy > 100) energy = 100;
                         if (res === "MISS") missCounts[action] = (missCounts[action] || 0) + 1;
                         else if (res === "DODGE") dodgeCounts[action] = (dodgeCounts[action] || 0) + 1;
-                        else if (res === "PARRY") {
-                            if (!missCounts.Parry) missCounts.Parry = 0;
-                            missCounts.Parry++;
-                        }
+                        else if (res === "PARRY") { if (!missCounts.Parry) missCounts.Parry = 0; missCounts.Parry++; }
                         logAction(action, "Refund", res, 0, false, false, -castCost + refund);
                     } else {
-                        // HIT/CRIT
-                        var cpGen = 0;
-                        if (["Claw", "Rake", "Shred"].includes(action)) cpGen = 1;
+                        // Landed Hit
+                        var cpGen = (["Claw", "Rake", "Shred"].includes(action)) ? 1 : 0;
                         if (res === "CRIT") {
-                            if (cpGen > 0 && cfg.tal_primal_fury > 0) cpGen++;
+                            if (cpGen > 0 && cfg.tal_primal_fury > 0) {
+                                // Primal Fury 50% / 100%
+                                var chance = cfg.tal_primal_fury * 50;
+                                if (rng.proc("PrimalFury", chance)) cpGen++;
+                            }
                             critCounts[action] = (critCounts[action] || 0) + 1;
                         }
 
+                        // Damage Calc
                         var curAP = getCurrentAP();
-                        //var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
-                        var baseDmgRoll = (base.minDmg + base.maxDmg) / 2; // Avg. instead of random roll
+                        var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
                         var apBonus = (curAP - base.baseAp) / 14.0;
                         var normalDmg = baseDmgRoll + apBonus;
                         if (auras.tigersFury > t) normalDmg += 50;
 
-                        // Genesis 5p Bonus Dmg
+                        // Genesis 5p Bonus Dmg (Consumed)
                         if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
                             normalDmg *= 1.15;
-                            auras.genesisProc = 0; // Consumed
+                            auras.genesisProc = 0; 
                             logAction("Genesis", "Consumed", "Proc", 0, false, false);
                         }
 
@@ -1062,13 +1023,10 @@ function runCoreSimulation(cfg) {
                         else if (action === "Shred") {
                             abilityDmg = 2.25 * normalDmg + 180;
                             if (cfg.tal_imp_shred > 0) abilityDmg *= (1 + cfg.tal_imp_shred * 0.05);
-                            //abilityDmg *= modPredatoryStrikes;
-
+                            
                             // Idol of Laceration Refund
                             if (auras.laceration > t) {
-                                var EnergyRefund = 0.0;
-                                if (energy >= 85) EnergyRefund = 100 - energy;
-                                if (energy < 85) EnergyRefund = 15;
+                                var EnergyRefund = (energy >= 85) ? (100 - energy) : 15;
                                 energy = Math.min(100, energy + EnergyRefund);
                                 auras.laceration = 0;
                                 logAction("Laceration", "Refund " + EnergyRefund, "Proc", 0, false, false, EnergyRefund);
@@ -1081,8 +1039,8 @@ function runCoreSimulation(cfg) {
                             dotTotal *= modPredatoryStrikes;
                             var tickVal = dotTotal / 3;
 
-                            var rInterval = 3.0; var rDur = 9.0;
-                            if (cfg.idol_savagery) { rInterval = 2.7; rDur = 8.1; }
+                            var rInterval = cfg.idol_savagery ? 2.7 : 3.0; 
+                            var rDur = cfg.idol_savagery ? 8.1 : 9.0;
 
                             auras.rake = t + rDur;
                             addEvent(t + rInterval, "dot_tick", { name: "rake", dmg: tickVal, label: "Rake" });
@@ -1096,8 +1054,7 @@ function runCoreSimulation(cfg) {
                             var tickDmg = 47 + (cp - 1) * 31 + (cpScaled / 100 * apPart);
                             if (cfg.tal_open_wounds > 0) tickDmg *= (1 + 0.15 * cfg.tal_open_wounds);
 
-                            var ripInterval = 2.0;
-                            if (cfg.idol_savagery) ripInterval = 1.8;
+                            var ripInterval = cfg.idol_savagery ? 1.8 : 2.0;
 
                             auras.rip = t + (ticks * ripInterval);
                             for (var i = 1; i <= ticks; i++) {
@@ -1113,10 +1070,9 @@ function runCoreSimulation(cfg) {
                             if (cfg.tal_feral_aggression > 0) abilityDmg *= (1 + cfg.tal_feral_aggression * 0.03);
                             cpGen = 0;
 
-                            // Cenarion 8p
+                            // Cenarion 8p: 20% chance per CP
                             if (cfg.set_cenarion_8p) {
-                                // 20% chance per CP
-                                if (Math.random() < (0.20 * cp)) {
+                                if (rng.proc("Cenarion8p", 20 * cp)) {
                                     auras.cenarionHaste = t + 999;
                                     stacks.cenarion = 5;
                                     logAction("Cenarion", "5 Haste Charges", "Proc", 0, false, false);
@@ -1126,7 +1082,7 @@ function runCoreSimulation(cfg) {
 
                         abilityDmg *= modNaturalWeapons;
                         if (res === "CRIT") abilityDmg *= 2.0;
-                        if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - blockVal);
+                        if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
 
                         if (!isBleed && action !== "Rip") {
                             var dr = getDamageReduction(t, auras.ff);
@@ -1142,7 +1098,7 @@ function runCoreSimulation(cfg) {
                         // --- PROCS ON CAST ---
                         // Talon 3p
                         if (cfg.set_talon_3p && ["Claw", "Rake", "Shred"].includes(action)) {
-                            if (Math.random() < 0.05) {
+                            if (rng.proc("Talon3p", 5)) {
                                 auras.talonAP = t + 10.0;
                                 logAction("Talon 3p", "+100 AP", "Proc", 0, false, false);
                             }
@@ -1154,13 +1110,13 @@ function runCoreSimulation(cfg) {
 
                             // Emerald Rot
                             if (cfg.idol_emeral_rot) {
-                                if (Math.random() < (0.20 * usedCP)) {
+                                if (rng.proc("EmeraldRot", 20 * usedCP)) {
                                     dealDamage("Emerald Rot", rollDamageRange(150, 190), "Nature", "Proc", false, false);
                                 }
                             }
                             // Idol Laceration
                             if (cfg.idol_laceration) {
-                                if (Math.random() < (0.20 * usedCP)) {
+                                if (rng.proc("LacerationIdol", 20 * usedCP)) {
                                     auras.laceration = t + 10.0;
                                     logAction("Laceration", "Next Shred Refund", "Proc", 0, false, false);
                                 }
@@ -1182,31 +1138,21 @@ function runCoreSimulation(cfg) {
                         if (cp > 5) cp = 5;
 
                         // Omen
-                        if (cfg.tal_omen > 0 && Math.random() < 0.10) {
+                        if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
                             auras.clearcasting = t + 15.0;
                             logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                         }
-
+                        
                         // T0.5
-                        if (cfg.hasT05_4p && Math.random() < 0.02) {
-                            var EnergyGain = 0.0;
-                            if (energy <= 80) {
-                                EnergyGain = 20;
-                            } else {
-                                EnergyGain = 100 - energy;
-                            }
+                        if (cfg.hasT05_4p && rng.proc("T05", 2)) {
+                            var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
                             energy = Math.min(100, energy + EnergyGain);
                             logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
                         }
-
+                        
                         // Talon 5p Energy Return
                         if (auras.talonBuff > t) {
-                            var EnergyGain = 0.0;
-                            if (energy <= 97) {
-                                EnergyGain = 3.0;
-                            } else {
-                                EnergyGain = 100 - energy;
-                            }
+                            var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
                             energy = Math.min(100, energy + EnergyGain);
                             logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
                         }
@@ -1216,57 +1162,44 @@ function runCoreSimulation(cfg) {
                             if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
                         }
 
-                        // --- TRINKET PROCS ---
-                        if (cfg.t_shieldrender && Math.random() < 0.07) {
+                        // --- TRINKET PROCS (Standard Yellow) ---
+                        if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
                             auras.shieldrender = t + 3.0;
                             logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                         }
-                        if (cfg.t_hoj && !isExtra && Math.random() < 0.02) {
+                        if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
                             logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
                             performSwing(true);
                         }
-                        if (cfg.t_maelstrom && Math.random() < 0.03) { // Approx chance
+                        if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
                             var MaelstromDmg = rollDamageRange(200, 301);
                             dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
-                            var rollCritMael = Math.random() * 100;
-                            if (rollCritMael < critChance) {
+                            if (rng.proc("MaelstromCrit", critC)) {
                                 dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
                             }
                         }
-                        if (cfg.t_coil && Math.random() < 0.05) {
+                        if (cfg.t_coil && rng.proc("Coil", 5)) {
                             var CoilDamage = rollDamageRange(50, 71);
                             dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
-                            var rollCritCoil = Math.random() * 100;
-                            if (rollCritCoil < critChance) {
+                            if (rng.proc("CoilCrit", critC)) {
                                 dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
                             }
                         }
-                        if (cfg.t_venoms && Math.random() < 0.20) { // Approx chance
+                        if (cfg.t_venoms && rng.proc("Venoms", 20)) {
                             if (stacks.venom < 2) stacks.venom++;
                             auras.venom = t + 12.0;
-                            logAction("Venoms", "Stack " + stacks.venom, "Proc", 0, false, false);
-                            // Start Dot Dmg, 1 Stack = 120 Dmg, 2 Stacks = 240 Dmg, Ticks alle 3 Sekunden
-                            var dotDmgPerTick = stacks.venom * 120 / 4; // 4 Ticks over 12s
-
-                            // die alten Dot-Timer entfernen (vereinfachte Annahme)
+                            logAction( "Venoms", "Stack " + stacks.venom, "Proc", 0, false, false);
+                            var dotDmgPerTick = stacks.venom * 120 / 4;
                             removeEvent("dot_tick", "venom");
-
-                            // neue Dot-Timer hinzufügen
                             for (var tick = 1; tick <= 4; tick++) {
                                 addEvent(t + (tick * 3.0), "dot_tick", { name: "venom", dmg: dotDmgPerTick, label: "Venoms" });
                             }
                         }
-                        // Swarmguard is ein On Use Item für 30 sekunden, dann procc-chance von 80% auf hits
-                        if (auras.swarmguard > t && Math.random() < 0.80) { // Chance on hit?
-                            // Prompt: "chance on melee... to apply armor pen"
-                            if (auras.swarmguard > t && stacks.swarmguard < 6) {
-                                stacks.swarmguard++;
-                                logAction("Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
-                            }
+                        if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80)) {
+                            stacks.swarmguard++;
+                            logAction("Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
                         }
-
-                        // Windfury
-                        if (cfg.buff_wf_totem && !isExtra && Math.random() < 0.20) {
+                        if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
                             logAction("Windfury", "Extra Attack", "Proc", 0, false, false);
                             performSwing(true);
                         }
@@ -1324,3 +1257,74 @@ function aggregateResults(results) {
 
     return avg;
 }
+
+// ============================================================================
+// RNG HANDLER (Stochastic vs Deterministic)
+// ============================================================================
+function RNGHandler(mode) {
+    this.mode = mode; // 'stochastic' or 'deterministic'
+    this.buckets = {}; // Accumulators for deterministic events
+}
+
+// Returns a damage value. Random between min/max OR Average.
+RNGHandler.prototype.dmg = function(min, max) {
+    if (this.mode === 'deterministic') return (min + max) / 2;
+    return min + Math.random() * (max - min);
+};
+
+// Returns true if an event triggers based on percentage (0-100).
+RNGHandler.prototype.proc = function(id, chance) {
+    if (chance <= 0) return false;
+    if (this.mode === 'deterministic') {
+        if (!this.buckets[id]) this.buckets[id] = 0;
+        this.buckets[id] += chance;
+        if (this.buckets[id] >= 100) {
+            this.buckets[id] -= 100;
+            return true;
+        }
+        return false;
+    }
+    return Math.random() * 100 < chance;
+};
+
+// Handles Attack Table Logic (White Hits: Single Roll / Priority System)
+// Checks outcomes in order: Miss -> Dodge -> Parry -> Block -> Glance -> Crit
+// Returns the string of the result (e.g. "MISS", "CRIT", "HIT")
+RNGHandler.prototype.attackTable = function(idPrefix, table) {
+    // table = { miss: %, dodge: %, parry: %, block: %, glance: %, crit: % }
+    
+    if (this.mode === 'deterministic') {
+        // Priority System: Check buckets in order. 
+        // Note: This ensures correct frequency over time but separates events strictly.
+        var types = ['MISS', 'DODGE', 'PARRY', 'BLOCK', 'GLANCE', 'CRIT'];
+        var keys = ['miss', 'dodge', 'parry', 'block', 'glance', 'crit'];
+        
+        for(var i=0; i<types.length; i++) {
+            var type = types[i];
+            var key = keys[i];
+            var chance = table[key] || 0;
+            if (chance > 0) {
+                var bId = idPrefix + "_" + type;
+                if (!this.buckets[bId]) this.buckets[bId] = 0;
+                this.buckets[bId] += chance;
+                if (this.buckets[bId] >= 100) {
+                    this.buckets[bId] -= 100;
+                    return type;
+                }
+            }
+        }
+        return "HIT";
+    } else {
+        // Stochastic: Single Roll
+        var roll = Math.random() * 100;
+        var limit = 0;
+        
+        if (table.miss && roll < (limit += table.miss)) return "MISS";
+        if (table.dodge && roll < (limit += table.dodge)) return "DODGE";
+        if (table.parry && roll < (limit += table.parry)) return "PARRY";
+        if (table.block && roll < (limit += table.block)) return "BLOCK";
+        if (table.glance && roll < (limit += table.glance)) return "GLANCE";
+        if (table.crit && roll < (limit += table.crit)) return "CRIT";
+        return "HIT";
+    }
+};
