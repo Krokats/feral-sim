@@ -140,9 +140,25 @@ function runStatWeights() {
         setTimeout(function () {
             try {
                 var runResults = [];
+                // START FIX: Time Smearing Logic inside Loop
                 for (var i = 0; i < iter; i++) {
-                    runResults.push(runCoreSimulation(runCfg));
+                    // Clone Config for this specific iteration to vary time
+                    var stepConfig = Object.assign({}, runCfg);
+                    
+                    if (baseConfig.varyDuration && iter > 1) {
+                        var stepSize = 2.0; // 2s steps for 21 iterations = +/- 20s range
+                        var midPoint = Math.floor(iter / 2);
+                        var offset = (i - midPoint) * stepSize;
+                        stepConfig.simTime = runCfg.simTime + offset;
+                        
+                        // Safety
+                        if (stepConfig.simTime < 10) stepConfig.simTime = 10;
+                    }
+
+                    runResults.push(runCoreSimulation(stepConfig));
                 }
+                // END FIX
+                
                 var avg = aggregateResults(runResults);
                 results[scen.id] = avg.dps;
                 updateProgress(((currentIdx + 1) / scenarios.length) * 100);
