@@ -92,20 +92,16 @@ function runSimulation() {
 function runStatWeights() {
     var baseConfig = getSimInputs();
     
-    // ÄNDERUNG: Deterministischer Modus ('averaged') statt 'stochastic'
+    // ZWANGSEINSTELLUNG: Deterministischer Modus ('averaged') für stabile Werte
     baseConfig.calcMode = 'averaged'; 
     
-    // ÄNDERUNG: 200 Iterationen für Time Smearing (Glättung)
-    // Bei +/- 20s Range (Total 40s) ergibt das Schritte von 0.2s.
-    // Das eliminiert Breakpoints und ist performanter als 1500 RNG-Läufe.
-    // baseConfig.iterations = baseConfig.statWeightIt; 
-    
+    // ZWANGSEINSTELLUNG: Time Smearing aktivieren
     baseConfig.varyDuration = true; 
-    //baseConfig.simTime = 300; // Basis 300s (5 Min)
-
+    
+    // Wir nutzen die Iterationen direkt aus dem UI Feld "Iterations"
     var iter = baseConfig.iterations;
 
-    // Safety Check: Verhindere, dass versehentlich mit 1 Iteration gerechnet wird (führt zu 0 EP)
+    // Safety Check: Mindestens 10 Schritte für das Time-Smearing
     if (iter < 10) {
         iter = 50; 
         baseConfig.iterations = 50;
@@ -745,51 +741,73 @@ function runCoreSimulation(cfg) {
                 var critC = Math.max(0, cfg.inputCrit - (isBoss ? 4.8 : 0));
 
                 if (cfg.calcMode === 'averaged') {
-                    // --- AVERAGED MODE ---
-                    // 1. Avoidance
-                    var avoidChance = missC + dodgeC + parryC;
-                    var hitFactor = Math.max(0, 100.0 - avoidChance) / 100.0;
+                    // --- AVERAGED MODE (ADDITIVE TABLE FIXED) ---
+                    // Wir verteilen 100% Wahrscheinlichkeit auf die Ergebnisse.
+                    // Priorität: Miss > Dodge > Parry > Glancing > Block > Crit > Hit
                     
-                    // 2. Glancing
+                    var tableSpace = 100.0;
+                    
+                    // 1. Avoidance (0 Schaden)
+                    var pMiss = Math.min(tableSpace, missC); tableSpace -= pMiss;
+                    var pDodge = Math.min(tableSpace, dodgeC); tableSpace -= pDodge;
+                    var pParry = Math.min(tableSpace, parryC); tableSpace -= pParry;
+                    
+                    // Verbleibende Chance überhaupt zu treffen
+                    var hitFactor = tableSpace / 100.0; 
+
+                    // 2. Glancing (Reduzierter Schaden) - Hat Priorität vor Crit!
+                    var pGlance = Math.min(tableSpace, glanceC); tableSpace -= pGlance;
+                    
+                    // 3. Block (Reduziert um fixen Wert) - Wir vereinfachen: Blocked Hits können nicht critten im Avg Model?
+                    // In Classic kann ein Block critten. Aber vereinfacht nehmen wir Block als eigenes Segment oder ignorieren es für DPS (da meist hinter Boss).
+                    var pBlock = Math.min(tableSpace, blockC); tableSpace -= pBlock;
+
+                    // 4. Crit (Doppelter Schaden)
+                    var pCrit = Math.min(tableSpace, critC); tableSpace -= pCrit;
+                    
+                    // 5. Normal Hit (Rest)
+                    var pHit = tableSpace; // Was übrig bleibt
+
+                    // --- SCHADENSBERECHNUNG ---
+                    var avgDmg = 0;
+                    
+                    // Glancing Part
                     var glancePenalty = isBoss ? 0.35 : 0.05;
-                    var avgGlanceMod = 1.0 - ((glanceC / 100.0) * glancePenalty);
+                    if (pGlance > 0) avgDmg += (pGlance / 100.0) * rawDmg * (1.0 - glancePenalty);
                     
-                    // 3. Crit (Cap beachten)
-                    var tableSpaceUsed = avoidChance + blockC + glanceC;
-                    var critSpace = Math.max(0, 100.0 - tableSpaceUsed);
-                    var effectiveCrit = Math.min(critC, critSpace);
-                    var avgCritMod = 1.0 + (effectiveCrit / 100.0);
-
-                    // Faktoren anwenden
-                    rawDmg *= hitFactor;
-                    rawDmg *= avgGlanceMod;
-                    rawDmg *= avgCritMod;
-
-                    // Block (Weighted Reduction)
-                    if (blockC > 0) {
-                        var blockValue = isBoss ? 38 : 0;
-                        rawDmg = Math.max(0, rawDmg - (blockValue * (blockC / 100.0)));
+                    // Block Part (Vereinfacht: Damage minus BlockValue)
+                    if (pBlock > 0) {
+                        var bVal = isBoss ? 38 : 0;
+                        avgDmg += (pBlock / 100.0) * Math.max(0, rawDmg - bVal);
                     }
+                    
+                    // Crit Part
+                    if (pCrit > 0) avgDmg += (pCrit / 100.0) * rawDmg * 2.0;
+                    
+                    // Normal Hit Part
+                    if (pHit > 0) avgDmg += (pHit / 100.0) * rawDmg * 1.0;
 
-                    // SCALE anwenden (für rekursive Aufrufe wie HoJ)
-                    rawDmg *= pScale;
+                    // Apply Scale (für HoJ Rekursion)
+                    avgDmg *= pScale;
 
                     // Execute Damage
                     var dr = getDamageReduction(t, auras.ff);
-                    rawDmg *= (1 - dr);
-                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", "Hit(Avg)", false, false);
+                    avgDmg *= (1 - dr);
+                    dealDamage(isExtra ? "Extra Attack" : "Auto Attack", avgDmg, "Physical", "Hit(Avg)", false, false);
 
                     // --- PROCS (Smoothed) ---
-                    // Wir skalieren die Proc-Chance mit der Trefferwahrscheinlichkeit (hitFactor) und dem pScale
+                    // Procs basieren auf "Landed Hits" (Glance + Block + Crit + Hit)
+                    // Miss/Dodge/Parry lösen nichts aus.
+                    // hitFactor enthält bereits (100 - Avoidance)%
+                    
                     var procScale = hitFactor * pScale; 
 
-                    // 1. Buffs (Nutzen weiterhin Buckets, aber skaliert)
+                    // 1. Buffs (Buckets mit pScale)
                     if (cfg.tal_omen > 0 && rng.proc("Omen", 10 * procScale)) {
                         auras.clearcasting = t + 15.0;
                         logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
                     if (cfg.hasT05_4p) {
-                         // T0.5 Energy: 2% Chance -> Math Avg
                          var eGain = (energy <= 80 ? 20 : 100 - energy);
                          energy += eGain * 0.02 * procScale;
                     }
@@ -808,31 +826,27 @@ function runCoreSimulation(cfg) {
                         logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                     }
                     
-                    // Extra Attacks (HoJ / WF) -> Rekursion mit Scale!
+                    // Extra Attacks (HoJ / WF) -> Rekursion
                     if (cfg.t_hoj && !isExtra) {
-                        // Chance 2% -> Wir rufen performSwing auf, aber nur mit 2% Schaden
                         performSwing(true, 0.02 * procScale);
                     }
                     if (cfg.buff_wf_totem && !isExtra) {
-                        // Chance 20%
                         performSwing(true, 0.20 * procScale);
                     }
 
                     // Damage Procs (Maelstrom, Coil, Venoms)
                     if (cfg.t_maelstrom) {
-                        // Chance 3% (200-301 Dmg)
-                        var avgMael = 250.5 * (1 + (critC/100.0)); // Avg Dmg * CritMod
+                        var avgMael = 250.5 * (1 + (critC/100.0)); 
                         dealDamage("Maelstrom", avgMael * 0.03 * procScale, "Nature", "Proc(Avg)", false, false);
                     }
                     if (cfg.t_coil) {
-                        // Chance 5%? (Code 5 oder 20? Original war 5)
                         var avgCoil = 60.5 * (1 + (critC/100.0));
                         dealDamage("Heating Coil", avgCoil * 0.05 * procScale, "Fire", "Proc(Avg)", false, false);
                     }
                     if (cfg.t_venoms && rng.proc("Venoms", 20 * procScale)) {
                         if (stacks.venom < 2) stacks.venom++;
                         auras.venom = t + 12.0;
-                        // DoT Logik vereinfacht: Wir refreshen nur, Schaden ist separat
+                        // DoT Logik vereinfacht
                     }
                     if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * procScale)) {
                         stacks.swarmguard++;
