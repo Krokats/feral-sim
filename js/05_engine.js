@@ -77,7 +77,7 @@ function runStatWeights() {
     } 
        
     var iter = baseConfig.iterations;
-    baseConfig.simTime = 180; // 180 erzwingen für stabilere Werte
+    //baseConfig.simTime = 180; // 180 erzwingen für stabilere Werte
 
     showProgress("Calculating Stat Weights (Deterministic)...");
 
