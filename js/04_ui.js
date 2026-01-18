@@ -760,7 +760,7 @@ function updateCalcModeUI() {
     var iterInput = document.getElementById("simCount");
     
     if (iterInput) {
-        if (mode === 'deterministic') {
+        if (mode === 'deterministic' || mode === 'averaged') {
             iterInput.disabled = true;
             iterInput.style.opacity = "0.5";
             iterInput.title = "Deterministic mode always runs 1 iteration.";

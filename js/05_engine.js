@@ -22,7 +22,7 @@ function runSimulation() {
     if (config.iterations < 1) config.iterations = 1;
     
     // Force 1 iteration for deterministic mode
-    if (config.calcMode === 'deterministic') config.iterations = 1;
+    if (config.calcMode === 'deterministic' || config.calcMode === 'averaged') config.iterations = 1;
 
     showProgress("Simulating...");
 
@@ -71,7 +71,7 @@ function runStatWeights() {
     
     // FORCE DETERMINISTIC FOR WEIGHTS
     // This removes RNG noise entirely, making weights accurate with just 1 run per scenario.
-    baseConfig.calcMode = 'deterministic';
+    baseConfig.calcMode = 'averaged';
     baseConfig.iterations = 1; 
     var iter = baseConfig.iterations;
     //baseConfig.simTime = 600; // 600s erzwingen für stabilere Werte
@@ -698,13 +698,36 @@ function runCoreSimulation(cfg) {
                 else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
                 if (!counts.Auto) counts.Auto = 0; counts.Auto++;
 
-                // Damage Modifiers
+                /// Damage Modifiers
                 var blockValue = isBoss ? 38 : 0;
                 var glancePenalty = isBoss ? 0.35 : 0.05;
 
-                if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
-                else if (hitType === "GLANCE") rawDmg *= (1 - glancePenalty);
-                else if (hitType === "CRIT") rawDmg *= 2.0;
+                if (cfg.calcMode === 'averaged') {
+                    // --- AVERAGED MODE ---
+                    // 1. Glancing: Apply weighted penalty to ALL hits
+                    //    (1 - Chance * Penalty)
+                    //    Note: glanceC is percentage (0-100), so divide by 100
+                    var avgGlanceMod = 1.0 - ((glanceC / 100.0) * glancePenalty);
+                    rawDmg *= avgGlanceMod;
+
+                    // 2. Crit: Apply weighted bonus to ALL hits
+                    //    (1 + Chance * Bonus). Bonus is 100% (x2), so factor is 1.0
+                    //    Note: Crit is suppressed by Glancing in table, but here we average the potential.
+                    //    We use the raw Crit Chance.
+                    var avgCritMod = 1.0 + (critC / 100.0);
+                    rawDmg *= avgCritMod;
+
+                    // 3. Block: Deduct weighted block value if blocked
+                    if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
+
+                    // Note: hitType "CRIT" or "GLANCE" from bucket is ignored for damage scaling
+                    // to ensure smoothness, but KEPT for procs/logs if needed.
+                } else {
+                    // --- STANDARD / DETERMINISTIC MODE ---
+                    if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
+                    else if (hitType === "GLANCE") rawDmg *= (1 - glancePenalty);
+                    else if (hitType === "CRIT") rawDmg *= 2.0;
+                }
 
                 // Process Hit
                 if (hitType !== "MISS" && hitType !== "DODGE" && hitType !== "PARRY") {
@@ -1083,8 +1106,22 @@ function runCoreSimulation(cfg) {
                         }
 
                         abilityDmg *= modNaturalWeapons;
-                        if (res === "CRIT") abilityDmg *= 2.0;
-                        if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
+
+                        if (cfg.calcMode === 'averaged') {
+                            // --- AVERAGED MODE ---
+                            // Always apply Crit Multiplier Average
+                            // Bonus is 100% (Factor 1.0)
+                            // Use the calculated critChance variable from above
+                            abilityDmg *= (1.0 + (critChance / 100.0));
+                            
+                            // Block Handling (Weighted reduction not possible for flat value easily without changing structure)
+                            // So we stick to: If bucket says block, we subtract block value.
+                            if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
+                        } else {
+                            // --- STANDARD ---
+                            if (res === "CRIT") abilityDmg *= 2.0;
+                            if (res === "BLOCK") abilityDmg = Math.max(0, abilityDmg - (isBoss ? 38 : 0));
+                        }
 
                         if (!isBleed && action !== "Rip") {
                             var dr = getDamageReduction(t, auras.ff);
@@ -1270,14 +1307,16 @@ function RNGHandler(mode) {
 
 // Returns a damage value. Random between min/max OR Average.
 RNGHandler.prototype.dmg = function(min, max) {
-    if (this.mode === 'deterministic') return (min + max) / 2;
+    // Averaged nutzt ebenfalls den Mittelwert für Damage Ranges
+    if (this.mode === 'deterministic' || this.mode === 'averaged') return (min + max) / 2;
     return min + Math.random() * (max - min);
 };
 
 // Returns true if an event triggers based on percentage (0-100).
 RNGHandler.prototype.proc = function(id, chance) {
     if (chance <= 0) return false;
-    if (this.mode === 'deterministic') {
+    // Averaged nutzt für Procs/Events ebenfalls deterministische Buckets
+    if (this.mode === 'deterministic' || this.mode === 'averaged') {
         if (!this.buckets[id]) this.buckets[id] = 0;
         this.buckets[id] += chance;
         if (this.buckets[id] >= 100) {
@@ -1295,7 +1334,7 @@ RNGHandler.prototype.proc = function(id, chance) {
 RNGHandler.prototype.attackTable = function(idPrefix, table) {
     // table = { miss: %, dodge: %, parry: %, block: %, glance: %, crit: % }
     
-    if (this.mode === 'deterministic') {
+    if (this.mode === 'deterministic' || this.mode === 'averaged') {
         // Priority System: Check buckets in order. 
         // Note: This ensures correct frequency over time but separates events strictly.
         var types = ['MISS', 'DODGE', 'PARRY', 'BLOCK', 'GLANCE', 'CRIT'];
