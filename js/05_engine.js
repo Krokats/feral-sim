@@ -88,19 +88,21 @@ function runSimulation() {
 function runStatWeights() {
     var baseConfig = getSimInputs();
     
-    // FORCE AVERAGED MODE & TIME SMEARING
-    // Wir nutzen 'averaged', damit auch Crit-Schaden geglättet ist.
-    baseConfig.calcMode = 'averaged'; 
+    // FIX: 'averaged' führt zu "Treppenstufen" (0 EP oder riesige Sprünge).
+    // Wir nutzen 'stochastic' (RNG) mit SEHR vielen Iterationen, um Wahrscheinlichkeiten 
+    // korrekt in DPS zu übersetzen (Gesetz der großen Zahlen).
+    baseConfig.calcMode = 'stochastic'; 
     
-    // Time Smearing: Wir simulieren 21 verschiedene Kampflängen rund um 300s
-    // Iteration 0 = 280s ... Iteration 10 = 300s ... Iteration 20 = 320s
-    baseConfig.iterations = 21; 
-    baseConfig.varyDuration = true; // Neues Flag für die Engine
-    baseConfig.simTime = 300; 
+    // Wir erhöhen auf 1500 Iterationen, um die Schwankungen des RNG zu minimieren.
+    // Das liefert stabile, realistische Werte für Crit/Agi.
+    baseConfig.iterations = 1500; 
+    
+    baseConfig.varyDuration = true; 
+    baseConfig.simTime = 300; // Basis 300s (5 Min)
 
     var iter = baseConfig.iterations;
 
-    showProgress("Calculating Stat Weights (Averaged, 280s-320s range)...");
+    showProgress("Calculating Stat Weights (Stochastic, 1500 Iterations per Stat)...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
@@ -137,30 +139,32 @@ function runStatWeights() {
         var runCfg = JSON.parse(JSON.stringify(baseConfig));
         scen.mod(runCfg);
 
+        // Kleines Timeout damit der Browser nicht einfriert (UI Thread Entlastung)
         setTimeout(function () {
             try {
                 var runResults = [];
-                // START FIX: Time Smearing Logic inside Loop
+                
+                // Range für Time Smearing: +/- 20 Sekunden (Total 40s Spread)
+                var timeRange = 40.0; 
+                
                 for (var i = 0; i < iter; i++) {
-                    // Clone Config for this specific iteration to vary time
                     var stepConfig = Object.assign({}, runCfg);
                     
                     if (baseConfig.varyDuration && iter > 1) {
-                        var stepSize = 2.0; // 2s steps for 21 iterations = +/- 20s range
-                        var midPoint = Math.floor(iter / 2);
-                        var offset = (i - midPoint) * stepSize;
-                        stepConfig.simTime = runCfg.simTime + offset;
+                        // Linearer Spread von -20s bis +20s über alle Iterationen
+                        var progress = i / (iter - 1); // 0.0 bis 1.0
+                        var offset = (progress - 0.5) * timeRange; // -20 bis +20
                         
-                        // Safety
+                        stepConfig.simTime = runCfg.simTime + offset;
                         if (stepConfig.simTime < 10) stepConfig.simTime = 10;
                     }
 
                     runResults.push(runCoreSimulation(stepConfig));
                 }
-                // END FIX
                 
                 var avg = aggregateResults(runResults);
                 results[scen.id] = avg.dps;
+                
                 updateProgress(((currentIdx + 1) / scenarios.length) * 100);
                 currentIdx++;
                 runNextScenario();
@@ -169,7 +173,7 @@ function runStatWeights() {
                 showToast("Error during weights: " + e.message);
                 hideProgress();
             }
-        }, 10);
+        }, 20);
     }
     runNextScenario();
 }
