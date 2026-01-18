@@ -709,11 +709,11 @@ function runCoreSimulation(cfg) {
                 var glanceC = isBoss ? 40.0 : 10.0;
                 var critC = Math.max(0, cfg.inputCrit - (isBoss ? 4.8 : 0));
 
-                // Prepare Table
+                // Prepare Table used for Events (Buckets)
                 var table = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: glanceC, crit: critC };
                 var hitType = rng.attackTable("Auto", table);
 
-                // Counters
+                // Counters (Events)
                 if (hitType === "MISS") { if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++; }
                 else if (hitType === "DODGE") { if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++; }
                 else if (hitType === "PARRY") { if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++; }
@@ -722,30 +722,32 @@ function runCoreSimulation(cfg) {
                 else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
                 if (!counts.Auto) counts.Auto = 0; counts.Auto++;
 
-                /// Damage Modifiers
+                // Damage Modifiers
                 var blockValue = isBoss ? 38 : 0;
                 var glancePenalty = isBoss ? 0.35 : 0.05;
 
                 if (cfg.calcMode === 'averaged') {
-                    // --- AVERAGED MODE ---
-                    // 1. Glancing: Apply weighted penalty to ALL hits
-                    //    (1 - Chance * Penalty)
-                    //    Note: glanceC is percentage (0-100), so divide by 100
+                    // --- AVERAGED MODE (FIXED FOR CRIT CAP) ---
+                    
+                    // 1. Calculate Effective Crit Chance (Crit Cap)
+                    // The sum of Miss, Dodge, Parry, Block, Glance eats up table space.
+                    // Whatever is left is the room available for Crits.
+                    var tableSum = missC + dodgeC + parryC + blockC + glanceC;
+                    var spaceForCrit = Math.max(0, 100.0 - tableSum);
+                    var effectiveCritChance = Math.min(critC, spaceForCrit);
+
+                    // 2. Glancing: Apply weighted penalty to ALL hits
                     var avgGlanceMod = 1.0 - ((glanceC / 100.0) * glancePenalty);
                     rawDmg *= avgGlanceMod;
 
-                    // 2. Crit: Apply weighted bonus to ALL hits
-                    //    (1 + Chance * Bonus). Bonus is 100% (x2), so factor is 1.0
-                    //    Note: Crit is suppressed by Glancing in table, but here we average the potential.
-                    //    We use the raw Crit Chance.
-                    var avgCritMod = 1.0 + (critC / 100.0);
+                    // 3. Crit: Apply weighted bonus using EFFECTIVE Chance
+                    // (1 + Chance * Bonus). Bonus is 100% (x2), so factor is 1.0
+                    var avgCritMod = 1.0 + (effectiveCritChance / 100.0);
                     rawDmg *= avgCritMod;
 
-                    // 3. Block: Deduct weighted block value if blocked
+                    // 4. Block: Deduct weighted block value if blocked
                     if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
 
-                    // Note: hitType "CRIT" or "GLANCE" from bucket is ignored for damage scaling
-                    // to ensure smoothness, but KEPT for procs/logs if needed.
                 } else {
                     // --- STANDARD / DETERMINISTIC MODE ---
                     if (hitType === "BLOCK") rawDmg = Math.max(0, rawDmg - blockValue);
@@ -753,7 +755,7 @@ function runCoreSimulation(cfg) {
                     else if (hitType === "CRIT") rawDmg *= 2.0;
                 }
 
-                // Process Hit
+                // Process Hit (Event Logic remains same)
                 if (hitType !== "MISS" && hitType !== "DODGE" && hitType !== "PARRY") {
                     var dr = getDamageReduction(t, auras.ff);
                     rawDmg *= (1 - dr);
