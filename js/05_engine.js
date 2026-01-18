@@ -101,9 +101,16 @@ function runStatWeights() {
     baseConfig.iterations = baseConfig.statWeightIt; 
     
     baseConfig.varyDuration = true; 
-    baseConfig.simTime = baseConfig.simTime;//300; // Basis 300s (5 Min)
+    //baseConfig.simTime = 300; // Basis 300s (5 Min)
 
     var iter = baseConfig.iterations;
+
+    // Safety Check: Verhindere, dass versehentlich mit 1 Iteration gerechnet wird (führt zu 0 EP)
+    if (iter < 10) {
+        iter = 50; 
+        baseConfig.iterations = 50;
+        console.log("StatWeights: Iterations too low, auto-adjusted to 50 for smearing.");
+    }
 
     showProgress("Calculating Stat Weights (Averaged Time-Smearing)...");
 
@@ -148,7 +155,7 @@ function runStatWeights() {
                 var runResults = [];
                 
                 // Range für Time Smearing: +/- 20 Sekunden (Total 40s Spread)
-                var timeRange = 40.0; 
+                var timeRange = runCfg.simTime/2;//40.0; 
                 
                 // Deterministische Schleife über die Zeitfenster
                 for (var i = 0; i < iter; i++) {
