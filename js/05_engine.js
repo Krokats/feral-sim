@@ -74,6 +74,7 @@ function runStatWeights() {
     baseConfig.calcMode = 'deterministic';
     baseConfig.iterations = 1; 
     var iter = baseConfig.iterations;
+    baseConfig.simTime = 600; // 600s erzwingen für stabilere Werte
 
     showProgress("Calculating Stat Weights (Deterministic)...");
 
