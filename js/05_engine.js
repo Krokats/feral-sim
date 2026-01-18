@@ -98,7 +98,7 @@ function runStatWeights() {
     // ÄNDERUNG: 200 Iterationen für Time Smearing (Glättung)
     // Bei +/- 20s Range (Total 40s) ergibt das Schritte von 0.2s.
     // Das eliminiert Breakpoints und ist performanter als 1500 RNG-Läufe.
-    baseConfig.iterations = 200; 
+    baseConfig.iterations = 1000; 
     
     baseConfig.varyDuration = true; 
     baseConfig.simTime = 300; // Basis 300s (5 Min)
