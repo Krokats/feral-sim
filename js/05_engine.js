@@ -98,10 +98,10 @@ function runStatWeights() {
     // ÄNDERUNG: 200 Iterationen für Time Smearing (Glättung)
     // Bei +/- 20s Range (Total 40s) ergibt das Schritte von 0.2s.
     // Das eliminiert Breakpoints und ist performanter als 1500 RNG-Läufe.
-    baseConfig.iterations = 1000; 
+    baseConfig.iterations = baseConfig.statWeightIt; 
     
     baseConfig.varyDuration = true; 
-    baseConfig.simTime = 300; // Basis 300s (5 Min)
+    baseConfig.simTime = baseConfig.simTime;//300; // Basis 300s (5 Min)
 
     var iter = baseConfig.iterations;
 
@@ -337,7 +337,8 @@ function getSimInputs() {
         t_coil: getCheck("trinket_coil") === 1,
 
         // Calculation Mode
-        calcMode: getSel("sim_calc_mode") || "stochastic"
+        calcMode: getSel("sim_calc_mode") || "stochastic",
+        statWeightIt: getSel("statWeightIt") || "stochastic"
     };
 }
 
