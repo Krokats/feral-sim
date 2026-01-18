@@ -617,12 +617,13 @@ function calculateEnchantScore(ench) {
 
     var score = 0;
     var stats = ench.effects || {};
-    score += (stats.strength || 0) * wStr;
-    score += (stats.agility || 0) * wAgi;
+    score += (ench.strength || 0) * wStr;
+    score += (ench.agility || 0) * wAgi;
     score += (stats.attackPower || 0) * wAP;
     score += (stats.crit || 0) * wCrit;
-    score += (stats.hit || 0) * wHit;
-    score += (stats.haste || 0) * wHaste;
+    score += (stats.Hit || 0) * wHit;
+    score += (stats.attackSpeed || 0) * wHaste;
+    score += (stats.armorPen || 0) * wHaste;
     return score;
 }
 
