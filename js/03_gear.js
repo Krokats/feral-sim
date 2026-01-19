@@ -121,7 +121,7 @@ function renderSlotColumn(pos, containerId) {
         }
 
         var canEnchant = true;
-        if (slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
+        if (!item || slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
 
         var enchantHtml = "";
         if (canEnchant) {
@@ -433,6 +433,10 @@ function selectItem(itemId) {
             }
         }
         // --- 2H / OFFHAND LOGIC END ---
+        // FIX: Remove Enchant when changing item (Enchants are bound to items)
+        if (GEAR_SELECTION[CURRENT_SELECTING_SLOT] != itemId) {
+             ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = 0;
+        }
 
         GEAR_SELECTION[CURRENT_SELECTING_SLOT] = itemId;
     }
@@ -479,7 +483,24 @@ function renderEnchantList() {
             if ((e.allowableClasses & 512) === 0) return false;
         }
 
-        if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two-hand" || e.slot === "One-hand");
+        if (CURRENT_SELECTING_SLOT === "Main Hand") {
+            // FIX: Check equipped weapon type for 1H vs 2H enchants
+            var equippedId = GEAR_SELECTION["Main Hand"];
+            var item = ITEM_ID_MAP[equippedId];
+            var isTwoHand = false;
+            
+            if (item && (item.slot === "Two-hand" || item.slot === "Staff" || item.slot === "Polearm")) {
+                isTwoHand = true;
+            }
+
+            if (isTwoHand) {
+                // Allow "Two-hand" specific and generic "Weapon" enchants
+                return (e.slot === "Two-hand");
+            } else {
+                // Allow "One-hand" specific and generic "Weapon" enchants
+                return (e.slot === "One-hand");
+            }
+        }
         if (CURRENT_SELECTING_SLOT === "Feet") return (e.slot === "Boots" || e.slot === "Feet");
         if (CURRENT_SELECTING_SLOT === "Hands") return (e.slot === "Gloves" || e.slot === "Hands");
         if (CURRENT_SELECTING_SLOT === "Wrist") return (e.slot === "Bracer" || e.slot === "Wrist");
