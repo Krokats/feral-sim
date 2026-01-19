@@ -91,7 +91,7 @@ function runSimulation() {
 
 function runStatWeights() {
     var baseConfig = getSimInputs();
-    baseConfig.calcMode = 'averaged'; 
+    baseConfig.calcMode = 'stochastic'; 
     baseConfig.varyDuration = true; 
     
     // UI Wert nutzen
@@ -118,7 +118,7 @@ function runStatWeights() {
         console.log("StatWeights: Iterations too low, auto-adjusted to 50 for smearing.");
     }
 
-    showProgress("Calculating Stat Weights (Averaged Time-Smearing)...");
+    showProgress("Calculating Stat Weights...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
@@ -872,8 +872,9 @@ function runCoreSimulation(cfg) {
                         if (stacks.venom < 2) stacks.venom++;
                         auras.venom = t + 12.0;
                     }
-                    if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * procScale)) stacks.swarmguard++;
-
+                    if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * procScale)) {
+                        stacks.swarmguard++;
+                    }
                     // --- FLAMETONGUE TOTEM (Averaged) ---
                     if (cfg.buff_ft_totem) {
                         // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
@@ -962,6 +963,14 @@ function runCoreSimulation(cfg) {
                         if (cfg.buff_wf_totem && !isExtra && rng.proc("WF", 20)) {
                             logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
                             performSwing(true);
+                        }
+                        // --- FLAMETONGUE TOTEM (Averaged) ---
+                        if (cfg.buff_ft_totem) {
+                            // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
+                            // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
+                            // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
+                            var ftDmg = 30.0 * (2.0 / 4.0); 
+                            dealDamage("Flametongue", ftDmg * hitFactor * pScale, "Fire", "Hit(Avg)", false, false);
                         }
                     }
                 }
