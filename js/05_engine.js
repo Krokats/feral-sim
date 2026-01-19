@@ -1000,45 +1000,74 @@ function runCoreSimulation(cfg) {
         }
 
         // --- D. GCD / ROTATION LOGIC ---
+
+        // 1. Calc Costs (Global)
+        var costClaw = 45 - cfg.tal_ferocity;
+        var costRake = 40 - cfg.tal_ferocity;
+        var costShred = 60 - (cfg.tal_imp_shred * 6);
+        var costRip = 30;
+        var costBite = 35;
+        var costTF = 30;
+
+        // Cost Modifiers
+        if (cfg.set_cenarion_5p) costTF -= 5;
+        if (cfg.set_genesis_3p) { costClaw -= 3; costRake -= 3; costShred -= 3; }
+        if (cfg.idol_ferocity) { costClaw -= 3; costRake -= 3; }
+
+        var isOoc = oocState; // Use snapshot
+        if (isOoc) {
+            costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0; costTF = 0;
+        }
+
+        // 2. OFF-GCD ACTIONS (Simultaneous Execution)
+        
+        // Potion
+        if (cfg.consum_potion_quickness && cds.potion <= t) {
+             auras.potionQuickness = t + 30.0; cds.potion = t + 120.0;
+             logAction("Potion", "Quickness", "Buff", 0, false, false, 0);
+        }
+        
+        // Berserk
+        if (cfg.tal_berserk > 0 && cds.berserk <= t && cfg.use_berserk) {
+             auras.berserk = t + 20.0; cds.berserk = t + 360.0;
+             logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0);
+        }
+
+        // Tiger's Fury
+        if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF) {
+             energy -= costTF;
+             var dur = 6; if (cfg.tal_blood_frenzy > 0) dur += 12;
+             auras.tigersFury = t + dur;
+             if (cfg.tal_blood_frenzy > 0) auras.tigersFurySpeed = t + 18;
+             for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
+             logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
+        }
+
+        // Trinkets (Priority 0)
+        var trinketAction = null;
+        if (cfg.t_slayer && cds.trinket1 <= t) trinketAction = "Slayer";
+        else if (cfg.t_spider && cds.trinket1 <= t) trinketAction = "Spider";
+        else if (cfg.t_earthstrike && cds.trinket1 <= t) trinketAction = "Earthstrike";
+        else if (cfg.t_jomgabbar && cds.trinket1 <= t) trinketAction = "JomGabbar";
+        else if (cfg.t_emberstone && cds.trinket1 <= t) trinketAction = "Emberstone";
+        else if (cfg.t_swarmguard && cds.trinket2 <= t && auras.swarmguard <= t) trinketAction = "Swarmguard";
+
+        if (trinketAction) {
+             if (trinketAction === "Slayer") { auras.slayer = t + 20; cds.trinket1 = t + 120; }
+             else if (trinketAction === "Spider") { auras.spider = t + 15; cds.trinket1 = t + 120; }
+             else if (trinketAction === "Earthstrike") { auras.earthstrike = t + 20; cds.trinket1 = t + 120; }
+             else if (trinketAction === "JomGabbar") { auras.jom = t + 20; auras.jomStart = t; cds.trinket1 = t + 120; }
+             else if (trinketAction === "Emberstone") { auras.emberstone = t + 20; cds.trinket1 = t + 180; }
+             else if (trinketAction === "Swarmguard") { auras.swarmguard = t + 30; stacks.swarmguard = 0; cds.trinket2 = t + 180; }
+             logAction(trinketAction, "Activated", "Buff", 0, false, false);
+        }
+
+        // 3. GCD ROTATION (Main Actions)
         if (t >= gcdEnd) {
-
-            // Calc Costs
-            var costClaw = 45 - cfg.tal_ferocity;
-            var costRake = 40 - cfg.tal_ferocity;
-            var costShred = 60 - (cfg.tal_imp_shred * 6);
-            var costRip = 30;
-            var costBite = 35;
-            var costTF = 30;
-
-            // Cost Modifiers
-            if (cfg.set_cenarion_5p) costTF -= 5;
-            if (cfg.set_genesis_3p) { costClaw -= 3; costRake -= 3; costShred -= 3; }
-            if (cfg.idol_ferocity) { costClaw -= 3; costRake -= 3; }
-
-            //var isOoc = (auras.clearcasting > t);
-            var isOoc = oocState; // Use snapshot from start of tick
-            if (isOoc) {
-                costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0; costTF = 0;
-            }
-
             var action = null;
             var waitingForEnergy = false;
 
-            // Priority 0: TRINKETS (On-Use)
-            // Logic: Use if Berserk is up OR Berserk is not talented OR Berserk CD is long.
-            // Simple logic: Use on CD.
-            if (cfg.t_slayer && cds.trinket1 <= t) action = "Slayer";
-            else if (cfg.t_spider && cds.trinket1 <= t) action = "Spider";
-            else if (cfg.t_earthstrike && cds.trinket1 <= t) action = "Earthstrike";
-            else if (cfg.t_jomgabbar && cds.trinket1 <= t) action = "JomGabbar";
-            else if (cfg.t_emberstone && cds.trinket1 <= t) action = "Emberstone";
-            else if (cfg.t_swarmguard && cds.trinket2 <= t && auras.swarmguard <= t) action = "Swarmguard";
-
-            // MOVED EXECUTION TO EXECUTE BLOCK TO TRIGGER GCD
-
             // Standard Rotation Prio
-            if (!action && cfg.consum_potion_quickness && cds.potion <= t) action = "Potion";
-            if (!action && cfg.tal_berserk > 0 && cds.berserk <= t && cfg.use_berserk) action = "Berserk";
 
             if (!action && !waitingForEnergy && cp >= cfg.rip_cp && cfg.use_rip && cfg.canBleed && auras.rip <= t) {
                 if (energy >= costRip) action = "Rip"; else waitingForEnergy = true;
@@ -1069,9 +1098,6 @@ function runCoreSimulation(cfg) {
                 if (canShift) action = "Reshift";
             }
 
-            if (!action && !waitingForEnergy && auras.tigersFury <= t && cfg.use_tf) {
-                if (energy >= costTF) action = "Tiger's Fury";
-            }
 
             if (!action && !waitingForEnergy && cfg.canBleed && auras.rake <= t && cfg.use_rake) {
                 if (cfg.rota_position === "back" && isOoc && cfg.shred_ooc_only && cfg.use_shred) {
@@ -1106,16 +1132,7 @@ function runCoreSimulation(cfg) {
                 var performAttack = false;
                 var triggersGCD = true;
 
-                if (action === "Potion") {
-                    auras.potionQuickness = t + 30.0; cds.potion = t + 120.0;
-                    logAction("Potion", "Quickness", "Buff", 0, false, false, 0); gcdEnd = t + 1.0;
-                    triggersGCD = false;
-                }
-                else if (action === "Berserk") {
-                    auras.berserk = t + 20.0; cds.berserk = t + 360.0;
-                    logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0); gcdEnd = t + 1.0;
-                }
-                else if (action === "Reshift") {
+                if (action === "Reshift") {
                     mana -= 300; auras.tigersFury = 0; auras.tigersFurySpeed = 0;
 
                     // UPDATED: Furor (Talent) + Gift of Ferocity (Enchant)
@@ -1129,29 +1146,6 @@ function runCoreSimulation(cfg) {
                 }
                 else if (action === "Faerie Fire") {
                     auras.ff = t + 40.0; logAction("Faerie Fire", "-505 Armor", "Debuff", 0, false, false, 0); gcdEnd = t + 1.0;
-                }
-                else if (action === "Tiger's Fury") {
-                    energy -= costTF;
-
-                    var dur = 6; if (cfg.tal_blood_frenzy > 0) dur += 12;
-                    auras.tigersFury = t + dur;
-                    if (cfg.tal_blood_frenzy > 0) auras.tigersFurySpeed = t + 18;
-                    for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
-                    logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
-                    triggersGCD = false;
-                }
-                // NEW: Handle Trinkets Here to Trigger GCD
-                else if (["Slayer", "Spider", "Earthstrike", "JomGabbar", "Emberstone", "Swarmguard"].includes(action)) {
-                    if (action === "Slayer") { auras.slayer = t + 20; cds.trinket1 = t + 120; }
-                    else if (action === "Spider") { auras.spider = t + 15; cds.trinket1 = t + 120; }
-                    else if (action === "Earthstrike") { auras.earthstrike = t + 20; cds.trinket1 = t + 120; }
-                    else if (action === "JomGabbar") { auras.jom = t + 20; auras.jomStart = t; cds.trinket1 = t + 120; }
-                    else if (action === "Emberstone") { auras.emberstone = t + 20; cds.trinket1 = t + 180; }
-                    else if (action === "Swarmguard") { auras.swarmguard = t + 30; stacks.swarmguard = 0; cds.trinket2 = t + 180; }
-
-                    logAction(action, "Activated", "Buff", 0, false, false);
-                    //gcdEnd = t + 1.0; // Trigger GCD
-                    triggersGCD = false;
                 }
                 else {
                     performAttack = true;
@@ -1605,7 +1599,7 @@ function runCoreSimulation(cfg) {
                     }
 
                     if (!counts[action]) counts[action] = 0; counts[action]++;
-                    if (triggersGCD) gcdEnd = t + 1.0;
+                    gcdEnd = t + 1.0;
                 }
             }
         }
