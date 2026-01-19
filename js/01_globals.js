@@ -84,7 +84,7 @@ var CONFIG_IDS = [
     // Raid Buffs
     "buff_motw", "buff_kings", "buff_might", "buff_bs",
     "buff_lotp", "buff_tsa", 
-    "buff_wf_totem", "buff_soe_totem",
+    "buff_wf_totem", "buff_soe_totem", "buff_goa_totem",
     // Removed Warchief as requested
     
     // Talents
