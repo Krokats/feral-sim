@@ -716,6 +716,7 @@ function calculateGearStats() {
 
     // Totems
     if (getVal("buff_soe_totem")) bonus.str += 77;
+    if (getVal("buff_goe_totem")) bonus.agi += 77;
 
     // Trueshot Aura (Base + % AP) - Fixed Logic
     // Increases AP by 55 and %AP by 5%
