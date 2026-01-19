@@ -1271,7 +1271,7 @@ function updateLogView() {
             <td style="${eChangeStyle}">${eChangeDisplay}</td>
             <td style="text-align:center;">${e.ooc > 0 ? e.ooc.toFixed(1) : ""}</td>
             <td style="color:var(--energy-yellow)">${e.tf > 0 ? e.tf.toFixed(1) : ""}</td>
-            <td style="color:#ff5722">${(e.activeBuffs && (e.activeBuffs["BF"] || e.activeBuffs["Blood Frenzy"])) ? (e.activeBuffs["BF"] || e.activeBuffs["Blood Frenzy"]).toFixed(1) : ""}</td>
+            <td style="color:#ff5722">${(e.activeBuffs && (e.activeBuffs["BloodFrenzy"])) ? (e.activeBuffs["BloodFrenzy"]).toFixed(1) : ""}</td>
         `;
 
         LOG_BUFF_KEYS.forEach(key => {
