@@ -621,7 +621,7 @@ function calculateEnchantScore(ench) {
     score += (stats.crit || 0) * wCrit;
     score += (stats.Hit || 0) * wHit;
     score += (stats.attackSpeed || 0) * wHaste;
-    score += (stats.armorPen || 0) * wHaste;
+    score += (stats.armorPen || 0) * wArp;
     return score;
 }
 

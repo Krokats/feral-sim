@@ -40,7 +40,7 @@ const HELP_TEXTS = {
     "enemy_can_block": "If enabled, the enemy can block attacks from the front. This reduces physical damage by a fixed block value (approx. 5% chance).",
     "use_pounce": "Starts the fight with Pounce (requires Stealth & Behind). Deals bleed damage over 18s and awards 1 Combo Point.",
     "fb_cp": "Minimum Combo Points required to cast Ferocious Bite. Standard is 5.",
-    "buff_ft_totem": "Flametongue Totem. Adds fire damage to each hit. Does not stack with other weapon imbues usually, but allowed here per settings."
+    //"buff_ft_totem": "Flametongue Totem. Adds fire damage to each hit. Does not stack with other weapon imbues usually, but allowed here per settings."
 };
 
 // Global View State

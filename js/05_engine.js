@@ -577,11 +577,10 @@ function runCoreSimulation(cfg) {
             // Standard-Proc: Tiger's Fury (TF) - Zeigt Restzeit
             var tfRem = Math.max(0, auras.tigersFury - t);
 
-            // Dynamische Buffs: Alle Auras durchlaufen und Timer speichern, wenn aktiv
-            // Wir filtern hier die internen Statuswerte heraus
             var exclude = ["clearcasting", "tigersFury", "rake", "rip", "ff"];
             for (var key in auras) {
-                if (!exclude.includes(key) && auras[key] > t) {
+                // FIX: Check auras[key] > 0 added to prevent logging inactive buffs (0) when t is negative (-0.01)
+                if (!exclude.includes(key) && auras[key] > t && auras[key] > 0) {
                     activeBuffs[key] = parseFloat((auras[key] - t).toFixed(1));
                 }
             }
