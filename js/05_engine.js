@@ -1104,10 +1104,12 @@ function runCoreSimulation(cfg) {
             if (action) {
                 var castCost = 0;
                 var performAttack = false;
+                var triggersGCD = true;
 
                 if (action === "Potion") {
                     auras.potionQuickness = t + 30.0; cds.potion = t + 120.0;
                     logAction("Potion", "Quickness", "Buff", 0, false, false, 0); gcdEnd = t + 1.0;
+                    triggersGCD = false;
                 }
                 else if (action === "Berserk") {
                     auras.berserk = t + 20.0; cds.berserk = t + 360.0;
@@ -1136,6 +1138,7 @@ function runCoreSimulation(cfg) {
                     if (cfg.tal_blood_frenzy > 0) auras.tigersFurySpeed = t + 18;
                     for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
                     logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
+                    triggersGCD = false;
                 }
                 // NEW: Handle Trinkets Here to Trigger GCD
                 else if (["Slayer", "Spider", "Earthstrike", "JomGabbar", "Emberstone", "Swarmguard"].includes(action)) {
@@ -1147,7 +1150,8 @@ function runCoreSimulation(cfg) {
                     else if (action === "Swarmguard") { auras.swarmguard = t + 30; stacks.swarmguard = 0; cds.trinket2 = t + 180; }
 
                     logAction(action, "Activated", "Buff", 0, false, false);
-                    gcdEnd = t + 1.0; // Trigger GCD
+                    //gcdEnd = t + 1.0; // Trigger GCD
+                    triggersGCD = false;
                 }
                 else {
                     performAttack = true;
@@ -1601,7 +1605,7 @@ function runCoreSimulation(cfg) {
                     }
 
                     if (!counts[action]) counts[action] = 0; counts[action]++;
-                    gcdEnd = t + 1.0;
+                    if (triggersGCD) gcdEnd = t + 1.0;
                 }
             }
         }
