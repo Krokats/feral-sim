@@ -642,7 +642,7 @@ function runCoreSimulation(cfg) {
         gcdEnd = 1.0;
         
         // Pounce Formula: 0.18 * AP + 147.5 (Total Bleed over 18s)
-        var pounceTotal = 147.5 + (0.18 * getCurrentAP());
+        var pounceTotal = (147.5 + (0.18 * getCurrentAP()))*modNaturalWeapons; //Natural Weapon Modifier
         var pounceTick = pounceTotal / 6;
         
         auras.pounce = 18.0; // 6 ticks * 3s
@@ -917,6 +917,13 @@ function runCoreSimulation(cfg) {
                             auras.clearcasting = t + 15.0;
                             logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                         }
+                        if (cfg.buff_ft_totem) {
+                            // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
+                            // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
+                            // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
+                            var ftDmg = 30.0 * (2.0 / 4.0); 
+                            dealDamage("Flametongue", ftDmg, "Fire", "Hit(Avg)", false, false);
+                        }
                         if (cfg.hasT05_4p && rng.proc("T05", 2)) {
                             var EnergyGain = (energy <= 80) ? 20 : (100 - energy);
                             energy = Math.min(100, energy + EnergyGain);
@@ -965,13 +972,7 @@ function runCoreSimulation(cfg) {
                             performSwing(true);
                         }
                         // --- FLAMETONGUE TOTEM (Averaged) ---
-                        if (cfg.buff_ft_totem) {
-                            // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
-                            // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
-                            // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
-                            var ftDmg = 30.0 * (2.0 / 4.0); 
-                            dealDamage("Flametongue", ftDmg * hitFactor * pScale, "Fire", "Hit(Avg)", false, false);
-                        }
+                        
                     }
                 }
             };
