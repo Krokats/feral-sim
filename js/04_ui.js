@@ -153,13 +153,25 @@ function addSim(isInit) {
     newSim.gear = {};
     newSim.enchants = {};
 
-    // Copy current gear if not init (Cloning for convenience)
+    // Copy from current state if not initializing
     if (!isInit && SIM_LIST.length > 0) {
-        newSim.gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
-        newSim.enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
-        // Also copy current config settings
-        newSim.config = getSimInputs();
+        // FIX: Copy all values (Config, Gear, Enchants, Name) from current state
+        newConfig = getSimInputs(); // Grab current UI inputs
+        newGear = JSON.parse(JSON.stringify(GEAR_SELECTION)); // Clone global gear
+        newEnchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION)); // Clone global enchants
+        
+        // Optional: Copy Name
+        var currentName = document.getElementById("simName") ? document.getElementById("simName").value : "";
+        if (currentName) newName = currentName + " (Copy)";
+    } else {
+        // Init default
+        newConfig = typeof getSimInputs === "function" ? getSimInputs() : {};
     }
+
+    var newSim = new SimObject(id, newName);
+    newSim.config = newConfig;
+    newSim.gear = newGear;
+    newSim.enchants = newEnchants;
 
     SIM_LIST.push(newSim);
     switchSim(SIM_LIST.length - 1);
