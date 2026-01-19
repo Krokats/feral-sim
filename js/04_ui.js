@@ -1279,27 +1279,68 @@ function prevLogPage() {
 function downloadCSV() {
     if (!LOG_DATA || LOG_DATA.length === 0) return;
 
-    // CSV Header inkl. aller Originalfelder und dynamischer Buffs
+    // Check Config for Column Visibility (Same logic as updateLogView)
+    var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
+    var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
+    var showRake = (cfg.use_rake);
+    var showRip = (cfg.use_rip);
+    var showOW = (cfg.tal_open_wounds > 0);
+    var showFF = (cfg.use_ff);
+
+    // 1. Build Headers
     var csvHeaders = [
         "Time", "Event", "Ability", "Result", 
-        "DmgNorm", "DmgCrit", "DmgTick", "DmgSpec", 
-        "RemRake", "RemRip", "RemFF", 
-        "CP", "AP", "Haste", "Speed", "ArmorPen", "Energy", "E-Change", "OoC", "TF"
+        "DmgNorm", "DmgCrit", "DmgTick", "DmgSpec"
     ];
+
+    // Dynamic Headers based on Config
+    if (showPounce) csvHeaders.push("RemPounce");
+    if (showRake) csvHeaders.push("RemRake");
+    if (showRip) csvHeaders.push("RemRip");
+    if (showOW) csvHeaders.push("OW");
+    if (showFF) csvHeaders.push("RemFF");
+
+    // Static Middle Headers
+    var staticMiddle = ["CP", "AP", "Haste", "Speed", "ArmorPen", "Energy", "E-Change", "OoC", "TF"];
+    csvHeaders = csvHeaders.concat(staticMiddle);
+
+    // Dynamic Buff Headers (from Log Scan)
     LOG_BUFF_KEYS.forEach(key => csvHeaders.push(key));
+
     csvHeaders.push("Info");
+
     var csv = csvHeaders.join(",") + "\n";
     
+    // 2. Build Rows
     LOG_DATA.forEach(r => {
         var row = [
             r.t.toFixed(3), r.event, r.ability, r.result,
-            r.dmgNorm, r.dmgCrit, r.dmgTick, r.dmgSpec,
-            r.remRake.toFixed(1), r.remRip.toFixed(1), r.remFF.toFixed(1),
-            r.cp, r.ap, r.haste.toFixed(1), r.speed.toFixed(2),r.arp, r.energy, r.eChange, r.ooc, r.tf.toFixed(1)
+            r.dmgNorm, r.dmgCrit, r.dmgTick, r.dmgSpec
         ];
+
+        // Dynamic Data based on Config
+        if (showPounce) row.push(r.remPounce > 0 ? r.remPounce.toFixed(1) : "");
+        if (showRake) row.push(r.remRake > 0 ? r.remRake.toFixed(1) : "");
+        if (showRip) row.push(r.remRip > 0 ? r.remRip.toFixed(1) : "");
+        if (showOW) row.push(r.ow !== "-" ? r.ow : "");
+        if (showFF) row.push(r.remFF > 0 ? r.remFF.toFixed(1) : "");
+
+        // Static Middle Data
+        row.push(r.cp);
+        row.push(r.ap);
+        row.push(r.haste.toFixed(1));
+        row.push(r.speed.toFixed(2));
+        row.push(r.arp);
+        row.push(r.energy);
+        row.push(r.eChange);
+        row.push(r.ooc > 0 ? r.ooc.toFixed(1) : "");
+        row.push(r.tf > 0 ? r.tf.toFixed(1) : "");
+
+        // Dynamic Buffs Data
         LOG_BUFF_KEYS.forEach(key => {
             row.push(r.activeBuffs && r.activeBuffs[key] ? r.activeBuffs[key] : "");
         });
+
         row.push('"' + (r.info || "") + '"');
         csv += row.join(",") + "\n";
     });
