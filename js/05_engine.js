@@ -584,6 +584,15 @@ function runCoreSimulation(cfg) {
                     activeBuffs[key] = parseFloat((auras[key] - t).toFixed(1));
                 }
             }
+// --- CALC OPEN WOUNDS & POUNCE ---
+            var activeBleeds = 0;
+            if (auras.rake > t) activeBleeds++;
+            if (auras.rip > t) activeBleeds++;
+            if (auras.pounce > t) activeBleeds++;
+            
+            // Format OW Multiplier (e.g. "1.3x")
+            var owStr = "-";
+            if (activeBleeds > 0) owStr = (1 + (0.30 * activeBleeds)).toFixed(1) + "x";
 
             log.push({
                 t: Math.max(0, t),
@@ -594,8 +603,14 @@ function runCoreSimulation(cfg) {
                 dmgCrit: dmgCrit,
                 dmgTick: dmgTick,
                 dmgSpec: dmgSpec,
+                
+                // NEW: Added Pounce
+                remPounce: Math.max(0, auras.pounce - t),
                 remRake: Math.max(0, auras.rake - t),
                 remRip: Math.max(0, auras.rip - t),
+                // NEW: Added OW
+                ow: owStr,
+
                 remFF: (cfg.debuff_ff) ? 40.0 : Math.max(0, auras.ff - t),
 
                 // Neue Felder für die Spalten

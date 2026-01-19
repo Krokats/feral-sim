@@ -1161,17 +1161,36 @@ function renderLogTable(log) {
 }
 
 function updateLogView() {
+    // Check Config for Column Visibility
+    var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
+    
+    // Logic: Show Pounce if used. Show Rake if used. Show Rip if used. 
+    // Show OW if Talent > 0. Show FF if used (internal).
+    var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
+    var showRake = (cfg.use_rake);
+    var showRip = (cfg.use_rip);
+    var showOW = (cfg.tal_open_wounds > 0);
+    var showFF = (cfg.use_ff);
+
     var container = document.querySelector(".log-container table thead tr");
     if (container) {
-        // Basis-Header + alle ursprünglichen Detail-Spalten
+        // Static Headers
         let headerHtml = `
             <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
-            <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>
-            <th>Rake(t)</th><th>Rip(t)</th><th>FF(t)</th>
-            <th>CP</th><th>AP</th><th>Haste</th><th>Speed</th><th>ArP</th><th>Energy</th><th>E+/-</th>
+            <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>`;
+        
+        // Dynamic Headers
+        if (showPounce) headerHtml += `<th>Pounce(t)</th>`;
+        if (showRake) headerHtml += `<th>Rake(t)</th>`;
+        if (showRip) headerHtml += `<th>Rip(t)</th>`;
+        if (showOW) headerHtml += `<th>OW</th>`;
+        if (showFF) headerHtml += `<th>FF(t)</th>`;
+
+        // Static Headers Rest
+        headerHtml += `<th>CP</th><th>AP</th><th>Haste</th><th>Speed</th><th>ArP</th><th>Energy</th><th>E+/-</th>
             <th>OoC</th><th>TF(t)</th>`;
         
-        // Dynamische Buff-Spalten am Ende anfügen
+        // Dynamic Buff Headers
         LOG_BUFF_KEYS.forEach(key => {
             headerHtml += `<th>${key}</th>`;
         });
@@ -1188,29 +1207,24 @@ function updateLogView() {
     var end = start + LOG_PER_PAGE;
     var slice = LOG_DATA.slice(start, end);
 
-    var val = (v) => v > 0 ? Math.floor(v) : "";
-    var valF = (v) => v > 0 ? v.toFixed(1) : "";
-
     slice.forEach(e => {
         var tr = document.createElement("tr");
         
-        // --- Farbhervorhebung basierend auf Event-Typ oder Ability-Name ---
+        // Coloring Logic remains same
         if (e.event === "Buff" || e.event === "Proc" || e.info.includes("Aura") || e.info.includes("Proc") || e.result.includes("Proc")) {
-            tr.style.backgroundColor = "rgba(197, 134, 192, 0.2)"; // Violett für Buffs/Procs
+            tr.style.backgroundColor = "rgba(197, 134, 192, 0.2)"; 
         } else if (e.event === "Tick" && e.ability !== "Energy Tick") {
-            tr.style.backgroundColor = "rgba(229, 115, 115, 0.15)"; // Rot für Ticks (Bleeds)
+            tr.style.backgroundColor = "rgba(229, 115, 115, 0.15)"; 
         } else if (e.event === "Cast" || e.event === "Damage" || e.ability === "Energy Tick") {
-            // Alle aktiven Fähigkeiten (Claw, Shred, etc.) SOWIE Energy Ticks gelb hinterlegen
-            // Wir schließen Auto-Attacks meist aus, damit es nicht zu unruhig wird
             if (e.ability !== "Auto Attack" && e.ability !== "Extra Attack") {
-                tr.style.backgroundColor = "rgba(255, 215, 0, 0.15)"; // Gold für Abilities & Energy
+                tr.style.backgroundColor = "rgba(255, 215, 0, 0.15)";
             }
         }
         
         var eChangeDisplay = e.eChange !== 0 ? (e.eChange > 0 ? "+" + e.eChange : e.eChange) : "";
         var eChangeStyle = e.eChange > 0 ? "color:#66bb6a;" : (e.eChange < 0 ? "color:#ef5350;" : "");
 
-        // HTML für alle ursprünglichen Spalten
+        // Build Row HTML
         var html = `
             <td>${e.t.toFixed(3)}</td>
             <td>${e.event}</td>
@@ -1219,10 +1233,17 @@ function updateLogView() {
             <td>${e.dmgNorm > 0 ? Math.floor(e.dmgNorm) : ""}</td>
             <td>${e.dmgCrit > 0 ? Math.floor(e.dmgCrit) : ""}</td>
             <td>${e.dmgTick > 0 ? Math.floor(e.dmgTick) : ""}</td>
-            <td>${e.dmgSpec > 0 ? Math.floor(e.dmgSpec) : ""}</td>
-            <td>${e.remRake > 0 ? e.remRake.toFixed(1) : ""}</td>
-            <td>${e.remRip > 0 ? e.remRip.toFixed(1) : ""}</td>
-            <td>${e.remFF > 0 ? e.remFF.toFixed(1) : ""}</td>
+            <td>${e.dmgSpec > 0 ? Math.floor(e.dmgSpec) : ""}</td>`;
+
+        // Dynamic Columns Data
+        if (showPounce) html += `<td>${e.remPounce > 0 ? e.remPounce.toFixed(1) : ""}</td>`;
+        if (showRake) html += `<td>${e.remRake > 0 ? e.remRake.toFixed(1) : ""}</td>`;
+        if (showRip) html += `<td>${e.remRip > 0 ? e.remRip.toFixed(1) : ""}</td>`;
+        if (showOW) html += `<td style="color:#ce93d8">${e.ow !== "-" ? e.ow : ""}</td>`;
+        if (showFF) html += `<td>${e.remFF > 0 ? e.remFF.toFixed(1) : ""}</td>`;
+
+        // Rest of Data
+        html += `
             <td class="col-cp">${e.cp}</td>
             <td>${e.ap}</td>
             <td>${e.haste.toFixed(1)}%</td>
@@ -1234,7 +1255,6 @@ function updateLogView() {
             <td style="color:var(--energy-yellow)">${e.tf > 0 ? e.tf.toFixed(1) : ""}</td>
         `;
 
-        // HTML für dynamische Buff-Zellen
         LOG_BUFF_KEYS.forEach(key => {
             var val = (e.activeBuffs && e.activeBuffs[key]) ? e.activeBuffs[key].toFixed(1) : "";
             html += `<td style="color:#c586c0; text-align:center;">${val}</td>`;
