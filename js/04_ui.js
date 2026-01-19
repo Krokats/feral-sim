@@ -1686,26 +1686,26 @@ function updateDamageScaling() {
     const baseMax = 97;
     const avgBase = (baseMin + baseMax) / 2;
     const apBonus = (ap - 295) / 14;
-    const normalDmg = (avgBase + apBonus) * tNatWep;
+    const normalDmg = (avgBase + apBonus); // FIX: NatWep erst später anwenden, damit Flat Dmg auch skaliert
 
     const abilities = [
         {
             name: "Auto Attack",
             formula: `(BaseDmg + (AP-295)/14) * NaturalWeapons`,
             calc: `(${avgBase.toFixed(1)} + ${apBonus.toFixed(1)}) * ${tNatWep}`,
-            final: normalDmg
+            final: normalDmg * tNatWep
         },
         {
             name: "Shred",
-            formula: `(2.25 * NormalDmg + 180) * (1 + ImpShred)`,
-            calc: `(2.25 * ${normalDmg.toFixed(1)} + 180) * ${(1 + tImpShred).toFixed(2)}`,
-            final: (2.25 * normalDmg + 180) * (1 + tImpShred)
+            formula: `((2.25 * NormalDmg + 180) * (1 + ImpShred)) * NaturalWeapons`,
+            calc: `((2.25 * ${normalDmg.toFixed(1)} + 180) * ${(1 + tImpShred).toFixed(2)}) * ${tNatWep}`,
+            final: ((2.25 * normalDmg + 180) * (1 + tImpShred)) * tNatWep
         },
         {
             name: "Claw",
-            formula: `(1.05 * NormalDmg + 115) * (PredatoryStrikes+`,
-            calc: `(1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes}`,
-            final: (1.05 * normalDmg + 115) * tPredStrikes
+            formula: `((1.05 * NormalDmg + 115) * PredatoryStrikes) * NaturalWeapons`,
+            calc: `((1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes}) * ${tNatWep}`,
+            final: ((1.05 * normalDmg + 115) * tPredStrikes) * tNatWep
         },
         {
             name: "Rake (Initial)",
