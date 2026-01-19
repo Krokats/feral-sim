@@ -38,6 +38,9 @@ const HELP_TEXTS = {
     "shred_ooc_only": "If enabled, Shred will only be cast when Omen of Clarity (Clearcasting) is active. This saves energy for other abilities.",
     "use_shred": "High damage attack that requires being behind the target. Generates 1 Combo Point.",
     "enemy_can_block": "If enabled, the enemy can block attacks from the front. This reduces physical damage by a fixed block value (approx. 5% chance).",
+    "use_pounce": "Starts the fight with Pounce (requires Stealth & Behind). Deals bleed damage over 18s and awards 1 Combo Point.",
+    "fb_cp": "Minimum Combo Points required to cast Ferocious Bite. Standard is 5.",
+    "buff_ft_totem": "Flametongue Totem. Adds fire damage to each hit. Does not stack with other weapon imbues usually, but allowed here per settings."
 };
 
 // Global View State
@@ -753,6 +756,18 @@ function updateRotationConstraints() {
         if(parentToggle) { parentToggle.style.opacity = "0.5"; parentToggle.style.pointerEvents = "none"; }
         if(parentDur) { parentDur.style.opacity = "0.5"; parentDur.style.pointerEvents = "none"; }
     }
+
+    // --- NEU: Pounce Constraint (Requires Behind) ---
+    var lblPounce = document.getElementById("use_pounce") ? document.getElementById("use_pounce").parentElement : null;
+    var chkPounce = document.getElementById("use_pounce");
+
+    if (pos === "back") {
+        if(lblPounce) { lblPounce.style.opacity = "1"; lblPounce.style.pointerEvents = "auto"; }
+        if(chkPounce) chkPounce.disabled = false;
+    } else {
+        if(lblPounce) { lblPounce.style.opacity = "0.5"; lblPounce.style.pointerEvents = "none"; }
+        if(chkPounce) { chkPounce.disabled = true; chkPounce.checked = false; }
+    }
 }
 
 function updateCalcModeUI() {
@@ -887,6 +902,7 @@ function updateRotaSummary() {
     var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if (c) li.style.color = c; list.appendChild(li); };
 
     // Priority Display
+    if (getVal("use_pounce")) add("Pounce (Opener)", "#e91e63"); // NEU
     if (getVal("use_rip")) add("Rip (>" + getVal("rip_cp") + " CP)", "#f44336");
     if (getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
 

@@ -287,7 +287,7 @@ function getSimInputs() {
         // Rotation
         rota_position: getSel("rota_position"),
         use_rip: getCheck("use_rip"), rip_cp: getNum("rip_cp"),
-        use_fb: getCheck("use_fb"), fb_energy: getNum("fb_energy"),
+        use_fb: getCheck("use_fb"), fb_cp: getNum("fb_cp"), fb_energy: getNum("fb_energy"),
         use_reshift: getCheck("use_reshift"), reshift_energy: getNum("reshift_energy"),
         reshift_over_tf: getCheck("reshift_over_tf") === 1,
         reshift_over_tf_dur: getNum("reshift_over_tf_dur"),
@@ -299,9 +299,11 @@ function getSimInputs() {
         use_ff: getCheck("use_ff"),
         use_berserk: getCheck("use_berserk"),
         shred_ooc_only: getCheck("shred_ooc_only"),
+        use_pounce: getCheck("use_pounce"), // NEU
 
         // Flags
         buff_wf_totem: getCheck("buff_wf_totem"),
+        buff_ft_totem: getCheck("buff_ft_totem"),
         consum_potion_quickness: getCheck("consum_potion_quickness"),
 
         // NEW: Special Gear Input
@@ -403,10 +405,11 @@ function runCoreSimulation(cfg) {
     var gcdEnd = 0.0;
     var swingTimer = 0.0;
     var isExtra;
+    var activeRipCP = 0; // Merkt sich die CP des laufenden Rips
 
     // Auras & Buffs
     var auras = {
-        rake: 0, rip: 0, ff: 0,
+        rake: 0, rip: 0, ff: 0, pounce: 0,
         clearcasting: 0,
         tigersFury: 0, tigersFurySpeed: 0,
         berserk: 0,
@@ -630,9 +633,32 @@ function runCoreSimulation(cfg) {
     // UPDATED: Use RNG Handler
     function rollDamageRange(min, max) { return rng.dmg(min, max); }
 
-    // -----------------------------------------
+
+    // ========================================================================
+    // --- POUNCE OPENER LOGIC (BEFORE LOOP) ---
+    // ========================================================================
+    if (cfg.use_pounce && cfg.rota_position === 'back') {
+        energy -= 50;
+        cp += 1;
+        gcdEnd = 1.0;
+        
+        // Pounce Formula: 0.18 * AP + 147.5 (Total Bleed over 18s)
+        var pounceTotal = 147.5 + (0.18 * getCurrentAP());
+        var pounceTick = pounceTotal / 6;
+        
+        auras.pounce = 18.0; // 6 ticks * 3s
+        // Manuelles Hinzufügen der Ticks
+        for(var i=1; i<=6; i++) {
+            addEvent(i*3.0, "dot_tick", {name:"pounce", dmg: pounceTick, label:"Pounce"});
+        }
+        
+        logAction("Pounce", "Opener", "Cast", 0, false, false, -50);
+    }
+
+        // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
     // -----------------------------------------
+
     while (t < maxT) {
 
         // --- A. DETERMINE NEXT TIME STEP ---
@@ -827,7 +853,6 @@ function runCoreSimulation(cfg) {
                         stacks.cenarion--;
                         if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
                     }
-
                     // Trinkets
                     if (cfg.t_shieldrender && rng.proc("Shieldrender", 7 * procScale)) {
                         auras.shieldrender = t + 3.0; logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
@@ -849,6 +874,15 @@ function runCoreSimulation(cfg) {
                         auras.venom = t + 12.0;
                     }
                     if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * procScale)) stacks.swarmguard++;
+
+                    // --- FLAMETONGUE TOTEM (Averaged) ---
+                    if (cfg.buff_ft_totem) {
+                        // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
+                        // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
+                        // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
+                        var ftDmg = 30.0 * (2.0 / 4.0); 
+                        dealDamage("Flametongue", ftDmg * hitFactor * pScale, "Fire", "Hit(Avg)", false, false);
+                    }
 
                 } else {
                     // --- STANDARD MODE (Legacy) ---
@@ -985,7 +1019,7 @@ function runCoreSimulation(cfg) {
             if (!action && !waitingForEnergy && cp >= cfg.rip_cp && cfg.use_rip && cfg.canBleed && auras.rip <= t) {
                 if (energy >= costRip) action = "Rip"; else waitingForEnergy = true;
             }
-            if (!action && !waitingForEnergy && cp >= 5 && cfg.use_fb) {
+            if (!action && !waitingForEnergy && cp >= cfg.fb_cp && cfg.use_fb) {
                 if (energy >= cfg.fb_energy) { if (energy >= costBite) action = "Ferocious Bite"; }
                 else waitingForEnergy = true;
             }
@@ -1235,7 +1269,7 @@ function runCoreSimulation(cfg) {
                         if (action === "Claw") {
                             abilityDmg = 1.05 * normalDmg + 115;
                             if (cfg.tal_open_wounds > 0) {
-                                var bleeds = 0; if (auras.rake > t) bleeds++; if (auras.rip > t) bleeds++;
+                                var bleeds = 0; if (auras.rake > t) bleeds++; if (auras.rip > t) bleeds++; if (auras.pounce > t) bleeds++;
                                 abilityDmg *= (1 + (0.30 * bleeds));
                             }
                             abilityDmg *= modPredatoryStrikes;
@@ -1271,6 +1305,7 @@ function runCoreSimulation(cfg) {
                             addEvent(t + rInterval * 3, "dot_tick", { name: "rake", dmg: tickVal, label: "Rake" });
                         }
                         else if (action === "Rip") {
+                            activeRipCP = cp;
                             var ticks = 4 + cp;
                             var cpScaled = Math.min(4, cp);
                             var apPart = (curAP - base.baseAp);
@@ -1291,6 +1326,8 @@ function runCoreSimulation(cfg) {
                             cpGen = 0; isBleed = true;
                         }
                         else if (action === "Ferocious Bite") {
+                            var cpUsed = cp;
+
                             var extraE = energy; energy = 0;
                             var baseFB = 70 + 128 * cp + 0.07 * curAP;
                             var multiplier = Math.pow(1.005, extraE);
@@ -1306,6 +1343,60 @@ function runCoreSimulation(cfg) {
                                     logAction("Cenarion", "5 Haste Charges", "Proc", 0, false, false);
                                 }
                             }
+
+                            // --- CARNAGE LOGIC (Variable Chance + Snapshot Refresh) ---
+                            // Formula: Rank * 10% per CP spent
+                            var carnageChance = cpUsed * cfg.tal_carnage * 10;
+                            
+                            if (carnageChance > 0 && rng.proc("Carnage", carnageChance * procChanceMod)) {
+                                
+                                logAction("Carnage", "Proc (" + carnageChance + "%)", "Proc", 0, false, false);
+                                
+                                // 1. Refresh Rake if active
+                                if (auras.rake > t) {
+                                    // Rake hat keine CP-Skalierung, wir nehmen Current AP für den Refresh
+                                    var cRakeDot = (102 + (0.09 * curAP)) * modPredatoryStrikes;
+                                    var cRakeTick = cRakeDot / 3;
+                                    var rInt = cfg.idol_savagery ? 2.7 : 3.0; 
+                                    var rD = cfg.idol_savagery ? 8.1 : 9.0;
+
+                                    auras.rake = t + rD;
+                                    removeEvent("dot_tick", "rake");
+                                    addEvent(t + rInt, "dot_tick", { name: "rake", dmg: cRakeTick, label: "Rake" });
+                                    addEvent(t + rInt * 2, "dot_tick", { name: "rake", dmg: cRakeTick, label: "Rake" });
+                                    addEvent(t + rInt * 3, "dot_tick", { name: "rake", dmg: cRakeTick, label: "Rake" });
+                                }
+
+                                // 2. Refresh Rip if active (Snapshot CP nutzen!)
+                                if (auras.rip > t) {
+                                    // Nutze activeRipCP für Dauer und Schaden
+                                    var usedRipCP = activeRipCP || 5; // Fallback auf 5 falls 0 (sollte nicht passieren wenn Rip aktiv ist)
+                                    
+                                    var cRipTicks = 4 + usedRipCP; 
+                                    
+                                    // Recalculate Rip Damage based on Snapshot CP
+                                    var cApPart = (curAP - base.baseAp);
+                                    var cRipTickDmg = 47 + (usedRipCP - 1) * 31 + (Math.min(4, usedRipCP) / 100 * cApPart);
+                                    
+                                    if (cfg.tal_open_wounds > 0) cRipTickDmg *= (1 + 0.15 * cfg.tal_open_wounds);
+                                    
+                                    var ripInt = cfg.idol_savagery ? 1.8 : 2.0;
+                                    
+                                    // Reset Duration to full length of original CP
+                                    auras.rip = t + (cRipTicks * ripInt);
+                                    
+                                    removeEvent("dot_tick", "rip");
+                                    for (var i = 1; i <= cRipTicks; i++) {
+                                        addEvent(t + (i * ripInt), "dot_tick", { name: "rip", dmg: cRipTickDmg, label: "Rip" });
+                                    }
+                                }
+
+                                // 3. Add 1 Combo Point (Refund)
+                                cpGen = 1; 
+                            }
+
+
+
                         }
 
                         // Apply Multipliers

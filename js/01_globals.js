@@ -44,14 +44,14 @@ var CONFIG_IDS = [
     // Rotation / Logic
     "rota_position",
     "use_rip", "rip_cp",
-    "use_fb", "fb_energy",
+    "use_fb", "fb_cp", "fb_energy",
     "use_reshift", "reshift_energy",
     "use_tf",
     "reshift_over_tf", "reshift_over_tf_dur",
     "use_rake",
     "use_shred", "use_claw",
     "use_ff",
-    "use_berserk", "shred_ooc_only",
+    "use_berserk", "shred_ooc_only", "use_pounce",
 
     // Gear Specifics (SETS & IDOLS & TRINKETS)
     "set_t05_4p", 
@@ -84,7 +84,8 @@ var CONFIG_IDS = [
     // Raid Buffs
     "buff_motw", "buff_kings", "buff_might", "buff_bs",
     "buff_lotp", "buff_tsa", 
-    "buff_wf_totem", "buff_soe_totem", "buff_goa_totem",
+    "buff_wf_totem", "buff_ft_totem", 
+    "buff_soe_totem", "buff_goa_totem",
     // Removed Warchief as requested
     
     // Talents
