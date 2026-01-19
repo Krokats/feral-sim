@@ -146,12 +146,14 @@ function saveCurrentState() {
 function addSim(isInit) {
     // Create new Sim Object
     var id = Date.now();
-    var newSim = new SimObject(id, "Simulation " + (SIM_LIST.length + 1));
-
-    // Default Config will be grabbed from current UI state via getSimInputs()
-    newSim.config = typeof getSimInputs === "function" ? getSimInputs() : {};
-    newSim.gear = {};
-    newSim.enchants = {};
+    
+    // Default Name
+    var newName = "Simulation " + (SIM_LIST.length + 1);
+    
+    // Prepare Data Containers
+    var newConfig = {};
+    var newGear = {};
+    var newEnchants = {};
 
     // Copy from current state if not initializing
     if (!isInit && SIM_LIST.length > 0) {
