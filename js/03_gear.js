@@ -471,8 +471,7 @@ function renderEnchantList() {
 
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
-    if (slotKey.includes("Trinket")) slotKey = "Trinket";
-    if (slotKey === "Main Hand") slotKey = "Two Hand"; 
+    if (slotKey === "Main Hand") slotKey = "Two-hand"; 
 
     var relevantEnchants = ENCHANT_DB.filter(function (e) {
         // 512 = Druid
@@ -480,8 +479,7 @@ function renderEnchantList() {
             if ((e.allowableClasses & 512) === 0) return false;
         }
 
-        if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two Hand" || e.slot === "Mainhand");
-        if (CURRENT_SELECTING_SLOT === "Off Hand") return (e.slot === "Shield");
+        if (CURRENT_SELECTING_SLOT === "Main Hand") return (e.slot === "Weapon" || e.slot === "Two-hand" || e.slot === "One-hand");
         if (CURRENT_SELECTING_SLOT === "Feet") return (e.slot === "Boots" || e.slot === "Feet");
         if (CURRENT_SELECTING_SLOT === "Hands") return (e.slot === "Gloves" || e.slot === "Hands");
         if (CURRENT_SELECTING_SLOT === "Wrist") return (e.slot === "Bracer" || e.slot === "Wrist");
