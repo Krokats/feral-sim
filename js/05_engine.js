@@ -1029,8 +1029,13 @@ function runCoreSimulation(cfg) {
                 if (energy >= costRip) action = "Rip"; else waitingForEnergy = true;
             }
             if (!action && !waitingForEnergy && cp >= cfg.fb_cp && cfg.use_fb) {
-                if (energy >= cfg.fb_energy) { if (energy >= costBite) action = "Ferocious Bite"; }
-                else waitingForEnergy = true;
+                // FIX: Priority Check - Only Bite if Rip is active (or Rip is disabled/impossible)
+                var biteAllowed = (!cfg.use_rip || !cfg.canBleed || auras.rip > t);
+
+                if (biteAllowed) {
+                    if (energy >= cfg.fb_energy) { if (energy >= costBite) action = "Ferocious Bite"; }
+                    else waitingForEnergy = true;
+                }
             }
 
             if (!action && !waitingForEnergy && energy < cfg.reshift_energy && cfg.use_reshift) {
