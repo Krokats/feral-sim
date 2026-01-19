@@ -1162,11 +1162,15 @@ function renderLogTable(log) {
     LOG_DATA = log || [];
     LOG_PAGE = 1;
     
-    // 1. Scan for Dynamic Columns (Active Buffs)
     var allKeys = new Set();
     LOG_DATA.forEach(e => {
         if(e.activeBuffs) {
-            Object.keys(e.activeBuffs).forEach(k => allKeys.add(k));
+            Object.keys(e.activeBuffs).forEach(k => {
+                // EXCLUDE BF from dynamic columns (now static)
+                if (k !== "BF" && k !== "Blood Frenzy") {
+                    allKeys.add(k);
+                }
+            });
         }
     });
     LOG_BUFF_KEYS = Array.from(allKeys).sort();
@@ -1202,7 +1206,7 @@ function updateLogView() {
 
         // Static Headers Rest
         headerHtml += `<th>CP</th><th>AP</th><th>Haste</th><th>Speed</th><th>ArP</th><th>Energy</th><th>E+/-</th>
-            <th>OoC</th><th>TF(t)</th>`;
+            <th>OoC</th><th>TF(t)</th><th>BF(t)</th>`;
         
         // Dynamic Buff Headers
         LOG_BUFF_KEYS.forEach(key => {
@@ -1267,6 +1271,7 @@ function updateLogView() {
             <td style="${eChangeStyle}">${eChangeDisplay}</td>
             <td style="text-align:center;">${e.ooc > 0 ? e.ooc.toFixed(1) : ""}</td>
             <td style="color:var(--energy-yellow)">${e.tf > 0 ? e.tf.toFixed(1) : ""}</td>
+            <td style="color:#ff5722">${(e.activeBuffs && (e.activeBuffs["BF"] || e.activeBuffs["Blood Frenzy"])) ? (e.activeBuffs["BF"] || e.activeBuffs["Blood Frenzy"]).toFixed(1) : ""}</td>
         `;
 
         LOG_BUFF_KEYS.forEach(key => {
@@ -1315,7 +1320,7 @@ function downloadCSV() {
     if (showFF) csvHeaders.push("RemFF");
 
     // Static Middle Headers
-    var staticMiddle = ["CP", "AP", "Haste", "Speed", "ArmorPen", "Energy", "E-Change", "OoC", "TF"];
+    var staticMiddle = ["CP", "AP", "Haste", "Speed", "ArmorPen", "Energy", "E-Change", "OoC", "TF", "BF"];
     csvHeaders = csvHeaders.concat(staticMiddle);
 
     // Dynamic Buff Headers (from Log Scan)
@@ -1349,6 +1354,10 @@ function downloadCSV() {
         row.push(r.eChange);
         row.push(r.ooc > 0 ? r.ooc.toFixed(1) : "");
         row.push(r.tf > 0 ? r.tf.toFixed(1) : "");
+        
+        // BF Static
+        var bfVal = (r.activeBuffs && (r.activeBuffs["BF"] || r.activeBuffs["Blood Frenzy"])) ? (r.activeBuffs["BF"] || r.activeBuffs["Blood Frenzy"]).toFixed(1) : "";
+        row.push(bfVal);
 
         // Dynamic Buffs Data
         LOG_BUFF_KEYS.forEach(key => {
