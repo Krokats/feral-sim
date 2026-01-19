@@ -1835,3 +1835,8 @@ function applyImportData(importedItems, race, charName) {
     return { matched: matchCount };
 }
 
+function closeWarningModal() {
+    var m = document.getElementById("warningModal");
+    if (m) m.classList.add("hidden");
+}
+

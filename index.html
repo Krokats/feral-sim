@@ -102,6 +102,23 @@
                     </div>
                 </div>
 
+                <div id="warningModal" class="modal-overlay hidden" onclick="if(event.target === this) closeWarningModal()">
+                    <div class="modal-box" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <span class="modal-title" style="color: #ff9800;">⚠️ Beta Warning</span>
+                            <span class="modal-close" onclick="closeWarningModal()">×</span>
+                        </div>
+                        <div class="modal-body" style="padding: 20px; line-height: 1.5; color: #e0e0e0;">
+                            <p style="margin-bottom: 15px;">Welcome to <b>Krokat's Feralsim</b>!</p>
+                            <p style="margin-bottom: 15px;">Please note that this simulation is currently in the <b>testing phase</b>. Some features may be missing, incomplete, or subject to change.</p>
+                            <p style="margin-bottom: 20px;">If you notice any bugs or inconsistent results, please report them on <b>Discord</b>.</p>
+                            <div style="text-align: center;">
+                                <button onclick="closeWarningModal()" class="primary-btn" style="display: inline-flex; justify-content: center;">Understood</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="wowTooltip" class="wow-tooltip"></div>
 
                 <div id="simulationViewWrapper">

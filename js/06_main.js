@@ -14,6 +14,10 @@ function init() {
     setupUIListeners();
     renderSidebar();
 
+    // Show Warning Modal on Load
+    var warnModal = document.getElementById("warningModal");
+    if (warnModal) warnModal.classList.remove("hidden");
+
     loadDatabase().then(function() {
         console.log("DB Loaded.");
 
