@@ -411,7 +411,7 @@ function runCoreSimulation(cfg) {
     var auras = {
         rake: 0, rip: 0, ff: 0, pounce: 0,
         clearcasting: 0,
-        tigersFury: 0, tigersFurySpeed: 0,
+        tigersFury: 0, BloodFrenzy: 0,
         berserk: 0,
         potionQuickness: 0,
 
@@ -498,7 +498,7 @@ function runCoreSimulation(cfg) {
         var hPercent = 0;
         if (cfg.inputHaste > 0) hPercent += cfg.inputHaste;
 
-        if (auras.tigersFurySpeed > t) hPercent += 20;
+        if (auras.BloodFrenzy > t) hPercent += 20;
         if (auras.potionQuickness > t) hPercent += 5;
 
         // Cenarion 8p: +15% Speed
@@ -1036,9 +1036,13 @@ function runCoreSimulation(cfg) {
         // Tiger's Fury
         if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF) {
              energy -= costTF;
-             var dur = 6; if (cfg.tal_blood_frenzy > 0) dur += 12;
+             // Update: TF Base Duration is 18s with Energy ticks
+             var dur = 18; 
              auras.tigersFury = t + dur;
-             if (cfg.tal_blood_frenzy > 0) auras.tigersFurySpeed = t + 18;
+             
+             // Blood Frenzy Talent triggers separate Attack Speed Buff
+             if (cfg.tal_blood_frenzy > 0) auras.BloodFrenzy = t + 18;
+             
              for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
              logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
         }
@@ -1133,7 +1137,9 @@ function runCoreSimulation(cfg) {
                 var triggersGCD = true;
 
                 if (action === "Reshift") {
-                    mana -= 300; auras.tigersFury = 0; auras.tigersFurySpeed = 0;
+                    // Update: Only remove TF Damage/Energy buff, keep Blood Frenzy (Speed)
+                    mana -= 300; auras.tigersFury = 0; 
+                    var furorEnergy = (cfg.tal_furor * 8);
 
                     // UPDATED: Furor (Talent) + Gift of Ferocity (Enchant)
                     var furorEnergy = (cfg.tal_furor * 8);

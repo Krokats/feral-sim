@@ -1167,7 +1167,7 @@ function renderLogTable(log) {
         if(e.activeBuffs) {
             Object.keys(e.activeBuffs).forEach(k => {
                 // EXCLUDE BF from dynamic columns (now static)
-                if (k !== "BF" && k !== "Blood Frenzy") {
+                if (k !== "BF" && k !== "BloodFrenzy") {
                     allKeys.add(k);
                 }
             });
