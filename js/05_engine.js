@@ -1314,7 +1314,6 @@ function runCoreSimulation(cfg) {
                             // Averaged Mode: DoT Schaden skalieren wir NICHT hier, da Rip immer trifft,
                             // wenn es ausgeführt wird (Check war oben). 
                             // ABER: Falls Rip verfehlen KANN (Yellow Hit), dann müssen wir skalieren.
-                            // Ja, Rip ist ein Angriff.
                             if (cfg.calcMode === 'averaged') tickDmg *= hitChance;
 
                             var ripInterval = cfg.idol_savagery ? 1.8 : 2.0;
@@ -1323,6 +1322,8 @@ function runCoreSimulation(cfg) {
                                 addEvent(t + (i * ripInterval), "dot_tick", { name: "rip", dmg: tickDmg, label: "Rip" });
                             }
                             cpGen = 0; isBleed = true;
+
+                            logAction("Rip", "Applied (DoT)", "Hit", 0, false, false, -castCost);
                         }
                         else if (action === "Ferocious Bite") {
                             var cpUsed = cp;
