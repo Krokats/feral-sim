@@ -696,14 +696,6 @@ function setupUIListeners() {
     // Init Rotation Help
     renderRotationHelp();
 
-    // Calc Mode Toggle Logic
-    var calcModeEl = document.getElementById("sim_calc_mode");
-    if (calcModeEl) {
-        calcModeEl.addEventListener("change", updateCalcModeUI);
-        // Init call
-        updateCalcModeUI();
-    }
-
 }
 
 // NEW: Handles visual enabling/disabling of rotation inputs
@@ -784,23 +776,6 @@ function updateRotationConstraints() {
     } else {
         if (lblPounce) { lblPounce.style.opacity = "0.5"; lblPounce.style.pointerEvents = "none"; }
         if (chkPounce) { chkPounce.disabled = true; chkPounce.checked = false; }
-    }
-}
-
-function updateCalcModeUI() {
-    var mode = document.getElementById("sim_calc_mode") ? document.getElementById("sim_calc_mode").value : "stochastic";
-    var iterInput = document.getElementById("simCount");
-
-    if (iterInput) {
-        if (mode === 'deterministic' || mode === 'averaged') {
-            iterInput.disabled = true;
-            iterInput.style.opacity = "0.5";
-            iterInput.title = "Deterministic mode always runs 1 iteration.";
-        } else {
-            iterInput.disabled = false;
-            iterInput.style.opacity = "1";
-            iterInput.title = "";
-        }
     }
 }
 
@@ -1934,7 +1909,7 @@ function applyImportData(importedItems, race, charName) {
     saveCurrentState();
     updatePlayerStats();
     updateEnemyInfo();
-    showToast("Imported data for " + charName);
+    showToast("Imported data");
 
     return { matched: matchCount };
 }

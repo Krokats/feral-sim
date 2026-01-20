@@ -21,7 +21,7 @@ var ENCHANT_SELECTION = {};
 // Configuration IDs mapped to UI elements
 var CONFIG_IDS = [
     // Sim Settings
-    "simTime", "simCount", "sim_calc_mode", "statWeightIt",
+    "simTime", "simCount", "statWeightIt",
 
     // Player Stats
     "stat_str", "stat_agi", "stat_ap",
