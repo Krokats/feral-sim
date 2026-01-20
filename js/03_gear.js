@@ -897,6 +897,7 @@ function calculateGearStats() {
     checkTrinket("trinket_maelstrom", "Darkmoon Card: Maelstrom");
     checkTrinket("trinket_hoj", "Hand of Justice");
     checkTrinket("trinket_coil", "Overloaded Heating Coil");
+    checkTrinket("trinket_zhm", "Zandalarian Hero Medallion");
 
     // NEW: Detect Gift of Ferocity Enchant on Head
     var elGoF = document.getElementById("gear_gift_of_ferocity");

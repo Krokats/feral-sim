@@ -468,6 +468,8 @@ function generateSummaryImage() {
         if (c.t_earthstrike) addTrink("Earthstrike");
         if (c.t_swarmguard) addTrink("Swarmguard");
         if (c.t_shieldrender) addTrink("Shieldrender");
+        if (c.t_emberstone) addTrink("Molten Emberstone");
+        if (c.t_zhm) addTrink("Zandalarian Hero Medallion");
     }
 
     // --- 6. Rendering & Download ---
@@ -1185,10 +1187,10 @@ function updateLogView() {
     // Logic: Show Pounce if used. Show Rake if used. Show Rip if used. 
     // Show OW if Talent > 0. Show FF if used (internal).
     var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
-    var showRake = (cfg.use_rake);
-    var showRip = (cfg.use_rip);
-    var showOW = (cfg.tal_open_wounds > 0);
-    var showFF = (cfg.use_ff);
+    var showRake = (cfg.use_rake );
+    var showRip = (cfg.use_rip );
+    var showOW = (cfg.tal_open_wounds > 0 );
+    var showFF = (cfg.use_ff || cfg.debuff_ff);
 
     var container = document.querySelector(".log-container table thead tr");
     if (container) {
@@ -1210,7 +1212,7 @@ function updateLogView() {
         
         // Dynamic Buff Headers
         LOG_BUFF_KEYS.forEach(key => {
-            headerHtml += `<th>${key}</th>`;
+                headerHtml += `<th>${key}</th>`;
         });
 
         headerHtml += `<th>Info</th>`;

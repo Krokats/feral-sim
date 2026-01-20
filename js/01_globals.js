@@ -66,6 +66,7 @@ var CONFIG_IDS = [
     // Trinkets (On-Use)
     "trinket_swarmguard", "trinket_slayer", "trinket_spider", 
     "trinket_jomgabbar", "trinket_earthstrike", "trinket_emberstone",
+    "trinket_zhm",
 
     // Trinkets (Procs)
     "trinket_shieldrender", "trinket_venoms", "trinket_maelstrom", 

@@ -350,6 +350,7 @@ function getSimInputs() {
         t_maelstrom: getCheck("trinket_maelstrom") === 1,
         t_hoj: getCheck("trinket_hoj") === 1,
         t_coil: getCheck("trinket_coil") === 1,
+        t_zhm: getCheck("trinket_zhm") === 1,
 
         // Calculation Mode
         calcMode: getSel("sim_calc_mode") || "stochastic",
@@ -431,22 +432,28 @@ function runCoreSimulation(cfg) {
         emberstone: 0,
         shieldrender: 0,
         venom: 0,
-        venom_dot: 0
+        venom_dot: 0,
+        zhm: 0,
     };
 
     var stacks = {
         cenarion: 0,    // 5 Charges for T1 8p
         talonFero: 0,   // Primal Ferocity Stacks
         swarmguard: 0,  // Max 6
-        venom: 0        // Max 1200
+        venom: 0,        // Max 1200
+        zhm: 0,         // Max 20 (x2 Dmg)
     };
 
     var cds = {
         tigersFury: 0, berserk: 0, ff: 0, potion: 0,
-        // Trinket CDs (Simulated as independent slots or shared logic)
-        trinket1: 0,
-        trinket2: 0,
-        // Procs Internal CDs if any (Shieldrender?) - assuming PPM/Chance based
+        // Trinket CDs (Individual)
+        slayer: 0,
+        spider: 0,
+        earthstrike: 0,
+        jom: 0,
+        emberstone: 0,
+        zhm: 0,
+        swarmguard: 0
     };
 
     var log = [];
@@ -473,22 +480,22 @@ function runCoreSimulation(cfg) {
         var ap = baseAP;
 
         // Talon 3p: +100 AP
-        if (auras.talonAP > t) ap += 100;
+        if (auras.talonAP > t && auras.talonAP > 0) ap += 100;
 
         // Trinkets
-        if (auras.slayer > t) ap += 260;
-        if (auras.earthstrike > t) ap += 280;
-        if (auras.emberstone > t) ap += 200;
+        if (auras.slayer > t && auras.slayer > 0) ap += 260;
+        if (auras.earthstrike > t && auras.earthstrike > 0) ap += 280;
+        if (auras.emberstone > t && auras.emberstone > 0) ap += 200;
 
         // Jom Gabbar: 65 + 65 every 2s
-        if (auras.jom > t) {
+        if (auras.jom > t && auras.jom > 0) {
             var elapsed = t - auras.jomStart;
             var stack = Math.floor(elapsed / 2.0);
             ap += (65 + (stack * 65));
         }
 
         // Talon 5p: +25% AP
-        if (auras.talonBuff > t) ap = Math.floor(ap * 1.25);
+        if (auras.talonBuff > t && auras.talonBuff > 0) ap = Math.floor(ap * 1.25);
 
         return ap;
     }
@@ -498,14 +505,14 @@ function runCoreSimulation(cfg) {
         var hPercent = 0;
         if (cfg.inputHaste > 0) hPercent += cfg.inputHaste;
 
-        if (auras.BloodFrenzy > t) hPercent += 20;
-        if (auras.potionQuickness > t) hPercent += 5;
+        if (auras.BloodFrenzy > t && auras.BloodFrenzy > 0) hPercent += 20;
+        if (auras.potionQuickness > t && auras.potionQuickness > 0) hPercent += 5;
 
         // Cenarion 8p: +15% Speed
-        if (auras.cenarionHaste > t && stacks.cenarion > 0) hPercent += 15;
+        if (auras.cenarionHaste > t && stacks.cenarion > 0 && auras.cenarionHaste > 0) hPercent += 15;
 
         // Kiss of the Spider: +20% Speed
-        if (auras.spider > t) hPercent += 20;
+        if (auras.spider > t && auras.spider > 0) hPercent += 20;
 
         return 1 + (hPercent / 100);
     }
@@ -513,13 +520,13 @@ function runCoreSimulation(cfg) {
     // --- HELPER: Armor Reduction ---
     function getDamageReduction(t, currentFF) {
         // Shieldrender: Ignore All Armor
-        if (auras.shieldrender > t) return 0.0;
+        if (auras.shieldrender > t && auras.shieldrender > 0) return 0.0;
 
         var totalReduct = staticArmorReduct;
         if (currentFF > t || cfg.debuff_ff) totalReduct += 505;
 
         // Swarmguard: -200 per stack
-        if (auras.swarmguard > t && stacks.swarmguard > 0) {
+        if (auras.swarmguard > t && stacks.swarmguard > 0 && auras.swarmguard > 0) {
             totalReduct += (stacks.swarmguard * 200);
         }
 
@@ -544,6 +551,7 @@ function runCoreSimulation(cfg) {
         if (auras.slayer > t) list.push("Slayer");
         if (auras.spider > t) list.push("Spider");
         if (auras.jom > t) list.push("Jom");
+        if (auras.zhm > t) list.push("ZHM");
         return list.join(",");
     }
 
@@ -577,18 +585,19 @@ function runCoreSimulation(cfg) {
             // Standard-Proc: Tiger's Fury (TF) - Zeigt Restzeit
             var tfRem = Math.max(0, auras.tigersFury - t);
 
-            var exclude = ["clearcasting", "tigersFury", "rake", "rip", "ff"];
+            var exclude = ["clearcasting", "tigersFury", "rake", "rip", "ff", "pounce"];
             for (var key in auras) {
                 // FIX: Check auras[key] > 0 added to prevent logging inactive buffs (0) when t is negative (-0.01)
                 if (!exclude.includes(key) && auras[key] > t && auras[key] > 0) {
                     activeBuffs[key] = parseFloat((auras[key] - t).toFixed(1));
                 }
             }
-// --- CALC OPEN WOUNDS & POUNCE ---
+            
+            // --- CALC OPEN WOUNDS & POUNCE ---
             var activeBleeds = 0;
-            if (auras.rake > t) activeBleeds++;
-            if (auras.rip > t) activeBleeds++;
-            if (auras.pounce > t) activeBleeds++;
+            if (auras.rake > t && auras.rake > 0) activeBleeds++;
+            if (auras.rip > t && auras.rip > 0) activeBleeds++;
+            if (auras.pounce > t && auras.pounce > 0) activeBleeds++;
             
             // Format OW Multiplier (e.g. "1.3x")
             var owStr = "-";
@@ -777,6 +786,8 @@ function runCoreSimulation(cfg) {
                 var rawDmg = baseDmgRoll + apBonus;
 
                 if (auras.tigersFury > t) rawDmg += 50;
+                if (auras.zhm > t && stacks.zhm > 0) rawDmg += (stacks.zhm * 2);
+
                 rawDmg *= modNaturalWeapons;
 
                 // --- ATTACK TABLE ---
@@ -845,6 +856,8 @@ function runCoreSimulation(cfg) {
                     avgDmg *= (1 - dr);
                     
                     dealDamage(isExtra ? "Extra Attack" : "Auto Attack", avgDmg, "Physical", "Hit(Avg)", false, false);
+
+                    if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--; 
 
                     // --- PROCS (Smoothed) ---
                     // Skaliert mit der Wahrscheinlichkeit, dass der Schlag überhaupt getroffen hat (hitFactor)
@@ -926,6 +939,8 @@ function runCoreSimulation(cfg) {
                         rawDmg *= (1 - dr);
 
                         dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
+
+                        if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--; // <--- HIER EINFÜGEN
 
                         // Procs (Standard)
                         if (cfg.tal_omen > 0 && rng.proc("Omen", 10)) {
@@ -1016,7 +1031,7 @@ function runCoreSimulation(cfg) {
 
         var isOoc = oocState; // Use snapshot
         if (isOoc) {
-            costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0; costTF = 0;
+            costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0;
         }
 
         // 2. OFF-GCD ACTIONS (Simultaneous Execution)
@@ -1034,7 +1049,7 @@ function runCoreSimulation(cfg) {
         }
 
         // Tiger's Fury
-        if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF) {
+        if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF && t >= gcdEnd) {
              energy -= costTF;
              // Update: TF Base Duration is 18s with Energy ticks
              var dur = 18; 
@@ -1048,23 +1063,58 @@ function runCoreSimulation(cfg) {
         }
 
         // Trinkets (Priority 0)
-        var trinketAction = null;
-        if (cfg.t_slayer && cds.trinket1 <= t) trinketAction = "Slayer";
-        else if (cfg.t_spider && cds.trinket1 <= t) trinketAction = "Spider";
-        else if (cfg.t_earthstrike && cds.trinket1 <= t) trinketAction = "Earthstrike";
-        else if (cfg.t_jomgabbar && cds.trinket1 <= t) trinketAction = "JomGabbar";
-        else if (cfg.t_emberstone && cds.trinket1 <= t) trinketAction = "Emberstone";
-        else if (cfg.t_swarmguard && cds.trinket2 <= t && auras.swarmguard <= t) trinketAction = "Swarmguard";
-
-        if (trinketAction) {
-             if (trinketAction === "Slayer") { auras.slayer = t + 20; cds.trinket1 = t + 120; }
-             else if (trinketAction === "Spider") { auras.spider = t + 15; cds.trinket1 = t + 120; }
-             else if (trinketAction === "Earthstrike") { auras.earthstrike = t + 20; cds.trinket1 = t + 120; }
-             else if (trinketAction === "JomGabbar") { auras.jom = t + 20; auras.jomStart = t; cds.trinket1 = t + 120; }
-             else if (trinketAction === "Emberstone") { auras.emberstone = t + 20; cds.trinket1 = t + 180; }
-             else if (trinketAction === "Swarmguard") { auras.swarmguard = t + 30; stacks.swarmguard = 0; cds.trinket2 = t + 180; }
-             logAction(trinketAction, "Activated", "Buff", 0, false, false);
+        // Slayer's Crest
+        if (cfg.t_slayer && cds.slayer <= t) {
+             auras.slayer = t + 20; 
+             cds.slayer = t + 120;
+             logAction("Slayer", "Activated", "Buff", 0, false, false);
         }
+
+        // Kiss of the Spider
+        if (cfg.t_spider && cds.spider <= t) {
+             auras.spider = t + 15; 
+             cds.spider = t + 120;
+             logAction("Spider", "Activated", "Buff", 0, false, false);
+        }
+
+        // Earthstrike
+        if (cfg.t_earthstrike && cds.earthstrike <= t) {
+             auras.earthstrike = t + 20; 
+             cds.earthstrike = t + 120;
+             logAction("Earthstrike", "Activated", "Buff", 0, false, false);
+        }
+
+        // Jom Gabbar
+        if (cfg.t_jomgabbar && cds.jom <= t) {
+             auras.jom = t + 20; 
+             auras.jomStart = t; 
+             cds.jom = t + 120;
+             logAction("JomGabbar", "Activated", "Buff", 0, false, false);
+        }
+
+        // Molten Emberstone
+        if (cfg.t_emberstone && cds.emberstone <= t) {
+             auras.emberstone = t + 20; 
+             cds.emberstone = t + 180;
+             logAction("Emberstone", "Activated", "Buff", 0, false, false);
+        }
+
+        // Zandalarian Hero Medallion
+        if (cfg.t_zhm && cds.zhm <= t) {
+             auras.zhm = t + 20; 
+             stacks.zhm = 20; 
+             cds.zhm = t + 120;
+             logAction("ZHM", "Activated", "Buff", 0, false, false);
+        }
+
+        // Swarmguard (Stacking Logic handled in Hits)
+        if (cfg.t_swarmguard && cds.swarmguard <= t && auras.swarmguard <= t) {
+             auras.swarmguard = t + 30; 
+             stacks.swarmguard = 0; 
+             cds.swarmguard = t + 180;
+            logAction("Swarmguard", "Activated", "Buff", 0, false, false);
+        }
+
 
         // 3. GCD ROTATION (Main Actions)
         if (t >= gcdEnd) {
@@ -1149,6 +1199,7 @@ function runCoreSimulation(cfg) {
                     var eChange = newE - energy; // Differenz berechnen
                     energy = Math.min(100, newE);
                     logAction("Reshift", "Energy -> " + energy, "Cast", 0, false, false, eChange);
+                    gcdEnd = t + 1.5;
                 }
                 else if (action === "Faerie Fire") {
                     auras.ff = t + 40.0; logAction("Faerie Fire", "-505 Armor", "Debuff", 0, false, false, 0); gcdEnd = t + 1.0;
@@ -1288,6 +1339,7 @@ function runCoreSimulation(cfg) {
                         var apBonus = (curAP - base.baseAp) / 14.0;
                         var normalDmg = baseDmgRoll + apBonus;
                         if (auras.tigersFury > t) normalDmg += 50;
+                        if (auras.zhm > t && stacks.zhm > 0) normalDmg += (stacks.zhm * 2);
 
                         // Genesis Consumption
                         if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
@@ -1473,6 +1525,8 @@ function runCoreSimulation(cfg) {
                         
                         if (hitSuccess) {
                             
+                            if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--;
+
                             // 1. Buffs (Buckets mit pScale)
                             if (cfg.set_talon_3p && ["Claw", "Rake", "Shred"].includes(action)) {
                                 if (rng.proc("Talon3p", 5 * pScale)) {
