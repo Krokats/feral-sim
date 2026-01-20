@@ -19,8 +19,18 @@
     <div class="background-orb" style="background: radial-gradient(circle, rgba(255, 69, 0, 0.15) 0%, rgba(18, 18, 18, 0) 70%);"></div>
     <div id="toast" class="toast">Action Successful!</div>
 
+    <!--<div id="progressOverlay" class="progress-overlay hidden">
+        <div class="progress-box">
+            <div id="progressText" class="progress-text">Loading...</div>
+            <div class="progress-track">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+        </div>
+    </div>-->
+
     <div id="progressOverlay" class="progress-overlay hidden">
         <div class="progress-box">
+            <canvas id="animCanvas" width="350" height="120"></canvas>
             <div id="progressText" class="progress-text">Loading...</div>
             <div class="progress-track">
                 <div id="progressFill" class="progress-fill"></div>

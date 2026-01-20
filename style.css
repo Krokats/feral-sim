@@ -269,7 +269,7 @@ input[type="text"].sim-name-input {
 }
 
 .progress-box {
-    width: 300px; 
+    width: 350px;  /* Geändert von 300px */
     text-align: center;
     background: var(--card-bg);
     padding: 30px;
@@ -277,6 +277,18 @@ input[type="text"].sim-name-input {
     border: 1px solid var(--druid-orange);
     box-shadow: 0 0 20px rgba(0,0,0,0.7);
 }
+
+#animCanvas {
+    image-rendering: pixelated;
+    width: 100%;
+    height: 120px;
+    margin-bottom: 10px;
+    background: linear-gradient(to bottom, #0a0a1a, #222);
+    border-bottom: 1px solid #333;
+    border-radius: 4px;
+}
+
+
 
 .progress-text {
     color: var(--druid-orange); 

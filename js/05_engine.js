@@ -2,13 +2,10 @@
  * Feral Simulation - File 5: Simulation Engine & Math
  * Updated for Turtle WoW 1.18 (Feral Cat)
  * Features: 
- * - Stochastic Event-based Engine
+ * - Stochastic Event-based Engine (Async)
  * - Additive Haste Formula
- * - Dynamic Armor Reduction (Stacking Debuffs + Swarmguard/Shieldrender)
- * - New Sets: Cenarion, Genesis, Talon
- * - New Idols & Trinkets (On-Use + Procs)
- * - Removed: Wolfshead, MCP
- * - UPDATED: Trinkets now trigger GCD
+ * - Dynamic Armor Reduction
+ * - Pixel Art Animation Support (Non-blocking)
  */
 
 // ============================================================================
@@ -24,66 +21,66 @@ function runSimulation() {
     // Force 1 iteration for deterministic mode
     if (config.calcMode === 'deterministic' || config.calcMode === 'averaged') config.iterations = 1;
 
+    // 1. Show Progress & Start Animation
     showProgress("Simulating...");
 
-    setTimeout(function () {
+    // 2. Setup Async Loop
+    var allResults = [];
+    var i = 0;
+    var batchSize = 30; // Number of sims per frame (Adjust for smoothness vs speed)
+
+    function processBatch() {
         try {
-            var allResults = [];
+            var target = Math.min(config.iterations, i + batchSize);
 
-            // Always run stochastic simulations
-            // Loop logic
-            for (var i = 0; i < config.iterations; i++) {
-
+            // Run a batch of simulations
+            for (; i < target; i++) {
+                
                 // Config Cloning & Time Smearing Logic
-                // Wir erstellen eine flache Kopie der Config, damit wir simTime manipulieren können,
-                // ohne das Original für die nächste Runde zu verfälschen.
                 var currentConfig = Object.assign({}, config);
 
                 if (config.varyDuration && config.iterations > 1) {
-                    // Spread range: +/- 20 seconds
-                    // Bei 21 Iterationen sind das 2 Sekunden Schritte.
                     var stepSize = 2.0;
                     var midPoint = Math.floor(config.iterations / 2);
                     var offset = (i - midPoint) * stepSize;
                     currentConfig.simTime = config.simTime + offset;
-
-                    // Sicherheitshalber: Keine negative Zeit
                     if (currentConfig.simTime < 10) currentConfig.simTime = 10;
                 }
 
                 var res = runCoreSimulation(currentConfig);
                 allResults.push(res);
-
-                // Update progress bar periodically
-                if (i % 50 === 0) updateProgress((i / config.iterations) * 100);
             }
 
-            // Aggregate Results (Average of all runs)
-            var avg = aggregateResults(allResults);
+            // Update UI Progress
+            updateProgress((i / config.iterations) * 100);
 
-            // KORREKTUR: Speichere Ergebnisse direkt im aktiven Sim-Objekt der Liste
-            if (SIM_LIST[ACTIVE_SIM_INDEX]) {
-                SIM_LIST[ACTIVE_SIM_INDEX].results = avg;
+            if (i < config.iterations) {
+                // Yield control to browser for rendering animation
+                setTimeout(processBatch, 0);
+            } else {
+                // 3. Finalize
+                var avg = aggregateResults(allResults);
+
+                if (SIM_LIST[ACTIVE_SIM_INDEX]) {
+                    SIM_LIST[ACTIVE_SIM_INDEX].results = avg;
+                }
+
+                SIM_DATA = SIM_LIST[ACTIVE_SIM_INDEX];
+                updateSimulationResults(SIM_DATA);
+                showToast("Simulation Complete!");
+                hideProgress(); // Stop Animation
             }
-
-            // Halte SIM_DATA synchron
-            SIM_DATA = SIM_LIST[ACTIVE_SIM_INDEX];
-
-            updateSimulationResults(SIM_DATA);
-            showToast("Simulation Complete!");
 
         } catch (e) {
             console.error(e);
             showToast("Error: " + e.message);
-        } finally {
             hideProgress();
         }
-    }, 50);
-}
+    }
 
-// ============================================================================
-// STAT WEIGHTS ENTRY POINT
-// ============================================================================
+    // Start the first batch with a small delay to allow UI to open
+    setTimeout(processBatch, 50);
+}
 
 // ============================================================================
 // STAT WEIGHTS ENTRY POINT
@@ -94,16 +91,14 @@ function runStatWeights() {
     baseConfig.calcMode = 'stochastic';
     baseConfig.varyDuration = true;
 
-    // UI Wert nutzen
+    // Validation
     var iter = baseConfig.iterations;
-
-    // Safety: Falls String oder zu klein
     if (!iter || iter < 10) {
         iter = 50;
         baseConfig.iterations = 50;
     }
-
-    // Safety: Inputs zu Nummern zwingen
+    
+    // Ensure numbers
     baseConfig.inputAP = parseFloat(baseConfig.inputAP) || 0;
     baseConfig.inputStr = parseFloat(baseConfig.inputStr) || 0;
     baseConfig.inputAgi = parseFloat(baseConfig.inputAgi) || 0;
@@ -111,87 +106,80 @@ function runStatWeights() {
     baseConfig.inputCrit = parseFloat(baseConfig.inputCrit) || 0;
     baseConfig.inputHaste = parseFloat(baseConfig.inputHaste) || 0;
 
-    // Safety Check: Mindestens 10 Schritte für das Time-Smearing
-    if (iter < 10) {
-        iter = 50;
-        baseConfig.iterations = 50;
-        console.log("StatWeights: Iterations too low, auto-adjusted to 50 for smearing.");
-    }
-
     showProgress("Calculating Stat Weights...");
 
     var scenarios = [
         { id: "base", label: "Base", mod: function (c) { } },
         { id: "ap", label: "+50 AP", mod: function (c) { c.inputAP += 50; } },
-        {
-            id: "str", label: "+25 STR", mod: function (c) {
-                c.inputStr += 25;
-                c.inputAP += (25 * 2);
-            }
-        },
-        {
-            id: "agi", label: "+25 AGI", mod: function (c) {
-                c.inputAgi += 25;
-                c.inputAP += 25;
-                c.inputCrit += (25 / 20.0);
-            }
-        },
+        { id: "str", label: "+25 STR", mod: function (c) { c.inputStr += 25; c.inputAP += (25 * 2); } },
+        { id: "agi", label: "+25 AGI", mod: function (c) { c.inputAgi += 25; c.inputAP += 25; c.inputCrit += (25 / 20.0); } },
         { id: "hit", label: "+1% Hit", mod: function (c) { c.inputHit += 1.0; } },
         { id: "crit", label: "+1% Crit", mod: function (c) { c.inputCrit += 1.0; } },
         { id: "haste", label: "+1% Haste", mod: function (c) { c.inputHaste += 1.0; } }
     ];
 
     var results = {};
-    var currentIdx = 0;
+    var currentScenIdx = 0;
+    var batchSize = 30; // Async batch size
 
     function runNextScenario() {
-        if (currentIdx >= scenarios.length) {
+        if (currentScenIdx >= scenarios.length) {
             finalizeWeights(results);
             hideProgress();
             return;
         }
 
-        var scen = scenarios[currentIdx];
+        var scen = scenarios[currentScenIdx];
         var runCfg = JSON.parse(JSON.stringify(baseConfig));
         scen.mod(runCfg);
 
-        // Kleines Timeout damit der Browser nicht einfriert (UI Thread Entlastung)
-        setTimeout(function () {
+        // Prep variables for this scenario
+        var runResults = [];
+        var i = 0;
+        var timeRange = runCfg.simTime / 2;
+
+        function processScenarioBatch() {
             try {
-                var runResults = [];
+                var target = Math.min(iter, i + batchSize);
 
-                // Range für Time Smearing: +/- 20 Sekunden (Total 40s Spread)
-                var timeRange = runCfg.simTime / 2;//40.0; 
-
-                // Deterministische Schleife über die Zeitfenster
-                for (var i = 0; i < iter; i++) {
+                for (; i < target; i++) {
                     var stepConfig = Object.assign({}, runCfg);
 
-                    // Linearer Spread von -20s bis +20s über alle Iterationen
-                    var progress = i / (iter - 1); // 0.0 bis 1.0
-                    var offset = (progress - 0.5) * timeRange; // -20 bis +20
-
+                    // Time Smearing
+                    var progress = i / (iter - 1); 
+                    var offset = (progress - 0.5) * timeRange;
                     stepConfig.simTime = runCfg.simTime + offset;
-                    // Keine negativen Zeiten zulassenw
                     if (stepConfig.simTime < 10) stepConfig.simTime = 10;
 
-                    // WICHTIG: Hier wird nun runCoreSimulation im 'averaged' Modus aufgerufen
                     runResults.push(runCoreSimulation(stepConfig));
                 }
 
-                var avg = aggregateResults(runResults);
-                results[scen.id] = avg.dps;
+                // Update Total Progress
+                var totalProgress = ((currentScenIdx * iter) + i) / (scenarios.length * iter);
+                updateProgress(totalProgress * 100);
 
-                updateProgress(((currentIdx + 1) / scenarios.length) * 100);
-                currentIdx++;
-                runNextScenario();
+                if (i < iter) {
+                    setTimeout(processScenarioBatch, 0); // Yield
+                } else {
+                    // Scenario Finished
+                    var avg = aggregateResults(runResults);
+                    results[scen.id] = avg.dps;
+                    
+                    currentScenIdx++;
+                    setTimeout(runNextScenario, 0); // Next Scenario
+                }
             } catch (e) {
                 console.error(e);
                 showToast("Error during weights: " + e.message);
                 hideProgress();
             }
-        }, 20);
+        }
+
+        // Start processing the current scenario
+        processScenarioBatch();
     }
+    
+    // Begin
     runNextScenario();
 }
 
