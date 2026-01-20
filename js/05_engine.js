@@ -18,32 +18,6 @@ function runSimulation() {
     // Ensure at least 1 iteration
     if (config.iterations < 1) config.iterations = 1;
 
-    // WEICHE: Deterministisch vs. Stochastisch
-    if (config.sim_mode === 'deterministic') {
-        showToast("Running Deterministic Sim...");
-        
-        // Kurze Verzögerung, damit das UI reagieren kann (Toast anzeigen)
-        setTimeout(function() {
-            try {
-                var result = runDeterministicSimulation(config);
-                
-                // Ergebnis direkt setzen
-                if (SIM_LIST[ACTIVE_SIM_INDEX]) {
-                    SIM_LIST[ACTIVE_SIM_INDEX].results = result;
-                }
-                SIM_DATA = SIM_LIST[ACTIVE_SIM_INDEX];
-                updateSimulationResults(SIM_DATA);
-                showToast("Calculation Complete!");
-            } catch (e) {
-                console.error(e);
-                showToast("Error: " + e.message);
-            }
-        }, 50);
-        return; // Stoppt hier, damit der stochastische Teil nicht läuft
-    }
-
-    // --- AB HIER: Alter Stochastischer Code (Monte Carlo) ---
-
     // 1. Show Progress & Start Animation
     showProgress("Simulating...");
 
@@ -72,6 +46,9 @@ function runSimulation() {
                     currentConfig.simTime = config.simTime + offset;
                     if (currentConfig.simTime < 10) currentConfig.simTime = 10;
                 }
+
+                // Random seed for standard simulations
+                currentConfig.seed = Math.floor(Math.random() * 0xFFFFFFFF);
 
                 var res = runCoreSimulation(currentConfig);
                 allResults.push(res);
@@ -222,6 +199,9 @@ function runStatWeights() {
                     stepConfig.simTime = runCfg.simTime + offset;
                     if (stepConfig.simTime < 10) stepConfig.simTime = 10;
 
+                    // CRN: Fixed Seed per Iteration index (ensures comparison fairness)
+                    stepConfig.seed = 1337 + i; 
+
                     runResults.push(runCoreSimulation(stepConfig));
                 }
 
@@ -234,8 +214,13 @@ function runStatWeights() {
                 } else {
                     // Scenario Finished
                     var avg = aggregateResults(runResults);
-                    // STORE DPS AND ERROR
-                    results[scen.id] = { dps: avg.dps, error: avg.dpsSE };
+                    
+                    // STORE DPS, ERROR, AND RAW DATA (for paired error calc)
+                    results[scen.id] = { 
+                        dps: avg.dps, 
+                        error: avg.dpsSE,
+                        raw: runResults.map(r => r.dps) // Save raw DPS per iteration
+                    };
                     
                     currentScenIdx++;
                     setTimeout(runNextScenario, 0); // Next Scenario
@@ -257,11 +242,37 @@ function runStatWeights() {
 
 function finalizeWeights(dpsResults) {
     // Helper to extract values safely
-    var getRes = (id) => dpsResults[id] || { dps: 0, error: 0 };
+    var getRes = (id) => dpsResults[id] || { dps: 0, error: 0, raw: [] };
 
     var base = getRes("base");
     var baseDps = base.dps;
-    var baseErr = base.error;
+
+    // Helper: Calculate Standard Error of the Difference (Paired)
+    // Calculates stdErr of (ArrB - ArrA)
+    function calcPairedSE(arrA, arrB) {
+        if (!arrA || !arrB || arrA.length !== arrB.length || arrA.length === 0) return 0;
+        var n = arrA.length;
+        var sumDiff = 0;
+        var sumSqDiff = 0;
+        
+        // 1. Calculate Differences
+        var diffs = [];
+        for(var i=0; i<n; i++) {
+            var d = arrB[i] - arrA[i];
+            diffs.push(d);
+            sumDiff += d;
+        }
+        var meanDiff = sumDiff / n;
+
+        // 2. Variance of Differences
+        for(var i=0; i<n; i++) {
+            sumSqDiff += (diffs[i] - meanDiff) ** 2;
+        }
+        var variance = sumSqDiff / (n - 1);
+        
+        // 3. Standard Error = StdDev / sqrt(N)
+        return Math.sqrt(variance) / Math.sqrt(n);
+    }
 
     // 1. Calculate Scale Factor (EP = 1 AP)
     var delta_ap = 50;
@@ -271,15 +282,13 @@ function finalizeWeights(dpsResults) {
     var dps_per_ap = (apRes.dps - baseDps) / delta_ap;
     if (dps_per_ap <= 0.0001) dps_per_ap = 0.0001;
 
-    // Error calculation for the Scale Factor (AP)
-    // Error of the difference (AP_DPS - Base_DPS)
-    var err_diff_ap = Math.sqrt(Math.pow(apRes.error, 2) + Math.pow(baseErr, 2));
-    // Error of the slope (per 1 AP)
-    var err_slope_ap = err_diff_ap / delta_ap;
+    // Error of the slope (AP) using Paired Calculation
+    var se_diff_ap = calcPairedSE(base.raw, apRes.raw);
+    var rel_err_ap = se_diff_ap / Math.abs(apRes.dps - baseDps); // Relative Error of the Delta
 
-    // Helper to Calc Weight and Error using full propagation
+    // Helper to Calc Weight and Error
     function calcWeight(id, amount) {
-        if (!dpsResults[id]) return { w: 0, e: 0, skip: true }; // Skipped scenarios
+        if (!dpsResults[id]) return { w: 0, e: 0, skip: true };
 
         var res = dpsResults[id];
         var delta = res.dps - baseDps;
@@ -288,23 +297,22 @@ function finalizeWeights(dpsResults) {
         var weight = (delta / amount) / dps_per_ap;
         if (weight < 0) weight = 0;
 
-        // --- Error Propagation (Quotient Rule) ---
-        // Numerator (N): (Stat_DPS - Base_DPS) / Amount
-        // Denominator (D): dps_per_ap
+        // --- Paired Error Propagation ---
+        // We have W = (Delta_Stat / Amount) / (Delta_AP / 50)
+        // Error propagation for division Z = X / Y is:
+        // (sigma_Z / Z)^2 = (sigma_X / X)^2 + (sigma_Y / Y)^2
         
-        // 1. Error of Numerator
-        var err_diff_stat = Math.sqrt(Math.pow(res.error, 2) + Math.pow(baseErr, 2));
-        var err_N = err_diff_stat / amount;
+        var se_diff_stat = calcPairedSE(base.raw, res.raw);
+        var rel_err_stat = se_diff_stat / Math.abs(delta);
         
-        // 2. Error of Denominator
-        var err_D = err_slope_ap;
-
-        // 3. Combined Error for Quotient (W = N / D)
-        // Sigma_W = |W| * sqrt( (Sigma_N / N)^2 + (Sigma_D / D)^2 )
-        // We use absolute terms to avoid division by zero issues with small N
-        // Sigma_W = (1 / |D|) * sqrt( Sigma_N^2 + (W * Sigma_D)^2 )
+        // Combined Relative Error
+        var combined_rel_err = Math.sqrt( Math.pow(rel_err_stat, 2) + Math.pow(rel_err_ap, 2) );
         
-        var errWeight = (1 / Math.abs(dps_per_ap)) * Math.sqrt( Math.pow(err_N, 2) + Math.pow(weight * err_D, 2) );
+        // Absolute Error in Weight
+        var errWeight = weight * combined_rel_err;
+        
+        // Fallback for huge relative errors (e.g. delta near 0)
+        if (isNaN(errWeight)) errWeight = 0;
 
         return { w: weight, e: errWeight, skip: false };
     }
@@ -469,7 +477,7 @@ function runCoreSimulation(cfg) {
     // -----------------------------------------
 
     // Initialize RNG Handler
-    var rng = new RNGHandler();
+    var rng = new RNGHandler(cfg.seed);
 
     var raceStats = {
         "Tauren": { baseAp: 295, baseCrit: 3.65, minDmg: 72, maxDmg: 97 },
@@ -1639,21 +1647,37 @@ function aggregateResults(results) {
 }
 
 // ============================================================================
+// HELPER: SEEDED PRNG (Mulberry32)
+// ============================================================================
+function mulberry32(a) {
+    return function() {
+        var t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+}
+
+// ============================================================================
 // RNG HANDLER (Stochastic Only)
 // ============================================================================
-function RNGHandler() {
-    // No mode needed anymore
+function RNGHandler(seed) {
+    if (seed !== undefined && seed !== null) {
+        this.rand = mulberry32(seed);
+    } else {
+        this.rand = Math.random;
+    }
 }
 
 // Returns a random damage value between min and max
 RNGHandler.prototype.dmg = function (min, max) {
-    return min + Math.random() * (max - min);
+    return min + this.rand() * (max - min);
 };
 
 // Returns true if an event triggers based on percentage (0-100)
 RNGHandler.prototype.proc = function (id, chance) {
     if (chance <= 0) return false;
-    return Math.random() * 100 < chance;
+    return this.rand() * 100 < chance;
 };
 
 // Handles Attack Table Logic (White Hits & Yellow Hits)
@@ -1661,7 +1685,7 @@ RNGHandler.prototype.proc = function (id, chance) {
 RNGHandler.prototype.attackTable = function (idPrefix, table) {
     // table = { miss: %, dodge: %, parry: %, block: %, glance: %, crit: % }
 
-    var roll = Math.random() * 100;
+    var roll = this.rand() * 100;
     var limit = 0;
 
     if (table.miss && roll < (limit += table.miss)) return "MISS";
@@ -1674,428 +1698,4 @@ RNGHandler.prototype.attackTable = function (idPrefix, table) {
     return "HIT";
 };
 
-// ============================================================================
-// DETERMINISTIC ENGINE (Average / Expected Value)
-// ============================================================================
-function runDeterministicSimulation(cfg) {
-    // 1. STATS SETUP (Identisch zur Stochastic Engine)
-    var raceStats = {
-        "Tauren": { baseAp: 295, baseCrit: 3.65, minDmg: 72, maxDmg: 97 },
-        "NightElf": { baseAp: 295, baseCrit: 3.65, minDmg: 72, maxDmg: 97 }
-    };
-    var base = raceStats[cfg.race] || raceStats["Tauren"];
-    base.speed = 1.0;
 
-    // Static Armor Reduction
-    var staticArmorReduct = 0;
-    if (cfg.debuff_major_armor === "sunder") staticArmorReduct += 2250;
-    else if (cfg.debuff_major_armor === "iea") staticArmorReduct += 2550;
-    if (cfg.debuff_eskhandar) staticArmorReduct += 1200;
-    if (cfg.debuff_cor) staticArmorReduct += 640;
-    // (Note: Dynamic Armor Debuffs like Swarmguard/FF are simplified to "always active" or "never" based on inputs for deterministic consistency)
-    if (cfg.debuff_ff) staticArmorReduct += 505;
-
-    // Helper: Dynamic Armor Reduct Calculation
-    function getAvgDamageReduction() {
-        var totalReduct = staticArmorReduct;
-        var armorAfterArp = cfg.enemyArmor - (cfg.inputArp || 0);
-        var effArmor = Math.max(0, armorAfterArp - totalReduct);
-        var constant = (467.5 * cfg.enemyLevel) - 22167.5;
-        return effArmor / (effArmor + constant);
-    }
-    
-    // 2. COMBAT STATE
-    var t = 0;
-    var maxT = cfg.simTime;
-    var energy = 100; // Start Energy
-    var cp = 0;       // Fractional CP allowed here
-    var totalDmg = 0;
-    var dmgSources = {};
-    var counts = {};
-
-    // Timers
-    var nextEnergyTick = 0.0; // Start immediate? No, usually tick starts at 0 or 2. Let's say 0 for consistency.
-    var swingTimer = 0.0;
-    var gcdEnd = 0.0;
-    
-    // Cooldowns / Durations (Expiration Times)
-    var cd_tf = 0;
-    var cd_berserk = 0;
-    var dur_clearcasting = 0; // Not used as RNG, but modeled as avg return
-    var dur_rip = 0;
-    var dur_rake = 0;
-    var dur_sr = 0; // Savage Roar not in Vanilla Feral usually, but keeping placeholders
-    
-    // Damage Calc Helper
-    // Returns { avgHit: float, table: object }
-    function getAvgDamageMultiplier(skillType, isYellow) {
-        var isBoss = (cfg.enemyLevel == 63);
-        var isFront = (cfg.rota_position === "front");
-        var canBlock = (cfg.enemy_can_block === 1);
-        
-        // Base Stats
-        var hit = cfg.inputHit; 
-        var crit = cfg.inputCrit;
-        
-        // Table Constants
-        var missC = Math.max(0, (isBoss ? 8.0 : 5.0) - hit - (isYellow ? cfg.tal_nat_wep : 0));
-        var dodgeC = isBoss ? 6.5 : 5.0;
-        var parryC = (isFront) ? (isBoss ? 14.0 : 5.0) : 0;
-        var glanceC = isYellow ? 0 : (isBoss ? 40.0 : 10.0); // Yellows don't glance
-        var blockC = (isFront && canBlock) ? 5.0 : 0;
-        
-        // Crit Suppression
-        var critSupp = isBoss ? 4.8 : 0;
-        var effCrit = Math.max(0, crit - critSupp);
-
-        // Normalize Table (Sum to 100%)
-        // Priority: Miss > Dodge > Parry > Glance > Block > Crit > Hit
-        // We calculate 'remaining' probability bucket
-        
-        var p_miss = missC / 100;
-        var p_dodge = dodgeC / 100;
-        var p_parry = parryC / 100;
-        var p_glance = glanceC / 100;
-        var p_block = blockC / 100;
-        
-        var remaining = 1.0 - p_miss - p_dodge - p_parry;
-        
-        // Glancing blows happen from the remaining pool
-        // But in WoW Classic/Turtle, Glances are high prio. 
-        // Simple Average Model:
-        // Multiplier = (1-Miss-Dodge-Parry) * [ (Glance% * Penalty) + (Crit% * 2) + (Normal% * 1) ] 
-        // Note: This is a simplification.
-        
-        // Correct Average Multiplier Logic:
-        var multiplier = 0;
-        
-        // 0 Damage Events
-        // Miss, Dodge, Parry contribute 0.
-        
-        // Glancing (White only)
-        if (p_glance > 0) {
-            var gPenalty = isBoss ? 0.3 : 0.05; // 30% reduction = 0.7 dmg
-            // Glance takes priority over crit in table, but usually capped? 
-            // Simplified: p_glance * (1 - penalty)
-            multiplier += p_glance * (1 - gPenalty);
-        }
-        
-        // Crits (Yellow or White remaining)
-        // Crit Cap check omitted for average simplicity (assuming not capped)
-        var p_crit = effCrit / 100;
-        multiplier += p_crit * 2.0; // Crit does double dmg (usually)
-        
-        // Blocks (Front)
-        // Block reduces dmg by fixed amount. Hard to model in multiplier. 
-        // We will subtract (p_block * blockAmount) from final damage later.
-        
-        // Normal Hits
-        // The rest of the probability space
-        var used = p_miss + p_dodge + p_parry + p_glance + p_crit; 
-        var p_hit = Math.max(0, 1.0 - used);
-        multiplier += p_hit * 1.0;
-        
-        return { 
-            mult: multiplier, 
-            p_crit: p_crit, 
-            p_hit: (1.0 - p_miss - p_dodge - p_parry), // Landed rate
-            p_block: p_block
-        };
-    }
-
-    // 3. MAIN TIME LOOP
-    var step = 0.1; // 100ms precision for deterministic loop
-    
-    while(t < maxT) {
-        
-        // A. RESOURCES
-        // Energy Tick (2s)
-        if (t >= nextEnergyTick) {
-            var tickAmt = (t < cd_berserk && cfg.use_berserk) ? 40 : 20;
-            energy = Math.min(100, energy + tickAmt);
-            nextEnergyTick += 2.0;
-        }
-
-        // B. SWING TIMER (Auto Attack)
-        if (t >= swingTimer) {
-            var hasteMod = 1 + (cfg.inputHaste / 100);
-            if (cfg.buff_wf_totem) hasteMod += 0.20; // Avg Haste approximation for WF? No, WF is extra attack. 
-            // Lets treat WF as Extra Attack Chance instead.
-            
-            var curAP = cfg.inputAP; // (Dynamic AP handling omitted for speed, using avg)
-            // Add static AP buffs
-            if (cfg.consum_juju_might) curAP += 40;
-            if (cfg.consum_firewater) curAP += 35;
-            
-            var dmgRange = (base.minDmg + base.maxDmg) / 2;
-            var whiteDmg = (dmgRange + (curAP / 14)) * 1.10; // Nat Weapons
-            if (t < cd_tf) whiteDmg += 50; // TF Active
-            
-            var table = getAvgDamageMultiplier("Auto", false);
-            var avgDmg = whiteDmg * table.mult;
-            
-            // Armor
-            avgDmg *= (1 - getAvgDamageReduction());
-            
-            // Block Flat Reduction (Avg)
-            if (table.p_block > 0) avgDmg -= (table.p_block * 38); 
-            
-            // Record
-            totalDmg += avgDmg;
-            dmgSources["Auto Attack"] = (dmgSources["Auto Attack"] || 0) + avgDmg;
-            counts["Auto Attack"] = (counts["Auto Attack"] || 0) + 1;
-            
-            // Omen of Clarity (10% PPM? No, Chance on hit)
-            // Simulating Omen as "Energy Refund" on next cast
-            // Avg Energy Return/Sec = (Attacks/Sec) * 0.10 * AvgSpellCost?
-            // Easier: Omen saves energy. We can just model it as a flat % reduction in ability costs?
-            // Or: Add small energy to pool? 
-            // Let's go with: Chance to Omen (10%) * Avg Spell Cost (~40) = 4 Energy per Hit returned.
-            if (cfg.tal_omen > 0) {
-                 energy = Math.min(100, energy + (table.p_hit * 3.5)); // Approx value
-            }
-
-            // Windfury Totem (20% Chance for Extra Attack with AP Bonus)
-            if (cfg.buff_wf_totem) {
-                var wfChance = 0.20;
-                var wfAPBonus = 315;
-                var wfBaseDmg = (dmgRange + ((curAP + wfAPBonus) / 14)) * 1.10;
-                var wfAvg = wfBaseDmg * table.mult * (1 - getAvgDamageReduction());
-                // Add weighted WF damage
-                var wfFinal = wfAvg * wfChance * table.p_hit; // Only triggers on land
-                
-                totalDmg += wfFinal;
-                dmgSources["Windfury (Avg)"] = (dmgSources["Windfury (Avg)"] || 0) + wfFinal;
-            }
-
-            swingTimer += (base.speed / hasteMod);
-        }
-
-        // C. DOT TICKS (Deterministic)
-        // Rip
-        if (dur_rip > t) {
-            // Check if we hit a tick window? 
-            // Simplified: Add DPS * step
-            // Better: Calculate full tick damage and add it constantly or on tick intervals.
-            // Let's do Intervals for realism.
-        }
-        // Actually, strictly checking tick times in a step loop is hard. 
-        // We will just assume active DoTs deal (TickDmg / TickInterval * step) damage per step.
-        // This is truly deterministic averaging.
-        
-        if (dur_rake > t) {
-             var rAP = cfg.inputAP; 
-             var rDmg = (102 + 0.09 * rAP) * 1.2; // Pred Strikes
-             var rDPS = rDmg / 9.0;
-             var stepDmg = rDPS * step * (1 - getAvgDamageReduction()); // Bleeds ignore armor? No, Bleeds ignore armor!
-             // Wait, Bleeds ignore armor.
-             stepDmg = rDPS * step; // Raw
-             
-             totalDmg += stepDmg;
-             dmgSources["Rake (DoT)"] = (dmgSources["Rake (DoT)"] || 0) + stepDmg;
-        }
-
-        if (dur_rip > t) {
-             // 5 CP Rip assumption for Avg Sim
-             var rAP = cfg.inputAP;
-             // 5 CP Dmg
-             var ripBase = 47 + (4*31) + (0.04 * (rAP - 295)); // multiplied by 9 ticks? No formula is per tick?
-             // Formula from engine: 9 * (Base + AP)
-             // Total Rip Dmg
-             var ripTotal = 9 * (47 + (4*31) + (0.04 * (rAP - 295)));
-             if (cfg.tal_open_wounds) ripTotal *= 1.45; // 3/3 OW
-             
-             var ripDPS = ripTotal / (cfg.idol_savagery ? 14.4 : 16.0); // Duration 16s (8 ticks * 2s)
-             
-             var stepDmg = ripDPS * step; // Bleed ignores armor
-             totalDmg += stepDmg;
-             dmgSources["Rip (DoT)"] = (dmgSources["Rip (DoT)"] || 0) + stepDmg;
-        }
-
-        // D. ROTATION (GCD)
-        if (t >= gcdEnd) {
-            var action = null;
-            var waitingForEnergy = false;
-            
-            // Costs (Dynamic based on Gear)
-            var c_shred = 60 - (cfg.tal_imp_shred * 6);
-            if (cfg.set_genesis_3p) c_shred -= 3;
-            var c_fb = 35;
-            var c_rip = 30;
-            var c_rake = 40 - cfg.tal_ferocity;
-            if (cfg.idol_ferocity) c_rake -= 3;
-            var c_claw = 45 - cfg.tal_ferocity;
-            if (cfg.set_genesis_3p) c_claw -= 3;
-            if (cfg.idol_ferocity) c_claw -= 3;
-
-            // 1. Rip (Priority 1)
-            // Original Logic: If CP >= Threshold AND Rip enabled AND Duration expired
-            if (!action && !waitingForEnergy && cfg.use_rip && cp >= cfg.rip_cp && dur_rip <= t) {
-                if (energy >= c_rip) action = "Rip";
-                else waitingForEnergy = true; // WICHTIG: Wir sparen Energie, also KEINE andere Aktion
-            }
-            
-            // 2. Ferocious Bite (Priority 2)
-            // Original Logic: If CP >= Threshold AND FB enabled
-            if (!action && !waitingForEnergy && cfg.use_fb && cp >= cfg.fb_cp) {
-                // Condition: Rip must be Active OR Rip Disabled OR Boss cannot bleed
-                // (Deterministic Config assumes bleed is possible if Rip is checked, simplification)
-                var ripSatisfied = (!cfg.use_rip || dur_rip > t);
-                
-                if (ripSatisfied) {
-                    if (energy >= cfg.fb_energy) {
-                        if (energy >= c_fb) action = "Ferocious Bite";
-                        else waitingForEnergy = true; // Wait for Cost
-                    }
-                    else waitingForEnergy = true; // Wait for Threshold
-                }
-            }
-            
-            // 3. Reshift (Priority 3)
-            // Original Logic: Energy <= Threshold AND Reshift Enabled
-            // Note: In deterministic, we don't wait for Reshift (it's instant energy), but we check TF overwrite
-            if (!action && !waitingForEnergy && cfg.use_reshift && energy <= cfg.reshift_energy) {
-                 var tfRem = Math.max(0, cd_tf - t);
-                 var canShift = true;
-                 
-                 // Overwrite TF Logic
-                 if (tfRem > 0) {
-                     if (!cfg.reshift_over_tf || tfRem > cfg.reshift_over_tf_dur) {
-                         canShift = false;
-                     }
-                 }
-                 
-                 if (canShift) action = "Reshift";
-            }
-            
-            // 4. Rake (Priority 4)
-            // Original Logic: Rake enabled AND Duration expired
-            if (!action && !waitingForEnergy && cfg.use_rake && dur_rake <= t) {
-                // Check Positioning for Override? 
-                // Original code has a weird "Shred Override" inside Rake check for OOC.
-                // Since OOC is effectively "off" for decision making in Avg Sim:
-                if (energy >= c_rake) action = "Rake";
-                // Note: If low energy, original engine does NOT set waitingForEnergy=true for Rake. 
-                // It falls through to Shred/Claw.
-            }
-            
-            // 5. Shred / Claw (Fillers)
-            if (!action && !waitingForEnergy) {
-                // Shred Logic
-                if (cfg.rota_position === "back" && cfg.use_shred) {
-                    // "Shred OOC Only" means: Never Shred in deterministic (as we don't track OOC state)
-                    if (!cfg.shred_ooc_only) {
-                        if (energy >= c_shred) action = "Shred";
-                    }
-                }
-                
-                // Claw Logic (Fallback)
-                // If we didn't Shred (disabled, wrong pos, or low energy), try Claw
-                if (!action && cfg.use_claw) {
-                    if (energy >= c_claw) action = "Claw";
-                }
-            }
-            
-            // 6. Faerie Fire (Filler / lowest Prio)
-            // Note: Needs 'dur_ff' variable initialized at top of function. 
-            // Since we didn't add it in Step 3, let's assume always cast if needed or use simple logic.
-            // For now, let's skip strict FF tracking or simply allow it if nothing else happens.
-            // (Keeping it simple to avoid variable errors if you didn't add var dur_ff = 0; at the top).
-            
-            // EXECUTE
-            if (action) {
-                var curAP = cfg.inputAP;
-                var table = getAvgDamageMultiplier(action, true);
-                var avgDmg = 0;
-                var cost = 0;
-                
-                if (action === "Reshift") {
-                    // Reset Energy
-                    var furor = cfg.tal_furor * 8; // 40
-                    var wolfshead = cfg.hasGiftOfFerocity ? 20 : 0;
-                    energy = furor + wolfshead;
-                    // Reset TF
-                    cd_tf = 0;
-                    cost = 0; // Mana cost ignored in energy calc
-                    counts["Powershift"] = (counts["Powershift"] || 0) + 1;
-                }
-                else if (action === "Rip") {
-                    dur_rip = t + (cfg.idol_savagery ? 14.4 : 16.0);
-                    cost = c_rip;
-                    cp = 0; // Consume
-                    counts["Rip"] = (counts["Rip"] || 0) + 1;
-                    // Dmg handled in DoT section
-                }
-                else if (action === "Rake") {
-                    dur_rake = t + (cfg.idol_savagery ? 8.1 : 9.0);
-                    cost = c_rake;
-                    
-                    // Initial Hit
-                    var initDmg = (61 + 0.115 * curAP) * 1.2; // Pred Strikes
-                    initDmg *= 1.10; // Nat Wep
-                    if (t < cd_tf) initDmg += 50;
-                    
-                    avgDmg = initDmg * table.mult * (1 - getAvgDamageReduction());
-                    
-                    cp += 1;
-                    if (cfg.tal_primal_fury) cp += (table.p_crit); // Avg CP from Crit
-                }
-                else if (action === "Shred") {
-                    cost = c_shred;
-                    var baseS = (2.25 * ((base.minDmg+base.maxDmg)/2 + curAP/14)) + 180;
-                    if (cfg.tal_imp_shred) baseS *= 1.10;
-                    baseS *= 1.10; // Nat Wep
-                    if (t < cd_tf) baseS += 50;
-                    
-                    avgDmg = baseS * table.mult * (1 - getAvgDamageReduction());
-                    
-                    cp += 1;
-                    if (cfg.tal_primal_fury) cp += (table.p_crit);
-                }
-                else if (action === "Claw") {
-                    cost = c_claw;
-                    var baseC = (1.05 * ((base.minDmg+base.maxDmg)/2 + curAP/14)) + 115;
-                    baseC *= 1.20; // Pred Strikes
-                    baseC *= 1.10; // Nat Wep
-                    if (t < cd_tf) baseC += 50;
-                    
-                    avgDmg = baseC * table.mult * (1 - getAvgDamageReduction());
-                    
-                    cp += 1;
-                    if (cfg.tal_primal_fury) cp += (table.p_crit);
-                }
-                else if (action === "Ferocious Bite") {
-                    // FB consumes all energy
-                    cost = energy; 
-                    var usedE = energy - c_fb; // Extra energy
-                    var c = 5; // Assume 5 CP
-                    
-                    var baseFB = 70 + (128*c) + (0.07*curAP);
-                    // Extra Energy scaling (approx multiplier)
-                    // (1.005 ^ extra)
-                    var extraMult = Math.pow(1.005, Math.max(0, usedE));
-                    baseFB *= extraMult;
-                    
-                    if (cfg.tal_feral_aggression) baseFB *= 1.15;
-                    baseFB *= 1.10; // Nat Wep
-                    
-                    avgDmg = baseFB * table.mult * (1 - getAvgDamageReduction());
-                    cp = 0;
-                }
-            }
-        }
-        
-        t += step;
-    }
-
-    return {
-        dps: totalDmg / maxT,
-        totalDmg: totalDmg,
-        duration: maxT,
-        log: [],
-        dmgSources: dmgSources,
-        counts: counts,
-        // Empty stats for graph to prevent errors
-        missCounts: {}, dodgeCounts: {}, critCounts: {}, glanceCounts: {}
-    };
-}
