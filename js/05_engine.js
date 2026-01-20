@@ -158,7 +158,7 @@ function runStatWeights() {
         // Crit
         { id: "crit", label: "+1% Crit", mod: function (c) { c.inputCrit += 1.0; } },
         // Haste
-        { id: "haste", label: "+1% Haste", mod: function (c) { c.inputHaste += 1.0; } }
+        { id: "haste", label: "41% Haste", mod: function (c) { c.inputHaste += 4.0; } }
     ];
 
     if (!isHitCapped) {
@@ -321,7 +321,7 @@ function finalizeWeights(dpsResults) {
     var w_agi = calcWeight("agi", 25);
     var w_hit = calcWeight("hit", 1.0);
     var w_crit = calcWeight("crit", 1.0);
-    var w_haste = calcWeight("haste", 1.0);
+    var w_haste = calcWeight("haste", 4.0);
 
     // HTML Rendering Helper
     function renderStatBox(label, data, color) {
