@@ -95,11 +95,12 @@ function runStatWeights() {
     baseConfig.varyDuration = true;
 
     // Validation
-    var iter = 5000;//baseConfig.iterations;
-    /*if (!iter || iter < 10) {
+    baseConfig.iterations = 5000; //fixed it
+    var iter = baseConfig.iterations;
+    if (!iter || iter < 10) {
         iter = 50;
         baseConfig.iterations = 50;
-    }*/
+    }
     
     // Ensure numbers
     baseConfig.inputAP = parseFloat(baseConfig.inputAP) || 0;
