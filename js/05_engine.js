@@ -20,7 +20,7 @@ function runSimulation() {
 
     // Ensure at least 1 iteration
     if (config.iterations < 1) config.iterations = 1;
-    
+
     // Force 1 iteration for deterministic mode
     if (config.calcMode === 'deterministic' || config.calcMode === 'averaged') config.iterations = 1;
 
@@ -33,20 +33,20 @@ function runSimulation() {
             // Always run stochastic simulations
             // Loop logic
             for (var i = 0; i < config.iterations; i++) {
-                
+
                 // Config Cloning & Time Smearing Logic
                 // Wir erstellen eine flache Kopie der Config, damit wir simTime manipulieren können,
                 // ohne das Original für die nächste Runde zu verfälschen.
-                var currentConfig = Object.assign({}, config); 
+                var currentConfig = Object.assign({}, config);
 
                 if (config.varyDuration && config.iterations > 1) {
                     // Spread range: +/- 20 seconds
                     // Bei 21 Iterationen sind das 2 Sekunden Schritte.
-                    var stepSize = 2.0; 
+                    var stepSize = 2.0;
                     var midPoint = Math.floor(config.iterations / 2);
                     var offset = (i - midPoint) * stepSize;
                     currentConfig.simTime = config.simTime + offset;
-                    
+
                     // Sicherheitshalber: Keine negative Zeit
                     if (currentConfig.simTime < 10) currentConfig.simTime = 10;
                 }
@@ -91,18 +91,18 @@ function runSimulation() {
 
 function runStatWeights() {
     var baseConfig = getSimInputs();
-    baseConfig.calcMode = 'stochastic'; 
-    baseConfig.varyDuration = true; 
-    
+    baseConfig.calcMode = 'stochastic';
+    baseConfig.varyDuration = true;
+
     // UI Wert nutzen
     var iter = baseConfig.iterations;
 
     // Safety: Falls String oder zu klein
     if (!iter || iter < 10) {
-        iter = 50; 
+        iter = 50;
         baseConfig.iterations = 50;
     }
-    
+
     // Safety: Inputs zu Nummern zwingen
     baseConfig.inputAP = parseFloat(baseConfig.inputAP) || 0;
     baseConfig.inputStr = parseFloat(baseConfig.inputStr) || 0;
@@ -113,7 +113,7 @@ function runStatWeights() {
 
     // Safety Check: Mindestens 10 Schritte für das Time-Smearing
     if (iter < 10) {
-        iter = 50; 
+        iter = 50;
         baseConfig.iterations = 50;
         console.log("StatWeights: Iterations too low, auto-adjusted to 50 for smearing.");
     }
@@ -159,29 +159,29 @@ function runStatWeights() {
         setTimeout(function () {
             try {
                 var runResults = [];
-                
+
                 // Range für Time Smearing: +/- 20 Sekunden (Total 40s Spread)
-                var timeRange = runCfg.simTime/2;//40.0; 
-                
+                var timeRange = runCfg.simTime / 2;//40.0; 
+
                 // Deterministische Schleife über die Zeitfenster
                 for (var i = 0; i < iter; i++) {
                     var stepConfig = Object.assign({}, runCfg);
-                    
+
                     // Linearer Spread von -20s bis +20s über alle Iterationen
                     var progress = i / (iter - 1); // 0.0 bis 1.0
                     var offset = (progress - 0.5) * timeRange; // -20 bis +20
-                    
+
                     stepConfig.simTime = runCfg.simTime + offset;
                     // Keine negativen Zeiten zulassenw
                     if (stepConfig.simTime < 10) stepConfig.simTime = 10;
-                    
+
                     // WICHTIG: Hier wird nun runCoreSimulation im 'averaged' Modus aufgerufen
                     runResults.push(runCoreSimulation(stepConfig));
                 }
-                
+
                 var avg = aggregateResults(runResults);
                 results[scen.id] = avg.dps;
-                
+
                 updateProgress(((currentIdx + 1) / scenarios.length) * 100);
                 currentIdx++;
                 runNextScenario();
@@ -203,18 +203,18 @@ function finalizeWeights(dpsResults) {
 
     var delta_str = 25;
     var w_str = ((dpsResults["str"] - baseDps) / delta_str) / dps_per_ap;
-    if (w_str<0) w_str=0;
+    if (w_str < 0) w_str = 0;
 
     var delta_agi = 25;
     var w_agi = ((dpsResults["agi"] - baseDps) / delta_agi) / dps_per_ap;
-    if (w_agi<0) w_agi=0;
+    if (w_agi < 0) w_agi = 0;
 
     var w_hit = (dpsResults["hit"] - baseDps) / dps_per_ap;
-    if (w_hit<0) w_hit=0;
+    if (w_hit < 0) w_hit = 0;
     var w_crit = (dpsResults["crit"] - baseDps) / dps_per_ap;
-    if (w_crit<0) w_crit=0;
+    if (w_crit < 0) w_crit = 0;
     var w_haste = (dpsResults["haste"] - baseDps) / dps_per_ap;
-    if (w_haste<0) w_haste=0;
+    if (w_haste < 0) w_haste = 0;
 
 
 
@@ -302,9 +302,12 @@ function getSimInputs() {
         use_pounce: getCheck("use_pounce"), // NEU
 
         // Flags
+        buff_kings: getCheck("buff_kings"), // HINZUFÜGEN für Str-Skalierung
         buff_wf_totem: getCheck("buff_wf_totem"),
         buff_ft_totem: getCheck("buff_ft_totem"),
         consum_potion_quickness: getCheck("consum_potion_quickness"),
+        consum_mighty_rage: getCheck("consum_mighty_rage"), // NEU
+        consum_juju_flurry: getCheck("consum_juju_flurry"), // NEU
 
         // NEW: Special Gear Input
         hasGiftOfFerocity: getCheck("gear_gift_of_ferocity") === 1,
@@ -415,6 +418,8 @@ function runCoreSimulation(cfg) {
         tigersFury: 0, BloodFrenzy: 0,
         berserk: 0,
         potionQuickness: 0,
+        mightyRage: 0, // NEU
+        jujuFlurry: 0, // NEU
 
         // New Buffs
         cenarionHaste: 0, // T1 8p
@@ -445,7 +450,7 @@ function runCoreSimulation(cfg) {
     };
 
     var cds = {
-        tigersFury: 0, berserk: 0, ff: 0, potion: 0,
+        tigersFury: 0, berserk: 0, ff: 0, potion: 0, jujuFlurry: 0,
         // Trinket CDs (Individual)
         slayer: 0,
         spider: 0,
@@ -479,6 +484,13 @@ function runCoreSimulation(cfg) {
     function getCurrentAP() {
         var ap = baseAP;
 
+        // Mighty Rage Potion: +60 Str -> AP
+        if (auras.mightyRage > t && auras.mightyRage > 0) {
+            var strMod = 1.20; // Heart of the Wild (5/5 assumed)
+            if (cfg.buff_kings) strMod += 0.10; // Blessing of Kings
+            ap += (60 * strMod * 2);
+        }
+
         // Talon 3p: +100 AP
         if (auras.talonAP > t && auras.talonAP > 0) ap += 100;
 
@@ -507,6 +519,7 @@ function runCoreSimulation(cfg) {
 
         if (auras.BloodFrenzy > t && auras.BloodFrenzy > 0) hPercent += 20;
         if (auras.potionQuickness > t && auras.potionQuickness > 0) hPercent += 5;
+        if (auras.jujuFlurry > t && auras.jujuFlurry > 0) hPercent += 3; // NEU
 
         // Cenarion 8p: +15% Speed
         if (auras.cenarionHaste > t && stacks.cenarion > 0 && auras.cenarionHaste > 0) hPercent += 15;
@@ -552,6 +565,8 @@ function runCoreSimulation(cfg) {
         if (auras.spider > t) list.push("Spider");
         if (auras.jom > t) list.push("Jom");
         if (auras.zhm > t) list.push("ZHM");
+        if (auras.mightyRage > t) list.push("Rage"); 
+        if (auras.jujuFlurry > t) list.push("Flurry");
         return list.join(",");
     }
 
@@ -592,13 +607,13 @@ function runCoreSimulation(cfg) {
                     activeBuffs[key] = parseFloat((auras[key] - t).toFixed(1));
                 }
             }
-            
+
             // --- CALC OPEN WOUNDS & POUNCE ---
             var activeBleeds = 0;
             if (auras.rake > t && auras.rake > 0) activeBleeds++;
             if (auras.rip > t && auras.rip > 0) activeBleeds++;
             if (auras.pounce > t && auras.pounce > 0) activeBleeds++;
-            
+
             // Format OW Multiplier (e.g. "1.3x")
             var owStr = "-";
             if (activeBleeds > 0) owStr = (1 + (0.30 * activeBleeds)).toFixed(1) + "x";
@@ -612,7 +627,7 @@ function runCoreSimulation(cfg) {
                 dmgCrit: dmgCrit,
                 dmgTick: dmgTick,
                 dmgSpec: dmgSpec,
-                
+
                 // NEW: Added Pounce
                 remPounce: Math.max(0, auras.pounce - t),
                 remRake: Math.max(0, auras.rake - t),
@@ -645,7 +660,7 @@ function runCoreSimulation(cfg) {
         if (cfg.calcMode !== 'averaged') {
             val = Math.floor(val);
         }
-        
+
         if (!dmgSources[source]) dmgSources[source] = 0;
         dmgSources[source] += val;
         totalDmg += val;
@@ -664,21 +679,21 @@ function runCoreSimulation(cfg) {
         energy -= 50;
         cp += 1;
         gcdEnd = 1.0;
-        
+
         // Pounce Formula: 0.18 * AP + 147.5 (Total Bleed over 18s)
-        var pounceTotal = (147.5 + (0.18 * getCurrentAP()))*modNaturalWeapons; //Natural Weapon Modifier
+        var pounceTotal = (147.5 + (0.18 * getCurrentAP())) * modNaturalWeapons; //Natural Weapon Modifier
         var pounceTick = pounceTotal / 6;
-        
+
         auras.pounce = 18.0; // 6 ticks * 3s
         // Manuelles Hinzufügen der Ticks
-        for(var i=1; i<=6; i++) {
-            addEvent(i*3.0, "dot_tick", {name:"pounce", dmg: pounceTick, label:"Pounce"});
+        for (var i = 1; i <= 6; i++) {
+            addEvent(i * 3.0, "dot_tick", { name: "pounce", dmg: pounceTick, label: "Pounce" });
         }
-        
+
         logAction("Pounce", "Opener", "Cast", 0, false, false, -50);
     }
 
-        // -----------------------------------------
+    // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
     // -----------------------------------------
 
@@ -729,11 +744,11 @@ function runCoreSimulation(cfg) {
                                 logAction("Genesis", "Proc (Next Cast Empowered)", "Proc", 0, false, false);
                             }
                         }*/
-                       // Genesis (T2.5) 5p: Proc on Tick
+                        // Genesis (T2.5) 5p: Proc on Tick
                         if (cfg.set_genesis_5p) {
                             var chance = (name === "rake") ? 6.0 : 10.0;
                             if (rng.proc("GenesisTick", chance)) {
-                                auras.genesisProc = t + 30.0; 
+                                auras.genesisProc = t + 30.0;
                                 logAction("Genesis", "Proc (Next Cast Empowered)", "Proc", 0, false, false);
                             }
                         }
@@ -754,7 +769,7 @@ function runCoreSimulation(cfg) {
         // Energy Tick
         if (t >= nextEnergyTick - 0.001) {
             var tickAmt = (auras.berserk > t && cfg.use_berserk) ? 40 : 20;
-            
+
             // Capture old energy to calc actual gain for log
             var oldEnergy = energy;
             energy = Math.min(100, energy + tickAmt);
@@ -777,10 +792,10 @@ function runCoreSimulation(cfg) {
                 var pScale = (typeof probabilityScale !== 'undefined') ? probabilityScale : 1.0;
 
                 // Damage Roll
-                var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg); 
+                var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
                 var currentAP = getCurrentAP();
 
-                if (isExtra) currentAP += 315; 
+                if (isExtra) currentAP += 315;
 
                 var apBonus = (currentAP - base.baseAp) / 14.0;
                 var rawDmg = baseDmgRoll + apBonus;
@@ -810,24 +825,24 @@ function runCoreSimulation(cfg) {
                     // --- AVERAGED MODE (ADDITIVE TABLE) ---
                     // Wir verteilen 100% Wahrscheinlichkeit (TableSpace).
                     var tableSpace = 100.0;
-                    
+
                     // 1. Avoidance (Miss/Dodge/Parry) - Verbraucht Space, 0 Schaden
                     var pMiss = Math.min(tableSpace, missC); tableSpace -= pMiss;
                     var pDodge = Math.min(tableSpace, dodgeC); tableSpace -= pDodge;
                     var pParry = Math.min(tableSpace, parryC); tableSpace -= pParry;
-                    
+
                     // HitFactor für Procs (alles was nicht avoided wurde)
-                    var hitFactor = tableSpace / 100.0; 
+                    var hitFactor = tableSpace / 100.0;
 
                     // 2. Glancing - Hat Priorität vor Crit
                     var pGlance = Math.min(tableSpace, glanceC); tableSpace -= pGlance;
-                    
+
                     // 3. Block
                     var pBlock = Math.min(tableSpace, blockC); tableSpace -= pBlock;
 
                     // 4. Crit - Nimmt sich was übrig ist! (Crit Cap Gefahr)
                     var pCrit = Math.min(tableSpace, critC); tableSpace -= pCrit;
-                    
+
                     // 5. Normal Hit - Der Rest
                     var pHit = Math.max(0, tableSpace);
 
@@ -838,13 +853,13 @@ function runCoreSimulation(cfg) {
 
                     // Glancing Anteil
                     if (pGlance > 0) avgDmg += (pGlance / 100.0) * rawDmg * (1.0 - glancePenalty);
-                    
+
                     // Blocked Anteil (Vereinfacht: Hit - BlockValue)
                     if (pBlock > 0) avgDmg += (pBlock / 100.0) * Math.max(0, rawDmg - blockValue);
-                    
+
                     // Crit Anteil (x2)
                     if (pCrit > 0) avgDmg += (pCrit / 100.0) * rawDmg * 2.0;
-                    
+
                     // Normal Hit Anteil (x1)
                     if (pHit > 0) avgDmg += (pHit / 100.0) * rawDmg;
 
@@ -854,14 +869,14 @@ function runCoreSimulation(cfg) {
                     // Armor Reduction
                     var dr = getDamageReduction(t, auras.ff);
                     avgDmg *= (1 - dr);
-                    
+
                     dealDamage(isExtra ? "Extra Attack" : "Auto Attack", avgDmg, "Physical", "Hit(Avg)", false, false);
 
-                    if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--; 
+                    if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--;
 
                     // --- PROCS (Smoothed) ---
                     // Skaliert mit der Wahrscheinlichkeit, dass der Schlag überhaupt getroffen hat (hitFactor)
-                    var procScale = hitFactor * pScale; 
+                    var procScale = hitFactor * pScale;
 
                     // Buffs
                     if (cfg.tal_omen > 0 && rng.proc("Omen", 10 * procScale)) {
@@ -869,12 +884,12 @@ function runCoreSimulation(cfg) {
                         logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
                     if (cfg.hasT05_4p) {
-                         var eGain = (energy <= 80 ? 20 : 100 - energy);
-                         energy += eGain * 0.02 * procScale;
+                        var eGain = (energy <= 80 ? 20 : 100 - energy);
+                        energy += eGain * 0.02 * procScale;
                     }
                     if (auras.talonBuff > t) {
-                         var eGain = (energy <= 97 ? 3.0 : 100 - energy);
-                         energy += eGain * 1.0 * procScale;
+                        var eGain = (energy <= 97 ? 3.0 : 100 - energy);
+                        energy += eGain * 1.0 * procScale;
                     }
                     if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * procScale)) {
                         stacks.cenarion--;
@@ -889,11 +904,11 @@ function runCoreSimulation(cfg) {
 
                     // Dmg Procs
                     if (cfg.t_maelstrom) {
-                        var avgMael = 250.5 * (1 + (critC/100.0)); 
+                        var avgMael = 250.5 * (1 + (critC / 100.0));
                         dealDamage("Maelstrom", avgMael * 0.03 * procScale, "Nature", "Proc(Avg)", false, false);
                     }
                     if (cfg.t_coil) {
-                        var avgCoil = 60.5 * (1 + (critC/100.0));
+                        var avgCoil = 60.5 * (1 + (critC / 100.0));
                         dealDamage("Heating Coil", avgCoil * 0.05 * procScale, "Fire", "Proc(Avg)", false, false);
                     }
                     if (cfg.t_venoms && rng.proc("Venoms", 20 * procScale)) {
@@ -908,7 +923,7 @@ function runCoreSimulation(cfg) {
                         // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
                         // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
                         // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
-                        var ftDmg = 30.0 * (2.0 / 4.0); 
+                        var ftDmg = 30.0 * (2.0 / 4.0);
                         dealDamage("Flametongue", ftDmg * hitFactor * pScale, "Fire", "Hit(Avg)", false, false);
                     }
 
@@ -951,7 +966,7 @@ function runCoreSimulation(cfg) {
                             // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
                             // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
                             // Cat Speed = 1.0 - tWoW uses Weapon Speed (we do not read Weapon Speed from Weapon Slot yet) - we will go with 2 for now
-                            var ftDmg = 30.0 * (2.0 / 4.0); 
+                            var ftDmg = 30.0 * (2.0 / 4.0);
                             dealDamage("Flametongue", ftDmg, "Fire", "Hit(Avg)", false, false);
                         }
                         if (cfg.hasT05_4p && rng.proc("T05", 2)) {
@@ -960,9 +975,9 @@ function runCoreSimulation(cfg) {
                             logAction("Proc", "T0.5 Energy", "Proc", 0, false, false, EnergyGain);
                         }
                         if (auras.talonBuff > t) {
-                             var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
-                             energy = Math.min(100, energy + EnergyGain);
-                             logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
+                            var EnergyGain = (energy <= 97) ? 3.0 : (100 - energy);
+                            energy = Math.min(100, energy + EnergyGain);
+                            logAction("Talon 5p", "Energy Return", "Proc", 0, false, false, EnergyGain);
                         }
                         if (auras.cenarionHaste > t && stacks.cenarion > 0) {
                             stacks.cenarion--;
@@ -970,7 +985,7 @@ function runCoreSimulation(cfg) {
                         }
                         if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
                             auras.shieldrender = t + 3.0;
-                            logAction( "Shieldrender", "Ignore Armor", "Proc", 0, false, false);
+                            logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                         }
                         if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
                             logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
@@ -979,7 +994,7 @@ function runCoreSimulation(cfg) {
                         if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
                             var MaelstromDmg = rollDamageRange(200, 301);
                             dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc", false, false);
-                            if (rng.proc("MaelstromCrit", critC)) dealDamage( "Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
+                            if (rng.proc("MaelstromCrit", critC)) dealDamage("Maelstrom", MaelstromDmg, "Nature", "Proc Crit", true, false);
                         }
                         if (cfg.t_coil && rng.proc("Coil", 5)) {
                             var CoilDamage = rollDamageRange(50, 71);
@@ -1002,7 +1017,7 @@ function runCoreSimulation(cfg) {
                             performSwing(true);
                         }
                         // --- FLAMETONGUE TOTEM (Averaged) ---
-                        
+
                     }
                 }
             };
@@ -1035,83 +1050,98 @@ function runCoreSimulation(cfg) {
         }
 
         // 2. OFF-GCD ACTIONS (Simultaneous Execution)
-        
+
         // Potion
-        if (cfg.consum_potion_quickness && cds.potion <= t) {
-             auras.potionQuickness = t + 30.0; cds.potion = t + 120.0;
-             logAction("Potion", "Quickness", "Buff", 0, false, false, 0);
+        if (cds.potion <= t) {
+             if (cfg.consum_potion_quickness) {
+                 auras.potionQuickness = t + 30.0; 
+                 cds.potion = t + 120.0;
+                 logAction("Potion", "Quickness", "Buff", 0, false, false, 0);
+             } 
+             else if (cfg.consum_mighty_rage) {
+                 auras.mightyRage = t + 20.0; 
+                 cds.potion = t + 120.0;
+                 logAction("Potion", "Mighty Rage", "Buff", 0, false, false, 0);
+             }
         }
-        
+
+        // Juju Flurry (Independent CD, usually 1 min)
+        if (cfg.consum_juju_flurry && cds.jujuFlurry <= t) {
+            auras.jujuFlurry = t + 20.0;
+            cds.jujuFlurry = t + 60.0;
+            logAction("Juju", "Flurry", "Buff", 0, false, false, 0);
+        }
+
         // Berserk
         if (cfg.tal_berserk > 0 && cds.berserk <= t && cfg.use_berserk) {
-             auras.berserk = t + 20.0; cds.berserk = t + 360.0;
-             logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0);
+            auras.berserk = t + 20.0; cds.berserk = t + 360.0;
+            logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0);
         }
 
         // Tiger's Fury
         if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF && t >= gcdEnd) {
-             energy -= costTF;
-             // Update: TF Base Duration is 18s with Energy ticks
-             var dur = 18; 
-             auras.tigersFury = t + dur;
-             
-             // Blood Frenzy Talent triggers separate Attack Speed Buff
-             if (cfg.tal_blood_frenzy > 0) auras.BloodFrenzy = t + 18;
-             
-             for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
-             logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
+            energy -= costTF;
+            // Update: TF Base Duration is 18s with Energy ticks
+            var dur = 18;
+            auras.tigersFury = t + dur;
+
+            // Blood Frenzy Talent triggers separate Attack Speed Buff
+            if (cfg.tal_blood_frenzy > 0) auras.BloodFrenzy = t + 18;
+
+            for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
+            logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
         }
 
         // Trinkets (Priority 0)
         // Slayer's Crest
         if (cfg.t_slayer && cds.slayer <= t) {
-             auras.slayer = t + 20; 
-             cds.slayer = t + 120;
-             logAction("Slayer", "Activated", "Buff", 0, false, false);
+            auras.slayer = t + 20;
+            cds.slayer = t + 120;
+            logAction("Slayer", "Activated", "Buff", 0, false, false);
         }
 
         // Kiss of the Spider
         if (cfg.t_spider && cds.spider <= t) {
-             auras.spider = t + 15; 
-             cds.spider = t + 120;
-             logAction("Spider", "Activated", "Buff", 0, false, false);
+            auras.spider = t + 15;
+            cds.spider = t + 120;
+            logAction("Spider", "Activated", "Buff", 0, false, false);
         }
 
         // Earthstrike
         if (cfg.t_earthstrike && cds.earthstrike <= t) {
-             auras.earthstrike = t + 20; 
-             cds.earthstrike = t + 120;
-             logAction("Earthstrike", "Activated", "Buff", 0, false, false);
+            auras.earthstrike = t + 20;
+            cds.earthstrike = t + 120;
+            logAction("Earthstrike", "Activated", "Buff", 0, false, false);
         }
 
         // Jom Gabbar
         if (cfg.t_jomgabbar && cds.jom <= t) {
-             auras.jom = t + 20; 
-             auras.jomStart = t; 
-             cds.jom = t + 120;
-             logAction("JomGabbar", "Activated", "Buff", 0, false, false);
+            auras.jom = t + 20;
+            auras.jomStart = t;
+            cds.jom = t + 120;
+            logAction("JomGabbar", "Activated", "Buff", 0, false, false);
         }
 
         // Molten Emberstone
         if (cfg.t_emberstone && cds.emberstone <= t) {
-             auras.emberstone = t + 20; 
-             cds.emberstone = t + 180;
-             logAction("Emberstone", "Activated", "Buff", 0, false, false);
+            auras.emberstone = t + 20;
+            cds.emberstone = t + 180;
+            logAction("Emberstone", "Activated", "Buff", 0, false, false);
         }
 
         // Zandalarian Hero Medallion
         if (cfg.t_zhm && cds.zhm <= t) {
-             auras.zhm = t + 20; 
-             stacks.zhm = 20; 
-             cds.zhm = t + 120;
-             logAction("ZHM", "Activated", "Buff", 0, false, false);
+            auras.zhm = t + 20;
+            stacks.zhm = 20;
+            cds.zhm = t + 120;
+            logAction("ZHM", "Activated", "Buff", 0, false, false);
         }
 
         // Swarmguard (Stacking Logic handled in Hits)
         if (cfg.t_swarmguard && cds.swarmguard <= t && auras.swarmguard <= t) {
-             auras.swarmguard = t + 30; 
-             stacks.swarmguard = 0; 
-             cds.swarmguard = t + 180;
+            auras.swarmguard = t + 30;
+            stacks.swarmguard = 0;
+            cds.swarmguard = t + 180;
             logAction("Swarmguard", "Activated", "Buff", 0, false, false);
         }
 
@@ -1188,7 +1218,7 @@ function runCoreSimulation(cfg) {
 
                 if (action === "Reshift") {
                     // Update: Only remove TF Damage/Energy buff, keep Blood Frenzy (Speed)
-                    mana -= 300; auras.tigersFury = 0; 
+                    mana -= 300; auras.tigersFury = 0;
                     var furorEnergy = (cfg.tal_furor * 8);
 
                     // UPDATED: Furor (Talent) + Gift of Ferocity (Enchant)
@@ -1227,10 +1257,10 @@ function runCoreSimulation(cfg) {
                     var dodgeC = isBoss ? 6.5 : 5.0;
                     var parryC = (isFront) ? (isBoss ? 14.0 : 5.0) : 0;
                     var blockC = (isFront && canBlock) ? 5.0 : 0;
-                    
+
                     var avoidTotal = missC + dodgeC + parryC;
                     var hitChance = Math.max(0, 100.0 - avoidTotal) / 100.0;
-                    
+
                     var critChance = cfg.inputCrit - (isBoss ? 4.8 : 0);
                     // Genesis 5p Crit Bonus
                     if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
@@ -1248,20 +1278,20 @@ function runCoreSimulation(cfg) {
                         // AVERAGED MODE (Glättung)
                         // =================================================
                         // Wir treffen immer (res = "HIT"), skalieren aber den Schaden.
-                        res = "HIT"; 
-                        
+                        res = "HIT";
+
                         // 1. Energie Glättung (Refund weighted)
                         // Normal: Pay 100%. If Miss/Dodge/Parry, refund 80%.
                         // Avg Cost = 100% - (ChanceToMiss * 80%)
                         // Refund = CastCost * 0.8 * (Avoidance / 100)
                         var avgRefund = castCost * 0.8 * (avoidTotal / 100.0);
-                        
+
                         if (action === "Ferocious Bite") {
                             // FB verbraucht im "Average" Fall die gesamte Energie, 
                             // da der Schaden unten entsprechend skaliert wird.
-                            avgRefund = 0; 
+                            avgRefund = 0;
                         }
-                        
+
                         // Direkt gutschreiben
                         energy += avgRefund;
                         logAction(action, "AvgRefund", "Ref", 0, false, false, avgRefund);
@@ -1281,13 +1311,13 @@ function runCoreSimulation(cfg) {
                         // =================================================
                         // STANDARD MODE (RNG / Buckets)
                         // =================================================
-                        var yellowTable = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: 0, crit: 0 }; 
+                        var yellowTable = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: 0, crit: 0 };
                         res = rng.attackTable("Yellow_" + action, yellowTable);
 
                         // Crit Check (Two-Roll style if HIT)
                         if (res === "HIT" || res === "BLOCK") {
                             if (rng.proc("YellowCrit_" + action, critChance)) {
-                                res = "CRIT"; 
+                                res = "CRIT";
                             }
                         }
 
@@ -1299,7 +1329,7 @@ function runCoreSimulation(cfg) {
                             else if (res === "DODGE") dodgeCounts[action] = (dodgeCounts[action] || 0) + 1;
                             else if (res === "PARRY") { if (!missCounts.Parry) missCounts.Parry = 0; missCounts.Parry++; }
                             logAction(action, "Refund", res, 0, false, false, -castCost + refund);
-                            
+
                             // Abbruch für Schaden
                             dmgMult = 0;
                         } else {
@@ -1312,21 +1342,21 @@ function runCoreSimulation(cfg) {
                     // --- DAMAGE CALCULATION & EXECUTION ---
                     // Wird nur ausgeführt, wenn dmgMult > 0 (also kein Full Miss im Standard Modus)
                     if (dmgMult > 0) {
-                        
+
                         if (res === "CRIT") critCounts[action] = (critCounts[action] || 0) + 1; // Nur Statistik für Standard Modus
-                        
+
                         // Primal Fury (CP Generation)
                         // Im Averaged Mode nutzen wir procChanceMod um Misses zu simulieren
                         if (cpGen > 0 && cfg.tal_primal_fury > 0) {
                             // Im Standard Mode: Nur bei CRIT.
                             // Im Averaged Mode: Wir simulieren Crit-Events proportional zur CritChance.
                             var isCritEvent = (res === "CRIT");
-                            
+
                             if (cfg.calcMode === 'averaged') {
                                 // Wir würfeln "virtuell" ob es ein Crit war für CP Zwecke
                                 if (rng.proc("PrimalFury_Sim", critChance * procChanceMod)) isCritEvent = true;
                             }
-                            
+
                             if (isCritEvent) {
                                 // 50% Chance pro Punkt (also 100% bei 2 Punkten)
                                 if (rng.proc("PrimalFury", cfg.tal_primal_fury * 50)) cpGen++;
@@ -1344,7 +1374,7 @@ function runCoreSimulation(cfg) {
                         // Genesis Consumption
                         if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
                             normalDmg *= 1.15;
-                            auras.genesisProc = 0; 
+                            auras.genesisProc = 0;
                             logAction("Genesis", "Consumed", "Proc", 0, false, false);
                         }
 
@@ -1362,7 +1392,7 @@ function runCoreSimulation(cfg) {
                         else if (action === "Shred") {
                             abilityDmg = 2.25 * normalDmg + 180;
                             if (cfg.tal_imp_shred > 0) abilityDmg *= (1 + cfg.tal_imp_shred * 0.05);
-                            
+
                             if (auras.laceration > t) {
                                 var EnergyRefund = (energy >= 85) ? (100 - energy) : 15;
                                 energy = Math.min(100, energy + EnergyRefund);
@@ -1376,12 +1406,12 @@ function runCoreSimulation(cfg) {
                             // DoT Teil
                             var dotTotal = 102 + (0.09 * curAP);
                             dotTotal *= modPredatoryStrikes;
-                            
+
                             // Im Averaged Mode skalieren wir auch den DoT Schaden mit der HitChance
                             if (cfg.calcMode === 'averaged') dotTotal *= hitChance;
 
                             var tickVal = dotTotal / 3;
-                            var rInterval = cfg.idol_savagery ? 2.7 : 3.0; 
+                            var rInterval = cfg.idol_savagery ? 2.7 : 3.0;
                             var rDur = cfg.idol_savagery ? 8.1 : 9.0;
 
                             auras.rake = t + rDur;
@@ -1396,7 +1426,7 @@ function runCoreSimulation(cfg) {
                             var apPart = (curAP - base.baseAp);
                             var tickDmg = 47 + (cp - 1) * 31 + (cpScaled / 100 * apPart);
                             if (cfg.tal_open_wounds > 0) tickDmg *= (1 + 0.15 * cfg.tal_open_wounds);
-                            
+
                             // Averaged Mode: DoT Schaden skalieren wir NICHT hier, da Rip immer trifft,
                             // wenn es ausgeführt wird (Check war oben). 
                             // ABER: Falls Rip verfehlen KANN (Yellow Hit), dann müssen wir skalieren.
@@ -1433,17 +1463,17 @@ function runCoreSimulation(cfg) {
                             // --- CARNAGE LOGIC (Variable Chance + Snapshot Refresh) ---
                             // Formula: Rank * 10% per CP spent
                             var carnageChance = cpUsed * cfg.tal_carnage * 10;
-                            
+
                             if (carnageChance > 0 && rng.proc("Carnage", carnageChance * procChanceMod)) {
-                                
+
                                 logAction("Carnage", "Proc (" + carnageChance + "%)", "Proc", 0, false, false);
-                                
+
                                 // 1. Refresh Rake if active
                                 if (auras.rake > t) {
                                     // Rake hat keine CP-Skalierung, wir nehmen Current AP für den Refresh
                                     var cRakeDot = (102 + (0.09 * curAP)) * modPredatoryStrikes;
                                     var cRakeTick = cRakeDot / 3;
-                                    var rInt = cfg.idol_savagery ? 2.7 : 3.0; 
+                                    var rInt = cfg.idol_savagery ? 2.7 : 3.0;
                                     var rD = cfg.idol_savagery ? 8.1 : 9.0;
 
                                     auras.rake = t + rD;
@@ -1457,20 +1487,20 @@ function runCoreSimulation(cfg) {
                                 if (auras.rip > t) {
                                     // Nutze activeRipCP für Dauer und Schaden
                                     var usedRipCP = activeRipCP || 5; // Fallback auf 5 falls 0 (sollte nicht passieren wenn Rip aktiv ist)
-                                    
-                                    var cRipTicks = 4 + usedRipCP; 
-                                    
+
+                                    var cRipTicks = 4 + usedRipCP;
+
                                     // Recalculate Rip Damage based on Snapshot CP
                                     var cApPart = (curAP - base.baseAp);
                                     var cRipTickDmg = 47 + (usedRipCP - 1) * 31 + (Math.min(4, usedRipCP) / 100 * cApPart);
-                                    
+
                                     if (cfg.tal_open_wounds > 0) cRipTickDmg *= (1 + 0.15 * cfg.tal_open_wounds);
-                                    
+
                                     var ripInt = cfg.idol_savagery ? 1.8 : 2.0;
-                                    
+
                                     // Reset Duration to full length of original CP
                                     auras.rip = t + (cRipTicks * ripInt);
-                                    
+
                                     removeEvent("dot_tick", "rip");
                                     for (var i = 1; i <= cRipTicks; i++) {
                                         addEvent(t + (i * ripInt), "dot_tick", { name: "rip", dmg: cRipTickDmg, label: "Rip" });
@@ -1478,7 +1508,7 @@ function runCoreSimulation(cfg) {
                                 }
 
                                 // 3. Add 1 Combo Point (Refund)
-                                cpGen = 1; 
+                                cpGen = 1;
                             }
 
 
@@ -1510,10 +1540,10 @@ function runCoreSimulation(cfg) {
 
                         // --- PROCS ON CAST (Check Hit Success) ---
                         // Averaged Mode: HitSuccess ist immer wahr (virtuell), wir skalieren aber mit der HitChance.
-                        
+
                         var hitSuccess = true;
                         var pScale = 1.0;
-                        
+
                         if (cfg.calcMode === 'averaged') {
                             // Im Averaged Mode ist die HitChance bereits in 'hitChance' Variable (definiert oben im Block).
                             // pScale ist unser Faktor für alles was jetzt kommt.
@@ -1522,9 +1552,9 @@ function runCoreSimulation(cfg) {
                             // Standard Mode: War der Schlag erfolgreich? (dmgMult > 0)
                             hitSuccess = (dmgMult > 0);
                         }
-                        
+
                         if (hitSuccess) {
-                            
+
                             if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--;
 
                             // 1. Buffs (Buckets mit pScale)
@@ -1538,13 +1568,13 @@ function runCoreSimulation(cfg) {
                                 auras.clearcasting = t + 15.0;
                                 logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                             }
-                             if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * pScale)) {
+                            if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * pScale)) {
                                 stacks.cenarion--;
                                 if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
                             }
                             // Trinkets (Buffs)
                             if (cfg.t_shieldrender && rng.proc("Shieldrender", 7 * pScale)) {
-                                auras.shieldrender = t + 3.0; 
+                                auras.shieldrender = t + 3.0;
                                 logAction("Shieldrender", "Ignore Armor", "Proc", 0, false, false);
                             }
                             if (auras.swarmguard > t && stacks.swarmguard < 6 && rng.proc("Swarmguard", 80 * pScale)) {
@@ -1554,8 +1584,8 @@ function runCoreSimulation(cfg) {
                             if (cfg.set_talon_5p && (action === "Rip" || action === "Ferocious Bite")) {
                                 // Stacks bauen
                                 if (rng.proc("TalonStack", 100 * pScale)) { // Guaranteed on hit
-                                     stacks.talonFero += cp; // cp is usedCP
-                                     if (stacks.talonFero >= 25) {
+                                    stacks.talonFero += cp; // cp is usedCP
+                                    if (stacks.talonFero >= 25) {
                                         stacks.talonFero = 0;
                                         auras.talonBuff = t + 10.0;
                                         logAction("Primal Ferocity", "Proc! +25% AP", "Proc", 0, false, false);
@@ -1580,25 +1610,25 @@ function runCoreSimulation(cfg) {
                                     // Hier ist es komplexer: Procs Laceration Buff (Refund Next Shred).
                                     // Wir nutzen Bucket für den Buff.
                                     if (rng.proc("LacerationIdol", 20 * cp * pScale)) {
-                                         auras.laceration = t + 10.0;
+                                        auras.laceration = t + 10.0;
                                     }
                                 }
-                                
+
                                 // Dmg Procs
                                 if (cfg.idol_emeral_rot && (action === "Rip" || action === "Ferocious Bite")) {
                                     // Chance 20% per CP
                                     var chance = 20 * cp;
-                                    dealDamage("Emerald Rot", 170 * (chance/100.0) * pScale, "Nature", "Proc(Avg)", false, false);
+                                    dealDamage("Emerald Rot", 170 * (chance / 100.0) * pScale, "Nature", "Proc(Avg)", false, false);
                                 }
                                 if (cfg.t_maelstrom) {
-                                    var avgMael = 250.5 * (1 + (critChance/100.0)); // Use Yellow Crit Chance approx
+                                    var avgMael = 250.5 * (1 + (critChance / 100.0)); // Use Yellow Crit Chance approx
                                     dealDamage("Maelstrom", avgMael * 0.03 * pScale, "Nature", "Proc(Avg)", false, false);
                                 }
                                 if (cfg.t_coil) {
-                                    var avgCoil = 60.5 * (1 + (critChance/100.0));
+                                    var avgCoil = 60.5 * (1 + (critChance / 100.0));
                                     dealDamage("Heating Coil", avgCoil * 0.05 * pScale, "Fire", "Proc(Avg)", false, false);
                                 }
-                                
+
                                 // Extra Attacks
                                 if (cfg.t_hoj && !isExtra) {
                                     performSwing(true, 0.02 * pScale);
@@ -1650,7 +1680,7 @@ function runCoreSimulation(cfg) {
                                     performSwing(true);
                                 }
                             }
-                            
+
                             // CP Logic Update (already done in step before)
                             if (action === "Rip" || action === "Ferocious Bite") cp = 0;
                             cp += cpGen;
@@ -1720,14 +1750,14 @@ function RNGHandler(mode) {
 }
 
 // Returns a damage value. Random between min/max OR Average.
-RNGHandler.prototype.dmg = function(min, max) {
+RNGHandler.prototype.dmg = function (min, max) {
     // Averaged nutzt ebenfalls den Mittelwert für Damage Ranges
     if (this.mode === 'deterministic' || this.mode === 'averaged') return (min + max) / 2;
     return min + Math.random() * (max - min);
 };
 
 // Returns true if an event triggers based on percentage (0-100).
-RNGHandler.prototype.proc = function(id, chance) {
+RNGHandler.prototype.proc = function (id, chance) {
     if (chance <= 0) return false;
     // Averaged nutzt für Procs/Events ebenfalls deterministische Buckets
     if (this.mode === 'deterministic' || this.mode === 'averaged') {
@@ -1745,16 +1775,16 @@ RNGHandler.prototype.proc = function(id, chance) {
 // Handles Attack Table Logic (White Hits: Single Roll / Priority System)
 // Checks outcomes in order: Miss -> Dodge -> Parry -> Block -> Glance -> Crit
 // Returns the string of the result (e.g. "MISS", "CRIT", "HIT")
-RNGHandler.prototype.attackTable = function(idPrefix, table) {
+RNGHandler.prototype.attackTable = function (idPrefix, table) {
     // table = { miss: %, dodge: %, parry: %, block: %, glance: %, crit: % }
-    
+
     if (this.mode === 'deterministic' || this.mode === 'averaged') {
         // Priority System: Check buckets in order. 
         // Note: This ensures correct frequency over time but separates events strictly.
         var types = ['MISS', 'DODGE', 'PARRY', 'BLOCK', 'GLANCE', 'CRIT'];
         var keys = ['miss', 'dodge', 'parry', 'block', 'glance', 'crit'];
-        
-        for(var i=0; i<types.length; i++) {
+
+        for (var i = 0; i < types.length; i++) {
             var type = types[i];
             var key = keys[i];
             var chance = table[key] || 0;
@@ -1773,7 +1803,7 @@ RNGHandler.prototype.attackTable = function(idPrefix, table) {
         // Stochastic: Single Roll
         var roll = Math.random() * 100;
         var limit = 0;
-        
+
         if (table.miss && roll < (limit += table.miss)) return "MISS";
         if (table.dodge && roll < (limit += table.dodge)) return "DODGE";
         if (table.parry && roll < (limit += table.parry)) return "PARRY";

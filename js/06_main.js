@@ -18,12 +18,12 @@ function init() {
     var warnModal = document.getElementById("warningModal");
     if (warnModal) warnModal.classList.remove("hidden");
 
-    loadDatabase().then(function() {
+    loadDatabase().then(function () {
         console.log("DB Loaded.");
 
         var urlParams = new URLSearchParams(window.location.search);
         var cfgStr = urlParams.get('cfg');
-        
+
         if (cfgStr) {
             try {
                 var json = LZString.decompressFromEncodedURIComponent(cfgStr);
@@ -35,10 +35,10 @@ function init() {
 
                     if (data.length > 0) {
                         SIM_LIST = [];
-                        data.forEach(function(item) {
+                        data.forEach(function (item) {
                             var sName = item.n || item.name || "Imported Sim";
                             var newSim = new SimObject(Date.now() + Math.floor(Math.random() * 1000), sName);
-                            
+
                             if (item.d && typeof unpackConfig === 'function') {
                                 newSim.config = unpackConfig(item.d);
                             } else {
@@ -46,13 +46,13 @@ function init() {
                             }
                             SIM_LIST.push(newSim);
                         });
-                        
+
                         renderSidebar();
-                        
+
                         // Load the first sim
                         if (SIM_LIST.length > 0) {
                             // Ensure we start cleanly with the first sim
-                            switchSim(0, true); 
+                            switchSim(0, true);
                         }
                     }
                 }
@@ -68,13 +68,13 @@ function init() {
         updateEnemyInfo();
         updatePlayerStats();
 
-    }).catch(function(err) {
+    }).catch(function (err) {
         console.error("DB Error:", err);
         if (SIM_LIST.length === 0) addSim(true);
     });
 }
 
-    
+
 
 
 // Ensure DOM is fully loaded before initializing

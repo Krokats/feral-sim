@@ -73,17 +73,17 @@ function renderSidebar() {
     SIM_LIST.forEach(function (sim, idx) {
         var btn = document.createElement("div");
         btn.className = "sidebar-btn" + (CURRENT_VIEW === 'single' && ACTIVE_SIM_INDEX === idx ? " active" : "");
-        
+
         // Label Logic
         var label = (idx + 1);
-        if(sim.name && sim.name.startsWith("Sim ")) {
-             // Default numbering
+        if (sim.name && sim.name.startsWith("Sim ")) {
+            // Default numbering
         } else if (sim.name) {
-             label = sim.name.substring(0, 2).toUpperCase();
+            label = sim.name.substring(0, 2).toUpperCase();
         }
-        
+
         btn.innerText = (idx + 1);
-        btn.title = sim.name || "Sim " + (idx+1);
+        btn.title = sim.name || "Sim " + (idx + 1);
         btn.onclick = function () { switchSim(idx); };
         sb.appendChild(btn);
     });
@@ -101,7 +101,7 @@ function renderRotationHelp() {
     // Sucht die Card-Header, die den Text "Rotation Settings" enthalten
     const headers = document.querySelectorAll(".card-header h2");
     let targetHeader = null;
-    
+
     headers.forEach(h => {
         if (h.innerText.includes("Rotation Settings")) {
             targetHeader = h;
@@ -115,8 +115,8 @@ function renderRotationHelp() {
     helpIcon.innerHTML = " ⓘ";
     // Styling angepasst für die Platzierung innerhalb der Card
     helpIcon.style.cssText = "cursor:help; color:var(--text-muted); font-size:1rem; margin-left:8px; vertical-align: middle;";
-    
-    helpIcon.onmouseenter = function(e) {
+
+    helpIcon.onmouseenter = function (e) {
         const tt = document.getElementById("wowTooltip");
         if (!tt) return;
         tt.style.display = "block";
@@ -146,10 +146,10 @@ function saveCurrentState() {
 function addSim(isInit) {
     // Create new Sim Object
     var id = Date.now();
-    
+
     // Default Name
     var newName = "Simulation " + (SIM_LIST.length + 1);
-    
+
     // Prepare Data Containers
     var newConfig = {};
     var newGear = {};
@@ -161,7 +161,7 @@ function addSim(isInit) {
         newConfig = getSimInputs(); // Grab current UI inputs
         newGear = JSON.parse(JSON.stringify(GEAR_SELECTION)); // Clone global gear
         newEnchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION)); // Clone global enchants
-        
+
         // Optional: Copy Name
         var currentName = document.getElementById("simName") ? document.getElementById("simName").value : "";
         if (currentName) newName = currentName + " (Copy)";
@@ -197,7 +197,7 @@ function switchSim(index, skipSave) {
     ACTIVE_SIM_INDEX = index;
     CURRENT_VIEW = 'single';
     SIM_DATA = SIM_LIST[index];
-    
+
     if (typeof updateViewButtons === 'function') updateViewButtons();
 
     // 3. Load Data to UI
@@ -211,8 +211,8 @@ function switchSim(index, skipSave) {
     // 4. Update Views
     var compView = document.getElementById("comparisonView");
     var singleView = document.getElementById("singleSimView");
-    if(compView) compView.classList.add("hidden");
-    if(singleView) singleView.classList.remove("hidden");
+    if (compView) compView.classList.add("hidden");
+    if (singleView) singleView.classList.remove("hidden");
 
     var nameInput = document.getElementById("simName");
     if (nameInput) {
@@ -234,7 +234,7 @@ function switchSim(index, skipSave) {
             resArea.classList.remove("hidden");
         }
     }
-    
+
     if (typeof updateRotationConstraints === 'function') updateRotationConstraints();
 }
 
@@ -348,8 +348,8 @@ function renderComparisonTable() {
 
         if (r) {
             dpsAvg = Math.floor(r.dps);
-            if(r.minDps) dpsMin = Math.floor(r.minDps);
-            if(r.maxDps) dpsMax = Math.floor(r.maxDps);
+            if (r.minDps) dpsMin = Math.floor(r.minDps);
+            if (r.maxDps) dpsMax = Math.floor(r.maxDps);
         }
 
         // Build Row (Optimized for Feral Cat 1.18)
@@ -390,12 +390,12 @@ function generateSummaryImage() {
     // --- 1. Header & Metadaten ---
     setText("sumSimName", sim.name || "Feral Simulation");
     setText("sumDate", new Date().toLocaleDateString());
-    
+
     // --- 2. Hero Bereich (DPS & Gear Score) ---
     setText("sumAvg", Math.floor(r.dps).toFixed(1));
     setText("sumMin", Math.floor(r.minDps || 0).toFixed(0));
     setText("sumMax", Math.floor(r.maxDps || 0).toFixed(0));
-    
+
     // Gear Score aus dem UI-Element des Planers ziehen
     var gsEl = document.getElementById("gp_gs");
     setText("sumGS", gsEl ? gsEl.innerText : "0");
@@ -413,10 +413,10 @@ function generateSummaryImage() {
     var ulRot = document.getElementById("sumRotaList");
     if (ulRot) {
         ulRot.innerHTML = "";
-        var addLi = function(text) { 
+        var addLi = function (text) {
             var li = document.createElement("li");
             li.innerText = text;
-            ulRot.appendChild(li); 
+            ulRot.appendChild(li);
         };
 
         // Dynamische Abfrage der gewählten Rotations-Optionen
@@ -425,7 +425,7 @@ function generateSummaryImage() {
         if (c.use_reshift) addLi("Powershift (<" + (c.reshift_energy || 10) + " Energy)");
         if (c.use_tf) addLi("Tiger's Fury");
         if (c.use_rake) addLi("Rake (Bleed)");
-        
+
         var posText = (c.rota_position === "back") ? "Behind (Shred)" : "Front (Claw)";
         addLi("Pos: " + posText);
     }
@@ -433,13 +433,13 @@ function generateSummaryImage() {
     // --- 5. Spalte 3: Sets, Trinkets & Gear Effects ---
     var ulGear = document.getElementById("sumGearList");
     var ulTrink = document.getElementById("sumTrinketList");
-    
+
     if (ulGear) {
         ulGear.innerHTML = "";
-        var addGear = function(text) { 
+        var addGear = function (text) {
             var li = document.createElement("li");
             li.innerText = text;
-            ulGear.appendChild(li); 
+            ulGear.appendChild(li);
         };
 
         // Prüfung auf aktive Turtle WoW Sets
@@ -455,10 +455,10 @@ function generateSummaryImage() {
 
     if (ulTrink) {
         ulTrink.innerHTML = "";
-        var addTrink = function(text) { 
+        var addTrink = function (text) {
             var li = document.createElement("li");
             li.innerText = text;
-            ulTrink.appendChild(li); 
+            ulTrink.appendChild(li);
         };
 
         // On-Use & Proc Trinkets
@@ -482,11 +482,11 @@ function generateSummaryImage() {
     card.style.top = "0";
     card.style.left = "-2000px";
 
-    html2canvas(card, { 
-        scale: 2, 
-        backgroundColor: "#121212", 
+    html2canvas(card, {
+        scale: 2,
+        backgroundColor: "#121212",
         useCORS: true,
-        logging: false 
+        logging: false
     }).then(function (canvas) {
         var link = document.createElement('a');
         link.download = 'feral_report_' + (sim.name ? sim.name.replace(/\s+/g, '_') : "export") + '.png';
@@ -517,7 +517,7 @@ function getGearShort(sim) {
     var count = Object.keys(sim.gear || {}).length;
     var sets = "";
     var c = sim.config || {};
-    
+
     // Updated Logic for New Sets
     if (c.set_cenarion_5p) sets += "T1-5 ";
     if (c.set_cenarion_8p) sets += "T1-8 ";
@@ -525,13 +525,13 @@ function getGearShort(sim) {
     if (c.set_genesis_5p) sets += "T2.5-5 ";
     if (c.set_talon_3p) sets += "T3.5-3 ";
     if (c.set_talon_5p) sets += "T3.5-5 ";
-    
+
     // Important Trinkets
     if (c.t_slayer) sets += "Slayer ";
     if (c.t_spider) sets += "Spider ";
     if (c.t_jomgabbar) sets += "Jom ";
     if (c.t_swarmguard) sets += "Swarm ";
-    
+
     return count + " Items " + (sets ? "| " + sets : "");
 }
 
@@ -553,7 +553,7 @@ function runAllSims() {
             if (typeof runCoreSimulation !== 'function') {
                 throw new Error("Engine not loaded");
             }
-            
+
             // Reload data first to ensure Globals are correct
             loadSimDataToUI(sim);
 
@@ -561,7 +561,7 @@ function runAllSims() {
             var iterations = sim.config.iterations || 100;
 
             // Small delay to allow UI/Globals to settle
-            setTimeout(function() {
+            setTimeout(function () {
                 var cfg = getSimInputs();
                 for (var i = 0; i < iterations; i++) {
                     all.push(runCoreSimulation(cfg));
@@ -572,7 +572,7 @@ function runAllSims() {
                 idx++;
                 next();
             }, 5);
-            
+
         } catch (e) {
             console.error(e);
             idx++;
@@ -602,9 +602,10 @@ function setupUIListeners() {
                 else if (el.classList.contains("mut-ex-food")) groupClass = "mut-ex-food";
                 else if (el.classList.contains("mut-ex-bl")) groupClass = "mut-ex-bl";
                 else if (el.classList.contains("mut-ex-juju")) groupClass = "mut-ex-juju";
+                else if (el.classList.contains("mut-ex-potion")) groupClass = "mut-ex-potion";
 
                 if (groupClass) {
-                    document.querySelectorAll("." + groupClass).forEach(function(sib) {
+                    document.querySelectorAll("." + groupClass).forEach(function (sib) {
                         if (sib !== el) sib.checked = false;
                     });
                 }
@@ -641,7 +642,7 @@ function setupUIListeners() {
             // If value is set (not empty), update Armor Field
             if (val) {
                 var armorInput = document.getElementById("enemy_armor");
-                
+
                 if (armorInput) {
                     armorInput.value = val;
                     // Trigger updates
@@ -655,7 +656,7 @@ function setupUIListeners() {
     }
 
     // 3. Escape Key to Close Modals
-    document.addEventListener("keydown", function(e) {
+    document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
             closeItemModal();
             closeEnchantModal();
@@ -673,14 +674,14 @@ function setupUIListeners() {
     // Help Tooltips for Settings & Configuration
     const allLabels = document.querySelectorAll(".card-body label, .input-group label");
     allLabels.forEach(label => {
-        const forId = label.getAttribute("for") || 
-                      (label.querySelector("input, select") ? label.querySelector("input, select").id : null);
-        
+        const forId = label.getAttribute("for") ||
+            (label.querySelector("input, select") ? label.querySelector("input, select").id : null);
+
         if (forId && HELP_TEXTS[forId]) {
             label.style.borderBottom = "1px dotted #666";
             label.style.cursor = "help";
-            
-            label.onmouseenter = function(e) {
+
+            label.onmouseenter = function (e) {
                 const tt = document.getElementById("wowTooltip");
                 if (!tt) return;
                 tt.style.display = "block";
@@ -691,7 +692,7 @@ function setupUIListeners() {
             label.onmouseleave = hideTooltip;
         }
     });
-    
+
     // Init Rotation Help
     renderRotationHelp();
 
@@ -718,18 +719,18 @@ function updateRotationConstraints() {
 
     if (canBleed) {
         // Enable
-        if(rowRip) { rowRip.style.opacity = "1"; rowRip.style.pointerEvents = "auto"; }
-        if(chkRip) chkRip.disabled = false;
-        
-        if(lblRake) { lblRake.style.opacity = "1"; lblRake.style.pointerEvents = "auto"; }
-        if(chkRake) chkRake.disabled = false;
+        if (rowRip) { rowRip.style.opacity = "1"; rowRip.style.pointerEvents = "auto"; }
+        if (chkRip) chkRip.disabled = false;
+
+        if (lblRake) { lblRake.style.opacity = "1"; lblRake.style.pointerEvents = "auto"; }
+        if (chkRake) chkRake.disabled = false;
     } else {
         // Disable
-        if(rowRip) { rowRip.style.opacity = "0.5"; rowRip.style.pointerEvents = "none"; }
-        if(chkRip) chkRip.disabled = true;
+        if (rowRip) { rowRip.style.opacity = "0.5"; rowRip.style.pointerEvents = "none"; }
+        if (chkRip) chkRip.disabled = true;
 
-        if(lblRake) { lblRake.style.opacity = "0.5"; lblRake.style.pointerEvents = "none"; }
-        if(chkRake) chkRake.disabled = true;
+        if (lblRake) { lblRake.style.opacity = "0.5"; lblRake.style.pointerEvents = "none"; }
+        if (chkRake) chkRake.disabled = true;
     }
 
     // 2. Position Constraint: Shred
@@ -739,15 +740,15 @@ function updateRotationConstraints() {
     var chbShredOoCOnly = document.getElementById("shred_ooc_only");
 
     if (pos === "back") {
-        if(lblShred) { lblShred.style.opacity = "1"; lblShred.style.pointerEvents = "auto"; }
-        if(chkShred) chkShred.disabled = false;
-        if(lblShredOoCOnly) { lblShredOoCOnly.style.opacity = "1"; lblShredOoCOnly.style.pointerEvents = "auto"; }
-        if(chbShredOoCOnly) chbShredOoCOnly.disabled = false;
+        if (lblShred) { lblShred.style.opacity = "1"; lblShred.style.pointerEvents = "auto"; }
+        if (chkShred) chkShred.disabled = false;
+        if (lblShredOoCOnly) { lblShredOoCOnly.style.opacity = "1"; lblShredOoCOnly.style.pointerEvents = "auto"; }
+        if (chbShredOoCOnly) chbShredOoCOnly.disabled = false;
     } else {
-        if(lblShred) { lblShred.style.opacity = "0.5"; lblShred.style.pointerEvents = "none"; }
-        if(chkShred) chkShred.disabled = true;
-        if(lblShredOoCOnly) { lblShredOoCOnly.style.opacity = "0.5"; lblShredOoCOnly.style.pointerEvents = "none"; }
-        if(chbShredOoCOnly) chbShredOoCOnly.disabled = true;
+        if (lblShred) { lblShred.style.opacity = "0.5"; lblShred.style.pointerEvents = "none"; }
+        if (chkShred) chkShred.disabled = true;
+        if (lblShredOoCOnly) { lblShredOoCOnly.style.opacity = "0.5"; lblShredOoCOnly.style.pointerEvents = "none"; }
+        if (chbShredOoCOnly) chbShredOoCOnly.disabled = true;
     }
 
     // 3. Reshift vs TF Logic
@@ -756,21 +757,21 @@ function updateRotationConstraints() {
 
     var chkOverTF = document.getElementById("reshift_over_tf");
     var inpOverTFDur = document.getElementById("reshift_over_tf_dur");
-    
+
     // Parents for visual opacity
     var parentToggle = chkOverTF ? chkOverTF.parentElement : null;
     var parentDur = inpOverTFDur ? inpOverTFDur.parentElement : null;
 
     if (useShift && useTF) {
-        if(chkOverTF) chkOverTF.disabled = false;
-        if(inpOverTFDur) inpOverTFDur.disabled = false;
-        if(parentToggle) { parentToggle.style.opacity = "1"; parentToggle.style.pointerEvents = "auto"; }
-        if(parentDur) { parentDur.style.opacity = "1"; parentDur.style.pointerEvents = "auto"; }
+        if (chkOverTF) chkOverTF.disabled = false;
+        if (inpOverTFDur) inpOverTFDur.disabled = false;
+        if (parentToggle) { parentToggle.style.opacity = "1"; parentToggle.style.pointerEvents = "auto"; }
+        if (parentDur) { parentDur.style.opacity = "1"; parentDur.style.pointerEvents = "auto"; }
     } else {
-        if(chkOverTF) chkOverTF.disabled = true;
-        if(inpOverTFDur) inpOverTFDur.disabled = true;
-        if(parentToggle) { parentToggle.style.opacity = "0.5"; parentToggle.style.pointerEvents = "none"; }
-        if(parentDur) { parentDur.style.opacity = "0.5"; parentDur.style.pointerEvents = "none"; }
+        if (chkOverTF) chkOverTF.disabled = true;
+        if (inpOverTFDur) inpOverTFDur.disabled = true;
+        if (parentToggle) { parentToggle.style.opacity = "0.5"; parentToggle.style.pointerEvents = "none"; }
+        if (parentDur) { parentDur.style.opacity = "0.5"; parentDur.style.pointerEvents = "none"; }
     }
 
     // --- NEU: Pounce Constraint (Requires Behind) ---
@@ -778,18 +779,18 @@ function updateRotationConstraints() {
     var chkPounce = document.getElementById("use_pounce");
 
     if (pos === "back") {
-        if(lblPounce) { lblPounce.style.opacity = "1"; lblPounce.style.pointerEvents = "auto"; }
-        if(chkPounce) chkPounce.disabled = false;
+        if (lblPounce) { lblPounce.style.opacity = "1"; lblPounce.style.pointerEvents = "auto"; }
+        if (chkPounce) chkPounce.disabled = false;
     } else {
-        if(lblPounce) { lblPounce.style.opacity = "0.5"; lblPounce.style.pointerEvents = "none"; }
-        if(chkPounce) { chkPounce.disabled = true; chkPounce.checked = false; }
+        if (lblPounce) { lblPounce.style.opacity = "0.5"; lblPounce.style.pointerEvents = "none"; }
+        if (chkPounce) { chkPounce.disabled = true; chkPounce.checked = false; }
     }
 }
 
 function updateCalcModeUI() {
     var mode = document.getElementById("sim_calc_mode") ? document.getElementById("sim_calc_mode").value : "stochastic";
     var iterInput = document.getElementById("simCount");
-    
+
     if (iterInput) {
         if (mode === 'deterministic' || mode === 'averaged') {
             iterInput.disabled = true;
@@ -854,7 +855,7 @@ function updateEnemyInfo() {
 
     // Faerie Fire (Check both Debuff box AND Rotation box, max 1 application)
     if (getVal("debuff_ff") || getVal("use_ff")) debuff += 505;
-    
+
     // NEW: Swarmguard Logic (Check if enabled in logic, though UI static preview can't simulate stacks)
     // We leave this dynamic.
 
@@ -864,7 +865,7 @@ function updateEnemyInfo() {
     // Turtle WoW 1.18 DR Formula 
     // DR = Armor / (Armor + constant)
     var EnemyLevel = getVal("enemy_level");
-    var constant = (467.5*EnemyLevel)-22167.5;
+    var constant = (467.5 * EnemyLevel) - 22167.5;
     var dr = effArmor / (effArmor + constant);
     var pct = (dr * 100).toFixed(2);
     var arr = (effArmor * 100 / armor).toFixed(2);
@@ -872,22 +873,22 @@ function updateEnemyInfo() {
     // Update Text
     var barFill = document.getElementById("enemyArmorBar");
     var barText = document.getElementById("enemyArmorText");
-    
+
     if (barText) {
         barText.innerText = `Reduction: ${pct}% (Armor: ${effArmor})`;
     }
-    
+
     if (barFill) {
         // Percentage of the bar to fill
         var visWidth = Math.min(100, parseFloat(arr));
-        if(isNaN(visWidth)) visWidth = 0;
+        if (isNaN(visWidth)) visWidth = 0;
         barFill.style.width = visWidth + "%";
-        
+
         // Color Logic
         var factor = parseFloat(arr) / 100.0; // 0.0 to 1.0+
         if (factor > 1) factor = 1;
         if (factor < 0) factor = 0;
-        
+
         var hue = 120 - (factor * 120);
         barFill.style.background = `hsl(${hue}, 80%, 45%)`;
         //barFill.className = "enemy-bar-fill"; 
@@ -905,7 +906,7 @@ function updatePlayerStats() {
     setText("sumCrit", crit.toFixed(2) + "%");
     setText("sumHit", hit.toFixed(2) + "%");
     setText("sumHaste", haste.toFixed(2) + "%");
-    
+
     updateRotaSummary();
     updateTrinketSummary();
     updateDamageScaling();
@@ -966,7 +967,7 @@ function switchResultView(view) {
 function updateViewButtons() {
     var ids = ['btnViewMin', 'btnViewAvg', 'btnViewMax'];
     var vals = ['min', 'avg', 'max'];
-    
+
     ids.forEach((id, idx) => {
         var el = document.getElementById(id);
         if (el) {
@@ -978,11 +979,11 @@ function updateViewButtons() {
 
 function updateSimulationResults(sim) {
     if (!sim || !sim.results) return;
-    
+
     // Choose data set based on current View
     var data = sim.results; // Default Avg
     var isAvg = true;
-    
+
     if (CURRENT_RESULT_VIEW === 'min' && sim.results.minRun) {
         data = sim.results.minRun;
         isAvg = false;
@@ -999,25 +1000,25 @@ function updateSimulationResults(sim) {
 
     // Top Stats based on current view
     setText("resDps", Math.floor(r.dps));
-    
+
     // UPDATE BUTTONS with VALUES
     var btnMin = document.getElementById("btnViewMin");
-    if(btnMin && avgR.minDps) {
+    if (btnMin && avgR.minDps) {
         btnMin.innerHTML = `<span class="res-btn-label">Min. DPS</span><span class="res-btn-val">${Math.floor(avgR.minDps)}</span>`;
     }
-    
+
     var btnAvg = document.getElementById("btnViewAvg");
-    if(btnAvg && avgR.dps) {
+    if (btnAvg && avgR.dps) {
         btnAvg.innerHTML = `<span class="res-btn-label">Avg. DPS</span><span class="res-btn-val">${Math.floor(avgR.dps)}</span>`;
     }
 
     var btnMax = document.getElementById("btnViewMax");
-    if(btnMax && avgR.maxDps) {
+    if (btnMax && avgR.maxDps) {
         btnMax.innerHTML = `<span class="res-btn-label">Max. DPS</span><span class="res-btn-val">${Math.floor(avgR.maxDps)}</span>`;
     }
-    
+
     setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
-    
+
     setText("resDuration", r.duration + "s");
 
     // Counts
@@ -1058,7 +1059,7 @@ function updateSimulationResults(sim) {
     // Dist Bar & Table (Specific Run Data)
     renderDistBar(r);
     renderResultTable(r);
-    
+
     // Log Visibility Control
     var logSec = document.getElementById("combatLogSection");
     if (isAvg) {
@@ -1109,10 +1110,10 @@ function renderDistBar(r) {
 
 function getRowClass(ability) {
     var a = ability.toLowerCase();
-    if(a.includes("rip") || a.includes("rake")) return "row-bleed"; 
-    if(a.includes("shred") || a.includes("claw") || a.includes("bite") || a.includes("auto") || a.includes("attack")) return "row-physical"; 
-    if(a.includes("maelstrom") || a.includes("emerald") || a.includes("nature") || a.includes("venom")) return "row-nature"; 
-    if(a.includes("coil") || a.includes("fire")) return "row-fire"; 
+    if (a.includes("rip") || a.includes("rake")) return "row-bleed";
+    if (a.includes("shred") || a.includes("claw") || a.includes("bite") || a.includes("auto") || a.includes("attack")) return "row-physical";
+    if (a.includes("maelstrom") || a.includes("emerald") || a.includes("nature") || a.includes("venom")) return "row-nature";
+    if (a.includes("coil") || a.includes("fire")) return "row-fire";
     return "";
 }
 
@@ -1163,10 +1164,10 @@ const LOG_PER_PAGE = 50;
 function renderLogTable(log) {
     LOG_DATA = log || [];
     LOG_PAGE = 1;
-    
+
     var allKeys = new Set();
     LOG_DATA.forEach(e => {
-        if(e.activeBuffs) {
+        if (e.activeBuffs) {
             Object.keys(e.activeBuffs).forEach(k => {
                 // EXCLUDE BF from dynamic columns (now static)
                 if (k !== "BF" && k !== "BloodFrenzy") {
@@ -1183,13 +1184,13 @@ function renderLogTable(log) {
 function updateLogView() {
     // Check Config for Column Visibility
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
-    
+
     // Logic: Show Pounce if used. Show Rake if used. Show Rip if used. 
     // Show OW if Talent > 0. Show FF if used (internal).
     var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
-    var showRake = (cfg.use_rake );
-    var showRip = (cfg.use_rip );
-    var showOW = (cfg.tal_open_wounds > 0 );
+    var showRake = (cfg.use_rake);
+    var showRip = (cfg.use_rip);
+    var showOW = (cfg.tal_open_wounds > 0);
     var showFF = (cfg.use_ff || cfg.debuff_ff);
 
     var container = document.querySelector(".log-container table thead tr");
@@ -1198,7 +1199,7 @@ function updateLogView() {
         let headerHtml = `
             <th>Time</th><th>Event</th><th>Ability</th><th>Result</th>
             <th>Dmg(N)</th><th>Dmg(C)</th><th>Dmg(T)</th><th>Spec</th>`;
-        
+
         // Dynamic Headers
         if (showPounce) headerHtml += `<th>Pounce(t)</th>`;
         if (showRake) headerHtml += `<th>Rake(t)</th>`;
@@ -1209,10 +1210,10 @@ function updateLogView() {
         // Static Headers Rest
         headerHtml += `<th>CP</th><th>AP</th><th>Haste</th><th>Speed</th><th>ArP</th><th>Energy</th><th>E+/-</th>
             <th>OoC</th><th>TF(t)</th><th>BF(t)</th>`;
-        
+
         // Dynamic Buff Headers
         LOG_BUFF_KEYS.forEach(key => {
-                headerHtml += `<th>${key}</th>`;
+            headerHtml += `<th>${key}</th>`;
         });
 
         headerHtml += `<th>Info</th>`;
@@ -1229,18 +1230,18 @@ function updateLogView() {
 
     slice.forEach(e => {
         var tr = document.createElement("tr");
-        
+
         // Coloring Logic remains same
         if (e.event === "Buff" || e.event === "Proc" || e.info.includes("Aura") || e.info.includes("Proc") || e.result.includes("Proc")) {
-            tr.style.backgroundColor = "rgba(197, 134, 192, 0.2)"; 
+            tr.style.backgroundColor = "rgba(197, 134, 192, 0.2)";
         } else if (e.event === "Tick" && e.ability !== "Energy Tick") {
-            tr.style.backgroundColor = "rgba(229, 115, 115, 0.15)"; 
+            tr.style.backgroundColor = "rgba(229, 115, 115, 0.15)";
         } else if (e.event === "Cast" || e.event === "Damage" || e.ability === "Energy Tick") {
             if (e.ability !== "Auto Attack" && e.ability !== "Extra Attack") {
                 tr.style.backgroundColor = "rgba(255, 215, 0, 0.15)";
             }
         }
-        
+
         var eChangeDisplay = e.eChange !== 0 ? (e.eChange > 0 ? "+" + e.eChange : e.eChange) : "";
         var eChangeStyle = e.eChange > 0 ? "color:#66bb6a;" : (e.eChange < 0 ? "color:#ef5350;" : "");
 
@@ -1282,7 +1283,7 @@ function updateLogView() {
         });
 
         html += `<td style="color:#777; font-size:0.75rem;">${e.info || ""}</td>`;
-        
+
         tr.innerHTML = html;
         tb.appendChild(tr);
     });
@@ -1310,7 +1311,7 @@ function downloadCSV() {
 
     // 1. Build Headers
     var csvHeaders = [
-        "Time", "Event", "Ability", "Result", 
+        "Time", "Event", "Ability", "Result",
         "DmgNorm", "DmgCrit", "DmgTick", "DmgSpec"
     ];
 
@@ -1331,7 +1332,7 @@ function downloadCSV() {
     csvHeaders.push("Info");
 
     var csv = csvHeaders.join(",") + "\n";
-    
+
     // 2. Build Rows
     LOG_DATA.forEach(r => {
         var row = [
@@ -1356,7 +1357,7 @@ function downloadCSV() {
         row.push(r.eChange);
         row.push(r.ooc > 0 ? r.ooc.toFixed(1) : "");
         row.push(r.tf > 0 ? r.tf.toFixed(1) : "");
-        
+
         // BF Static
         var bfVal = (r.activeBuffs && (r.activeBuffs["BF"] || r.activeBuffs["Blood Frenzy"])) ? (r.activeBuffs["BF"] || r.activeBuffs["Blood Frenzy"]).toFixed(1) : "";
         row.push(bfVal);
@@ -1385,14 +1386,14 @@ var IS_LOADING = false; // Prevents saving while UI is being populated
 
 function getCurrentConfigFromUI() {
     var cfg = {};
-    CONFIG_IDS.forEach(function(id) {
+    CONFIG_IDS.forEach(function (id) {
         var el = document.getElementById(id);
-        if(el) { 
-            if(el.type === 'checkbox') cfg[id] = el.checked ? 1 : 0; 
-            else cfg[id] = parseFloat(el.value) || el.value; 
+        if (el) {
+            if (el.type === 'checkbox') cfg[id] = el.checked ? 1 : 0;
+            else cfg[id] = parseFloat(el.value) || el.value;
         }
     });
-    
+
     // Deep Copy Objects
     if (typeof GEAR_SELECTION !== 'undefined') {
         cfg.gearSelection = JSON.parse(JSON.stringify(GEAR_SELECTION));
@@ -1400,24 +1401,24 @@ function getCurrentConfigFromUI() {
     if (typeof ENCHANT_SELECTION !== 'undefined') {
         cfg.enchantSelection = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
     }
-    
+
     return cfg;
 }
 
 function applyConfigToUI(cfg) {
-    if(!cfg) return;
-    
+    if (!cfg) return;
+
     // ACTIVATE LOCK: Prevent saveCurrentState from running via Event Listeners
-    IS_LOADING = true; 
+    IS_LOADING = true;
 
     try {
         // 1. Apply Simple Values
-        for(var id in cfg) {
+        for (var id in cfg) {
             if (id === 'gearSelection' || id === 'enchantSelection') continue;
             var el = document.getElementById(id);
-            if(el) { 
-                if(el.type === 'checkbox') el.checked = (cfg[id] == 1); 
-                else el.value = cfg[id]; 
+            if (el) {
+                if (el.type === 'checkbox') el.checked = (cfg[id] == 1);
+                else el.value = cfg[id];
             }
         }
 
@@ -1429,18 +1430,18 @@ function applyConfigToUI(cfg) {
         else ENCHANT_SELECTION = {};
 
         // 3. Refresh UI Components
-        if(typeof initGearPlannerUI === 'function') initGearPlannerUI();
-        
+        if (typeof initGearPlannerUI === 'function') initGearPlannerUI();
+
         // 4. Trigger Calc (Internal math only, no saving)
-        if(typeof updatePlayerStats === 'function') updatePlayerStats();
-        if(typeof updateEnemyInfo === 'function') updateEnemyInfo();
-        if(typeof calculateGearStats === 'function') calculateGearStats();
-        
-    } catch(e) {
+        if (typeof updatePlayerStats === 'function') updatePlayerStats();
+        if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
+        if (typeof calculateGearStats === 'function') calculateGearStats();
+
+    } catch (e) {
         console.error("Error applying config:", e);
     } finally {
         // RELEASE LOCK
-        IS_LOADING = false; 
+        IS_LOADING = false;
     }
 }
 
@@ -1453,10 +1454,10 @@ function saveCurrentState() {
     var compView = document.getElementById('comparisonView');
     if (compView && !compView.classList.contains('hidden')) return;
 
-    if(SIM_LIST[ACTIVE_SIM_INDEX]) {
+    if (SIM_LIST[ACTIVE_SIM_INDEX]) {
         SIM_LIST[ACTIVE_SIM_INDEX].config = getCurrentConfigFromUI();
         var nameInput = document.getElementById('simName');
-        if(nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
+        if (nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
     }
 }
 
@@ -1470,7 +1471,7 @@ function saveCurrentState() {
 function packConfig(cfg) {
     console.log("--- PACKING CONFIG ---");
     // 1. Map simple values
-    var values = CONFIG_IDS.map(function(id) { return cfg[id]; });
+    var values = CONFIG_IDS.map(function (id) { return cfg[id]; });
 
     // 2. Compress Gear
     var gearIds = {};
@@ -1479,7 +1480,7 @@ function packConfig(cfg) {
         for (var slot in cfg.gearSelection) {
             var val = cfg.gearSelection[slot];
             var idToSave = (val && typeof val === 'object' && val.id) ? val.id : val;
-            
+
             if (idToSave && idToSave != 0) {
                 gearIds[slot] = idToSave;
                 itemCount++;
@@ -1487,7 +1488,7 @@ function packConfig(cfg) {
         }
     }
     console.log("Packed Gear IDs found:", itemCount, gearIds);
-    
+
     // 3. Compress Enchants
     var enchantIds = {};
     if (cfg.enchantSelection) {
@@ -1500,7 +1501,7 @@ function packConfig(cfg) {
             }
         }
     }
-    
+
     return {
         data: [values, gearIds, enchantIds],
         itemCount: itemCount
@@ -1511,7 +1512,7 @@ function unpackConfig(packed) {
     console.log("--- UNPACKING CONFIG ---", packed);
     if (!Array.isArray(packed) || packed.length !== 3 || !Array.isArray(packed[0])) {
         console.warn("Invalid packed format", packed);
-        return packed; 
+        return packed;
     }
 
     var values = packed[0];
@@ -1520,7 +1521,7 @@ function unpackConfig(packed) {
     var cfg = {};
 
     // 1. Restore Values
-    CONFIG_IDS.forEach(function(id, idx) {
+    CONFIG_IDS.forEach(function (id, idx) {
         if (idx < values.length) cfg[id] = values[idx];
     });
 
@@ -1544,15 +1545,15 @@ function unpackConfig(packed) {
     return cfg;
 }
 
-function exportSettings() { 
-    saveCurrentState(); 
-    
+function exportSettings() {
+    saveCurrentState();
+
     var isOverview = !document.getElementById('comparisonView').classList.contains('hidden');
     var simsToProcess = isOverview ? SIM_LIST : (SIM_LIST[ACTIVE_SIM_INDEX] ? [SIM_LIST[ACTIVE_SIM_INDEX]] : []);
 
     if (simsToProcess.length === 0) return;
 
-    var dataToExport = simsToProcess.map(function(s) {
+    var dataToExport = simsToProcess.map(function (s) {
         var packResult = packConfig(s.config);
         return { n: s.name, d: packResult.data };
     });
@@ -1561,12 +1562,12 @@ function exportSettings() {
     var compressed = LZString.compressToEncodedURIComponent(jsonStr);
 
     // Use ?cfg= to match 06_main.js logic
-    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?cfg=' + compressed; 
-    
-    window.history.pushState({path:newUrl}, '', newUrl); 
-    navigator.clipboard.writeText(newUrl).then(function() {
+    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?cfg=' + compressed;
+
+    window.history.pushState({ path: newUrl }, '', newUrl);
+    navigator.clipboard.writeText(newUrl).then(function () {
         var msg = isOverview ? "All Sims Link Copied!" : "Current Sim Link Copied!";
-        showToast(msg); 
+        showToast(msg);
     });
 }
 
@@ -1576,12 +1577,12 @@ function importFromClipboard() {
 
     var b64 = input;
     // Handle full URLs by splitting at the parameter
-    if (input.includes("?cfg=")) { 
-        b64 = input.split("?cfg=")[1]; 
-    } else if (input.includes("?s=")) { 
-        b64 = input.split("?s=")[1]; 
+    if (input.includes("?cfg=")) {
+        b64 = input.split("?cfg=")[1];
+    } else if (input.includes("?s=")) {
+        b64 = input.split("?s=")[1];
     }
-    
+
     // Remove potential hash or extra parameters if present
     if (b64.includes("&")) b64 = b64.split("&")[0];
     if (b64.includes("#")) b64 = b64.split("#")[0];
@@ -1593,23 +1594,23 @@ function importFromClipboard() {
         if (!json) throw new Error("Could not decode string");
 
         var data = JSON.parse(json);
-        if (!Array.isArray(data)) data = [data]; 
-        
-        data.forEach(function(item) {
+        if (!Array.isArray(data)) data = [data];
+
+        data.forEach(function (item) {
             var newId = Date.now() + Math.floor(Math.random() * 1000);
             var sName = item.n || item.name || "Imported Sim";
-            var newSim = new SimObject(newId, sName); 
-            
+            var newSim = new SimObject(newId, sName);
+
             if (item.d) newSim.config = unpackConfig(item.d);
-            else newSim.config = item.config || item; 
+            else newSim.config = item.config || item;
 
             SIM_LIST.push(newSim);
         });
-        
+
         renderSidebar();
         switchSim(SIM_LIST.length - 1);
         showToast("Imported successfully!");
-        
+
     } catch (e) {
         console.error(e);
         alert("Invalid Config String or URL!");
@@ -1639,11 +1640,11 @@ function toggleSection(containerId, state) {
     if (!container) return;
 
     var checkboxes = container.querySelectorAll("input[type='checkbox']");
-    
+
     // Set to track which mutual exclusion groups have already been handled in this pass
     var handledGroups = new Set();
 
-    checkboxes.forEach(function(box) {
+    checkboxes.forEach(function (box) {
         if (state) {
             // "Select All" Logic with Mutual Exclusion checks
             var groupClass = null;
@@ -1651,6 +1652,7 @@ function toggleSection(containerId, state) {
             else if (box.classList.contains("mut-ex-food")) groupClass = "mut-ex-food";
             else if (box.classList.contains("mut-ex-bl")) groupClass = "mut-ex-bl";
             else if (box.classList.contains("mut-ex-juju")) groupClass = "mut-ex-juju";
+            else if (box.classList.contains("mut-ex-potion")) groupClass = "mut-ex-potion";
 
             if (groupClass) {
                 // Only check if we haven't checked an item from this group yet
@@ -1684,7 +1686,7 @@ function updateDamageScaling() {
     const ap = getVal("stat_ap");
     const str = getVal("stat_str");
     const agi = getVal("stat_agi");
-    
+
     // Talente (simulieren der Engine-Logik)
     const tNatWep = 1.10; // Natural Weapons 3/3
     const tPredStrikes = 1.20; // Predatory Strikes 3/3
@@ -1758,7 +1760,7 @@ function updateDamageScaling() {
             <td class="text-right scaling-formula-preview">${a.calc}</td>
             <td class="text-right" style="color:var(--druid-orange); font-weight:700; font-size:1rem;">${Math.floor(a.final)}</td>
         `;
-        
+
         // Tooltip Event für die Formel
         const icon = tr.querySelector(".formula-help");
         icon.onmouseenter = (e) => {
@@ -1769,7 +1771,7 @@ function updateDamageScaling() {
         };
         icon.onmousemove = moveTooltip;
         icon.onmouseleave = hideTooltip;
-        
+
         tb.appendChild(tr);
     });
 }
@@ -1794,7 +1796,7 @@ async function runArmoryImport() {
     var name = document.getElementById("armoryName").value.trim();
     var realm = document.getElementById("armoryRealm").value;
     var status = document.getElementById("armoryStatus");
-    
+
     if (!name) {
         status.innerText = "Please enter a character name.";
         status.style.color = "#f44336";
@@ -1834,14 +1836,14 @@ async function runArmoryImport() {
         } else {
             msg += "<span style='color:#f44336'>No items matched your local DB.</span>";
         }
-        
+
         // Hint about missing items
         if (results.matched < uniqueFoundItems.length) {
             msg += "<br><span style='font-size:0.8em; color:#888;'>(" + (uniqueFoundItems.length - results.matched) + " items skipped - not in local DB)</span>";
         }
 
         status.innerHTML = msg;
-        
+
         // Close modal only if successful match occurred
         if (results.matched > 0) {
             setTimeout(closeArmoryModal, 3000);
@@ -1861,14 +1863,14 @@ function extractItemsFromHtml(doc) {
     var foundMap = new Map(); // Use Map to deduplicate by ItemID immediately
 
     var links = doc.querySelectorAll('a[href*="item="]');
-    links.forEach(function(a) {
+    links.forEach(function (a) {
         var href = a.getAttribute('href');
         var itemMatch = href.match(/item=(\d+)/);
 
         if (itemMatch) {
             var iId = parseInt(itemMatch[1]);
             // Only add if not already present 
-            if (!foundMap.has(iId) ) {
+            if (!foundMap.has(iId)) {
                 foundMap.set(iId, {
                     itemId: iId,
 
@@ -1889,11 +1891,11 @@ function applyImportData(importedItems, race, charName) {
     GEAR_SELECTION = {};
 
     // 3. Map Items
-    importedItems.forEach(function(entry) {
+    importedItems.forEach(function (entry) {
         var dbItem = ITEM_ID_MAP[entry.itemId];
-        
+
         // Skip if not in DB
-        if (!dbItem) {           
+        if (!dbItem) {
             return;
         }
 
@@ -1904,18 +1906,18 @@ function applyImportData(importedItems, race, charName) {
         if (slotKey === "Finger" || slotKey === "Ring") {
             if (!GEAR_SELECTION["Finger 1"]) slotToAssign = "Finger 1";
             else slotToAssign = "Finger 2";
-        } 
+        }
         else if (slotKey === "Trinket") {
             if (!GEAR_SELECTION["Trinket 1"]) slotToAssign = "Trinket 1";
             else slotToAssign = "Trinket 2";
-        } 
+        }
         // FIXED: Added "Two-Hand" and "Mainhand" for Staves/Maces/Polearms
-        else if (slotKey === "One-hand" ||  slotKey === "Two-hand" ) {
-             slotToAssign = "Main Hand"; 
-        } 
+        else if (slotKey === "One-hand" || slotKey === "Two-hand") {
+            slotToAssign = "Main Hand";
+        }
         else if (slotKey === "Held In Off-Hand") {
-             slotToAssign = "Off Hand";
-        } 
+            slotToAssign = "Off Hand";
+        }
         else {
             // Direct Match (Head, Chest, Hands, etc.)
             slotToAssign = slotKey;

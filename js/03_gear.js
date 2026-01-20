@@ -128,11 +128,11 @@ function renderSlotColumn(pos, containerId) {
             var enchName = enchant ? enchant.name : "+ Enchant";
             var enchStyle = enchant ? "color:#0f0; font-size:0.75rem;" : "color:#555; font-size:0.7rem; font-style:italic;";
             var eIdPass = enchant ? enchant.id : 0;
-            
+
             // Add Score to Display if enchanted
             if (enchant) {
                 var eScore = calculateEnchantScore(enchant);
-                if(eScore > 0) enchName += " [EP: " + eScore.toFixed(1) + "]";
+                if (eScore > 0) enchName += " [EP: " + eScore.toFixed(1) + "]";
             }
 
             enchantHtml = '<div class="slot-enchant-click" onmouseenter="showEnchantTooltip(event, ' + eIdPass + ')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" onclick="event.stopPropagation(); openEnchantSelector(\'' + slotName + '\')" style="' + enchStyle + '; margin-top:2px; cursor:pointer;">' + enchName + '</div>';
@@ -144,7 +144,7 @@ function renderSlotColumn(pos, containerId) {
             '<span class="slot-stats">' + statText + '</span>' +
             enchantHtml +
             '</div>' +
-            linkHtml; 
+            linkHtml;
         div.innerHTML = html;
         container.appendChild(div);
     });
@@ -171,33 +171,33 @@ function showTooltip(e, item) {
     var iconUrl = getIconUrl(item.icon);
 
     var html = '<div class="tt-header"><div class="tt-icon-small" style="background-image:url(\'' + iconUrl + '\')"></div><div style="flex:1"><div class="tt-name" style="color:' + qualityColor + '">' + item.name + '</div></div></div>';
-    
+
     // UPDATED: Use requiredLevel instead of itemLevel
     if (item.requiredLevel) html += '<div class="tt-white">Requires Level ' + item.requiredLevel + '</div>';
-    
+
     // UPDATED: Slot + ArmorType/WeaponType aligned right
     if (item.slot) {
         html += '<div class="tt-white" style="display:flex; justify-content:space-between;">';
         html += '<span>' + item.slot + '</span>';
-        
+
         // Nutze armorType oder weaponType als Klartext (z.B. "Leather", "Polearm")
         var typeText = item.armorType || item.weaponType || "";
-        if (typeText) html += '<span>' + typeText + '</span>'; 
-        
+        if (typeText) html += '<span>' + typeText + '</span>';
+
         html += '</div>';
     }
 
     if (item.armor) html += '<div class="tt-white">' + item.armor + ' Armor</div>';
     html += '<div class="tt-spacer"></div>';
-    
+
     if (item.stamina) html += '<div class="tt-white">+' + item.stamina + ' Stamina</div>';
     if (item.intellect) html += '<div class="tt-white">+' + item.intellect + ' Intellect</div>';
     if (item.spirit) html += '<div class="tt-white">+' + item.spirit + ' Spirit</div>';
     if (item.agility) html += '<div class="tt-white">+' + item.agility + ' Agility</div>';
     if (item.strength) html += '<div class="tt-white">+' + item.strength + ' Strength</div>';
-    
+
     html += '<div class="tt-spacer"></div>';
-    
+
     // Additional Resistances
     if (item.fireRes) html += '<div class="tt-white">+' + item.fireRes + ' Fire Resistance</div>';
     if (item.natureRes) html += '<div class="tt-white">+' + item.natureRes + ' Nature Resistance</div>';
@@ -247,7 +247,7 @@ function showTooltip(e, item) {
                     var bonusData = item.setBonuses[thresholdStr];
                     var isActive = (equippedCount >= threshold);
                     var color = isActive ? '#0f0' : '#888';
-                    
+
                     if (bonusData.custom && Array.isArray(bonusData.custom)) {
                         bonusData.custom.forEach(function (c) { html += '<div style="color:' + color + '">(' + threshold + ') Set: ' + c + '</div>'; });
                     }
@@ -411,16 +411,16 @@ function filterItemList() { var txt = document.getElementById("itemSearchInput")
 function selectItem(itemId) {
     if (CURRENT_SELECTING_SLOT) {
         // --- 2H / OFFHAND LOGIC START ---
-        
+
         // Check if we are selecting Main Hand
         if (CURRENT_SELECTING_SLOT === "Main Hand" && itemId != 0) {
-             var item = ITEM_ID_MAP[itemId];
-             // If item is Two-Handed, clear Off Hand
-             if (item && (item.slot === "Twohand" || item.slot === "Staff" || item.slot === "Polearm")) {
-                 GEAR_SELECTION["Off Hand"] = 0;
-             }
+            var item = ITEM_ID_MAP[itemId];
+            // If item is Two-Handed, clear Off Hand
+            if (item && (item.slot === "Twohand" || item.slot === "Staff" || item.slot === "Polearm")) {
+                GEAR_SELECTION["Off Hand"] = 0;
+            }
         }
-        
+
         // Check if we are selecting Off Hand
         if (CURRENT_SELECTING_SLOT === "Off Hand" && itemId != 0) {
             // Check if Main Hand is Two-Handed
@@ -435,7 +435,7 @@ function selectItem(itemId) {
         // --- 2H / OFFHAND LOGIC END ---
         // FIX: Remove Enchant when changing item (Enchants are bound to items)
         if (GEAR_SELECTION[CURRENT_SELECTING_SLOT] != itemId) {
-             ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = 0;
+            ENCHANT_SELECTION[CURRENT_SELECTING_SLOT] = 0;
         }
 
         GEAR_SELECTION[CURRENT_SELECTING_SLOT] = itemId;
@@ -475,7 +475,7 @@ function renderEnchantList() {
 
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
-    if (slotKey === "Main Hand") slotKey = "Two-hand"; 
+    if (slotKey === "Main Hand") slotKey = "Two-hand";
 
     var relevantEnchants = ENCHANT_DB.filter(function (e) {
         // 512 = Druid
@@ -488,7 +488,7 @@ function renderEnchantList() {
             var equippedId = GEAR_SELECTION["Main Hand"];
             var item = ITEM_ID_MAP[equippedId];
             var isTwoHand = false;
-            
+
             if (item && (item.slot === "Two-hand" || item.slot === "Staff" || item.slot === "Polearm")) {
                 isTwoHand = true;
             }
@@ -505,7 +505,7 @@ function renderEnchantList() {
         if (CURRENT_SELECTING_SLOT === "Hands") return (e.slot === "Gloves" || e.slot === "Hands");
         if (CURRENT_SELECTING_SLOT === "Wrist") return (e.slot === "Bracer" || e.slot === "Wrist");
         if (CURRENT_SELECTING_SLOT === "Back") return (e.slot === "Cloak" || e.slot === "Back");
-        if (CURRENT_SELECTING_SLOT.includes("Finger")) return (e.slot === "Finger"); 
+        if (CURRENT_SELECTING_SLOT.includes("Finger")) return (e.slot === "Finger");
 
         return e.slot === CURRENT_SELECTING_SLOT || e.slot === slotKey;
     });
@@ -551,7 +551,7 @@ function recalcItemScores() {
     if (!document.getElementById("itemSelectorModal").classList.contains("hidden")) {
         renderItemList(document.getElementById("itemSearchInput").value);
     }
-    if(!document.getElementById("enchantSelectorModal").classList.contains("hidden")) {
+    if (!document.getElementById("enchantSelectorModal").classList.contains("hidden")) {
         renderEnchantList();
     }
     initGearPlannerUI();
@@ -575,14 +575,14 @@ function calculateItemScore(item, slotNameOverride) {
     // Base Stats
     score += (item.strength || 0) * wStr;
     score += (item.agility || 0) * wAgi;
-    
+
     // Explicit Effects
     score += (e.attackPower || 0) * wAP;
     score += (e.crit || 0) * wCrit;
     score += (e.Hit || 0) * wHit;
     score += (e.attackSpeed || 0) * wHaste;
     score += (e.armorPen || 0) * wArp;
-    
+
     // Dynamic Set Bonuses (Explicit Fields)
     if (item.setName) {
         var setSiblings = 0;
@@ -590,7 +590,7 @@ function calculateItemScore(item, slotNameOverride) {
         for (var sKey in GEAR_SELECTION) {
             if (slotNameOverride && sKey === slotNameOverride) continue;
             var selId = GEAR_SELECTION[sKey];
-            if (selId && typeof selId === 'object') selId = selId.id; 
+            if (selId && typeof selId === 'object') selId = selId.id;
             if (selId && selId !== 0) {
                 var sItem = ITEM_ID_MAP[selId];
                 if (sItem && sItem.setName === item.setName) {
@@ -601,23 +601,23 @@ function calculateItemScore(item, slotNameOverride) {
         var newCount = setSiblings + 1; // Count if we equip this item
 
         if (item.setBonuses && typeof item.setBonuses === 'object') {
-             for (var thrStr in item.setBonuses) {
-                 var thr = parseInt(thrStr);
-                 // Only add score if this specific item triggers the bonus (bridges the gap)
-                 if (thr > setSiblings && thr <= newCount) {
-                     var b = item.setBonuses[thrStr];
-                     if (b) {
-                         if (b.attackPower) score += b.attackPower * wAP;
-                         if (b.strength) score += b.strength * wStr;
-                         if (b.agility) score += b.agility * wAgi;
-                         if (b.crit) score += b.crit * wCrit;
-                         if (b.Hit) score += b.Hit * wHit; 
-                         if (b.hit) score += b.hit * wHit; 
-                         if (b.attackSpeed) score += b.attackSpeed * wHaste;
-                         //if (b.armorPen) score += b.armorPen * wArp;
-                     }
-                 }
-             }
+            for (var thrStr in item.setBonuses) {
+                var thr = parseInt(thrStr);
+                // Only add score if this specific item triggers the bonus (bridges the gap)
+                if (thr > setSiblings && thr <= newCount) {
+                    var b = item.setBonuses[thrStr];
+                    if (b) {
+                        if (b.attackPower) score += b.attackPower * wAP;
+                        if (b.strength) score += b.strength * wStr;
+                        if (b.agility) score += b.agility * wAgi;
+                        if (b.crit) score += b.crit * wCrit;
+                        if (b.Hit) score += b.Hit * wHit;
+                        if (b.hit) score += b.hit * wHit;
+                        if (b.attackSpeed) score += b.attackSpeed * wHaste;
+                        //if (b.armorPen) score += b.armorPen * wArp;
+                    }
+                }
+            }
         }
     }
 
@@ -662,7 +662,7 @@ function calculateGearStats() {
     var bonus = { str: 0, agi: 0, int: 0, ap: 0, crit: 0, hit: 0, haste: 0, arp: 0 };
     var setCounts = {};
     var activeTrinketNames = [];
-    
+
     // Total Gear Score accumulator
     var totalScore = 0;
 
@@ -675,12 +675,12 @@ function calculateGearStats() {
             if (item) {
                 // Add to Total Score
                 totalScore += calculateItemScore(item, slot);
-                
+
                 var e = item.effects || {};
                 bonus.str += (item.strength || 0);
                 bonus.agi += (item.agility || 0);
                 bonus.int += (item.intellect || 0);
-                
+
                 // UPDATED: Direct mapping from JSON
                 bonus.ap += (e.attackPower || 0);
                 bonus.crit += (e.crit || 0);
@@ -711,7 +711,7 @@ function calculateGearStats() {
             if (ench && ench.effects) {
                 // Add Enchant Score
                 totalScore += calculateEnchantScore(ench);
-                
+
                 bonus.str += (ench.effects.strength || 0);
                 bonus.agi += (ench.effects.agility || 0);
                 bonus.ap += (ench.effects.attackPower || 0);
@@ -723,7 +723,7 @@ function calculateGearStats() {
     }
 
     // 5. BUFFS & CONSUMABLES (Checkbox Logic)
-    
+
     // MotW (Improved) (+16 All)
     if (getVal("buff_motw")) { bonus.str += 16; bonus.agi += 16; bonus.int += 16; }
 
@@ -752,7 +752,7 @@ function calculateGearStats() {
 
     // Elixirs
     if (getVal("consum_mongoose")) { bonus.agi += 25; bonus.crit += 1; }
-    
+
     // Blasted Lands
     if (getVal("consum_scorpok")) bonus.agi += 25;
     if (getVal("consum_roids")) bonus.str += 25;
@@ -775,21 +775,21 @@ function calculateGearStats() {
     var hotwMod = 20; // 5/5 Heart of the Wild always active for Feral Druids, 20% more Str/Int
 
     // Total Attributes
-    var finalStr = Math.floor((bonus.str + race.str)* (1+(statMod+hotwMod) / 100));
-    var finalInt = Math.floor((bonus.int + race.int)* (1+(statMod+hotwMod) / 100) );
-    var finalAgi = Math.floor((bonus.agi + race.agi) * (1+(statMod) / 100) ); // No HotW for Agi
+    var finalStr = Math.floor((bonus.str + race.str) * (1 + (statMod + hotwMod) / 100));
+    var finalInt = Math.floor((bonus.int + race.int) * (1 + (statMod + hotwMod) / 100));
+    var finalAgi = Math.floor((bonus.agi + race.agi) * (1 + (statMod) / 100)); // No HotW for Agi
 
     // 7. FINAL CALCULATIONS - UPDATED FORMULAS
-    
-     // Predatory Strikes (3/3): +10% AP + Trueshot % AP
+
+    // Predatory Strikes (3/3): +10% AP + Trueshot % AP
     apMod += 10;
     finalAP = Math.floor(finalAP * (1 + apMod / 100));
 
     // AP = RaceAP(Base) + ((AddedStr)*2) + ((AddedAgi)*1) + BonusAP
     // AddedStats = Final - Base
-    var finalAP = Math.floor((race.ap + ((finalStr - race.str) * 2) + (finalAgi-race.agi)  + bonus.ap) * (1 + apMod / 100));
+    var finalAP = Math.floor((race.ap + ((finalStr - race.str) * 2) + (finalAgi - race.agi) + bonus.ap) * (1 + apMod / 100));
 
-   
+
 
     // Crit = RaceCrit(Base) + (AddedAgi / 20) + BonusCrit
     var critFromAgi = (finalAgi - race.agi) / 20.0;
@@ -803,7 +803,7 @@ function calculateGearStats() {
     var finalHit = bonus.hit + 3.0; // Natural Weapons
 
     // 8. UPDATE UI
-    
+
     // Write to Inputs
     var isManual = document.getElementById("manual_stats") ? document.getElementById("manual_stats").checked : false;
     var updateInput = function (id, val, isPct) {
@@ -826,7 +826,7 @@ function calculateGearStats() {
 
     // Update Planner Preview Box (Expanded)
     var elP_GS = document.getElementById("gp_gs"); if (elP_GS) elP_GS.innerText = totalScore.toFixed(1);
-    
+
     var elP_Str = document.getElementById("gp_str"); if (elP_Str) elP_Str.innerText = finalStr;
     var elP_Agi = document.getElementById("gp_agi"); if (elP_Agi) elP_Agi.innerText = finalAgi;
     var elP_AP = document.getElementById("gp_ap"); if (elP_AP) elP_AP.innerText = Math.floor(finalAP);
@@ -836,7 +836,7 @@ function calculateGearStats() {
 
     // 9. DETECT AND SET "SPECIAL GEAR" CHECKBOXES
     // Helper to check set counts using likely names
-    var checkSet = function(id, namePart, threshold) {
+    var checkSet = function (id, namePart, threshold) {
         var el = document.getElementById(id);
         if (!el) return;
         var count = 0;
@@ -856,7 +856,7 @@ function calculateGearStats() {
 
     // T0.5 (Feralheart)
     checkSet("set_t05_4p", "Wildheart Raiment", 4);
-    
+
     // T1 (Cenarion)
     checkSet("set_cenarion_5p", "Cenarion Harness", 5);
     checkSet("set_cenarion_8p", "Cenarion Harness", 8);
@@ -870,11 +870,11 @@ function calculateGearStats() {
     checkSet("set_talon_5p", "Harness of the Talon", 5);
 
     // Helper to check Trinkets
-    var checkTrinket = function(id, searchName) {
+    var checkTrinket = function (id, searchName) {
         var el = document.getElementById(id);
         if (!el) return;
         var found = false;
-        activeTrinketNames.forEach(function(n) {
+        activeTrinketNames.forEach(function (n) {
             if (n.includes(searchName.toLowerCase())) found = true;
         });
         el.checked = found;
@@ -906,7 +906,7 @@ function calculateGearStats() {
         var hasGoF = false;
         if (headEnchantId) {
             // Suche den Enchant in der DB
-            var ench = ENCHANT_DB.find(function(e) { return e.id == headEnchantId; });
+            var ench = ENCHANT_DB.find(function (e) { return e.id == headEnchantId; });
             // Prüfe auf Namen (Case Insensitive zur Sicherheit)
             if (ench && ench.name.toLowerCase().includes("gift of ferocity")) {
                 hasGoF = true;

@@ -22,21 +22,21 @@ var ENCHANT_SELECTION = {};
 var CONFIG_IDS = [
     // Sim Settings
     "simTime", "simCount", "sim_calc_mode", "statWeightIt",
-    
+
     // Player Stats
-    "stat_str", "stat_agi", "stat_ap", 
+    "stat_str", "stat_agi", "stat_ap",
     "stat_hit", "stat_crit", "stat_haste", "stat_arp",
     "stat_wep_dmg_min", "stat_wep_dmg_max", "stat_wep_skill",
     "mana_pool",
 
     // Enemy Settings
-    "enemy_level", "enemy_armor", 
+    "enemy_level", "enemy_armor",
     "enemy_can_bleed", "enemy_can_block",
-    "enemy_type", 
+    "enemy_type",
     "enemy_boss_select",
 
     // Enemy Debuffs
-    "debuff_major_armor", 
+    "debuff_major_armor",
     "debuff_eskhandar",
     "debuff_ff",
     "debuff_cor",
@@ -54,41 +54,41 @@ var CONFIG_IDS = [
     "use_berserk", "shred_ooc_only", "use_pounce",
 
     // Gear Specifics (SETS & IDOLS & TRINKETS)
-    "set_t05_4p", 
+    "set_t05_4p",
     // New Sets
     "set_cenarion_5p", "set_cenarion_8p",
     "set_genesis_3p", "set_genesis_5p",
     "set_talon_3p", "set_talon_5p",
-    
+
     // Idols (Swapping allowed)
     "idol_savagery", "idol_emeral_rot", "idol_ferocity", "idol_laceration",
 
     // Trinkets (On-Use)
-    "trinket_swarmguard", "trinket_slayer", "trinket_spider", 
+    "trinket_swarmguard", "trinket_slayer", "trinket_spider",
     "trinket_jomgabbar", "trinket_earthstrike", "trinket_emberstone",
     "trinket_zhm",
 
     // Trinkets (Procs)
-    "trinket_shieldrender", "trinket_venoms", "trinket_maelstrom", 
+    "trinket_shieldrender", "trinket_venoms", "trinket_maelstrom",
     "trinket_hoj", "trinket_coil",
 
     // Buffs & Consumables (UPDATED to Checkboxes)
     "consum_elemental", "consum_consecrated",
-    "consum_mongoose", "consum_potion_quickness",
-    
+    "consum_mongoose", "consum_potion_quickness", "consum_mighty_rage",
+
     "consum_food_str", "consum_food_agi", "consum_food_haste",
-    
+
     "consum_scorpok", "consum_roids",
-    
-    "consum_juju_might", "consum_firewater", "consum_juju_power",
+
+    "consum_juju_might", "consum_firewater", "consum_juju_power", "consum_juju_flurry",
 
     // Raid Buffs
     "buff_motw", "buff_kings", "buff_might", "buff_bs",
-    "buff_lotp", "buff_tsa", 
-    "buff_wf_totem", "buff_ft_totem", 
+    "buff_lotp", "buff_tsa",
+    "buff_wf_totem", "buff_ft_totem",
     "buff_soe_totem", "buff_goa_totem",
     // Removed Warchief as requested
-    
+
     // Talents
     "tal_ferocity", "tal_feral_aggression", "tal_open_wounds",
     "tal_sharpened_claws", "tal_primal_fury", "tal_blood_frenzy",
@@ -109,7 +109,7 @@ var SLOT_LAYOUT = {
 // Predatory Strikes included (as it is baseline for Feral Druids)
 //test for update
 const RACE_STATS = {
-    "Tauren": { str: 70, agi: 55, sta: 72, int: 114, spi: 112, ap: 295, crit: 3.65, speed: 0, minDmg: 72, maxDmg: 97 }, 
+    "Tauren": { str: 70, agi: 55, sta: 72, int: 114, spi: 112, ap: 295, crit: 3.65, speed: 0, minDmg: 72, maxDmg: 97 },
     "NightElf": { str: 62, agi: 65, sta: 69, int: 120, spi: 110, ap: 295, crit: 3.65, speed: 1.0, minDmg: 72, maxDmg: 97 }
 };
 
@@ -124,16 +124,16 @@ const CONSTANTS = {
 };
 
 // Simulation Object
-function SimObject(id, name) { 
-    this.id = id; 
-    this.name = name; 
-    this.config = {}; 
-    this.results = null; 
+function SimObject(id, name) {
+    this.id = id;
+    this.name = name;
+    this.config = {};
+    this.results = null;
 }
 
 // Boss Armor Database
 const BOSS_PRESETS = [
-    { group: "World", name: "Apprentice Training Dummy", armor: 100, level: 60 , canBleed: true, canBlock: true, type: "Humanoid" },
+    { group: "World", name: "Apprentice Training Dummy", armor: 100, level: 60, canBleed: true, canBlock: true, type: "Humanoid" },
     { group: "World", name: "Expert Training Dummy", armor: 3000, level: 60, canBleed: true, canBlock: true, type: "Humanoid" },
     { group: "World", name: "Heroic Training Dummy", armor: 4211, level: 63, canBleed: true, canBlock: true, type: "Humanoid" },
 
@@ -143,9 +143,9 @@ const BOSS_PRESETS = [
     { group: "Naxxramas", name: "Gothik, Kel'Thuzad", armor: 3402, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
 
     { group: "AQ40", name: "Most Bosses", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "AQ40", name: "Emperor Vek'lor", armor: 3833, level: 63, canBleed: true , canBlock: false, type: "Humanoid" },
+    { group: "AQ40", name: "Emperor Vek'lor", armor: 3833, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "AQ40", name: "The Prophet Skeram", armor: 3402, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "BWL", name: "All Bosses", armor: 4211, level: 63,canBleed: true, canBlock: false, type: "Humanoid" },
+    { group: "BWL", name: "All Bosses", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
 
     { group: "Molten Core", name: "Most Bosses", armor: 4211, level: 63, canBleed: false, canBlock: false, type: "Humanoid" },
     { group: "Molten Core", name: "Sulfuron Harbinger", armor: 4786, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
@@ -167,20 +167,20 @@ const BOSS_PRESETS = [
     { group: "AQ20", name: "Buru the Gorger", armor: 3402, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Kara 10", name: "Lord Blackwald", armor: 4325, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Kara 10", name: "Howlfang, Moroes", armor: 3892, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "Kara 10", name: "Grizikil, Araxxna", armor: 3044, level: 63, canBleed: true, canBlock: false, type:"Humanoid" },
+    { group: "Kara 10", name: "Grizikil, Araxxna", armor: 3044, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
 
     { group: "World Bosses", name: "Ostarius", armor: 5980, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "World Bosses", name: "Dark Reaver of Karazhan", armor: 4285, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "World Bosses", name: "Azuregos", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "World Bosses", name: "Nightmare Dragons", armor: 4211, level: 63, canBleed: true, canBlock: false, type:"Humanoid" },
+    { group: "World Bosses", name: "Nightmare Dragons", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "World Bosses", name: "Lord Kazzak", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "World Bosses", name: "Omen", armor: 4186, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "World Bosses", name: "Nerubian Overseer", armor: 3761, level: 63, canBleed: true, canBlock: false, type:"Humanoid" },
+    { group: "World Bosses", name: "Nerubian Overseer", armor: 3761, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
 
     { group: "Silithus", name: "Prince Thunderaan", armor: 4213, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Silithus", name: "Lord Skwol", armor: 4061, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Other", name: "Onyxia", armor: 4211, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "Other", name: "UBRS: Gyth", armor: 4061, level: 63, canBleed: true, canBlock: false, type:"Humanoid" },
+    { group: "Other", name: "UBRS: Gyth", armor: 4061, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Other", name: "UBRS: Lord Valthalak", armor: 3400, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
-    { group: "Other", name: "Strat UD: Atiesh", armor: 3850, level: 63, canBleed: true, canBlock: false, type:"Humanoid" }
+    { group: "Other", name: "Strat UD: Atiesh", armor: 3850, level: 63, canBleed: true, canBlock: false, type: "Humanoid" }
 ];
