@@ -48,7 +48,11 @@ function runSimulation() {
                 }
 
                 // Random seed for standard simulations
-                currentConfig.seed = Math.floor(Math.random() * 0xFFFFFFFF);
+                if (config.seed && config.seed !== 0) {
+                    currentConfig.seed = config.seed + i;
+                } else {
+                    currentConfig.seed = Math.floor(Math.random() * 0xFFFFFFFF);
+                }
 
                 var res = runCoreSimulation(currentConfig);
                 allResults.push(res);
@@ -201,7 +205,7 @@ function runStatWeights() {
                     if (stepConfig.simTime < 10) stepConfig.simTime = 10;
 
                     // CRN: Fixed Seed per Iteration index (ensures comparison fairness)
-                    stepConfig.seed = 1337 + i; 
+                    stepConfig.seed = runCfg.seed+i;//1337 + i; //sim_seed
 
                     runResults.push(runCoreSimulation(stepConfig));
                 }
@@ -370,6 +374,7 @@ function getSimInputs() {
         simTime: getNum("simTime") || 60,
         iterations: getNum("simCount") || 1000,
         sim_mode: getSel("sim_mode") || "stochastic",
+        seed: getNum("sim_seed"), 
 
         // Player Config
         race: getSel("char_race") || "Tauren",
