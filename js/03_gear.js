@@ -121,7 +121,9 @@ function renderSlotColumn(pos, containerId) {
         }
 
         var canEnchant = true;
-        if (!item || slotName.includes("Trinket") || slotName.includes("Idol") || slotName.includes("Relic") || slotName.includes("Off")) canEnchant = false;
+        if (slotName.includes("Trinket") || slotName.includes("Off")) canEnchant = false;
+        if (!item && slotName.includes("Main Hand")) canEnchant = false;
+        
 
         var enchantHtml = "";
         if (canEnchant) {

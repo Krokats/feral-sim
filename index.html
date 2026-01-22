@@ -328,10 +328,10 @@
                                                             <!--<option value="deterministic">Deterministic (Avg)</option>-->
                                                         </select>
                                                     </div>
-                                                    <div class="input-group">
-                                                        <label>RNG Seed (Optional)</label>
-                                                        <input type="number" id="sim_seed" placeholder="Leave empty for Random">
-                                                    </div>
+                                                </div>
+                                                <div class="input-group">
+                                                    <label>RNG Seed (Optional)</label>
+                                                    <input type="number" id="sim_seed" placeholder="Leave empty for Random">
                                                 </div>
                                                 <div class="separator"></div>
 
@@ -434,7 +434,7 @@
                                                 <h2>💀 Enemy</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">-- Custom / Manual --</option></select></div></div>
+                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">Heroic Training Dummy</option></select></div></div>
                                                 
                                                 <div class="input-group"><label>Target Level</label><div class="select-wrapper"><select id="enemy_level"><option value="63" selected>Level 63 (Boss)</option><option value="60">Level 60</option></select></div></div>
                                                 <div class="input-group"><label>Enemy Type</label><div class="select-wrapper"><select id="enemy_type"><option value="undead">Undead</option><option value="humanoid" selected>Humanoid / Other</option></select></div></div>
@@ -479,24 +479,24 @@
                                                             
                                                     
                                                     <div class="toggle-grid" style="grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 10px;">
-                                                        <label class="toggle"><input type="checkbox" id="use_rip"><span class="slider"></span><span class="label-text">Use Rip</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_rip" checked><span class="slider"></span><span class="label-text">Use Rip</span></label>
                                                         <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;"><label style="font-size:0.85rem; color:#aaa;">Min CP:</label><input type="number" id="rip_cp" value="5" min="1" max="5" style="width:60px; padding:4px;"></div>
-                                                        <label class="toggle"><input type="checkbox" id="use_fb"><span class="slider"></span><span class="label-text">Use Ferocious Bite</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_fb" checked><span class="slider"></span><span class="label-text">Use Ferocious Bite</span></label>
                                                         <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;"><label style="font-size:0.85rem; color:#aaa;">Min CP:</label><input type="number" id="fb_cp" value="4" min="1" max="5" style="width:60px; padding:4px;"></div>
                                                         <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;"><label style="font-size:0.85rem; color:#aaa;">Min Energy:</label><input type="number" id="fb_energy" value="35" min="35" max="100" style="width:60px; padding:4px;"></div>
-                                                        <label class="toggle"><input type="checkbox" id="use_reshift"><span class="slider"></span><span class="label-text">Use Reshift</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_reshift" checked><span class="slider"></span><span class="label-text">Use Reshift</span></label>
                                                         <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;"><label style="font-size:0.85rem; color:#aaa;">Max Energy:</label><input type="number" id="reshift_energy" value="10" min="0" max="100" style="width:60px; padding:4px;"></div>
-                                                        <label class="toggle"><input type="checkbox" id="reshift_over_tf"><span class="slider"></span><span class="label-text">Overwrite active TF</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="reshift_over_tf" checked><span class="slider"></span><span class="label-text">Overwrite active TF</span></label>
                                                         <div style="display:flex; align-items:center; gap:8px; padding-left: 5px;">
                                                             <label style="font-size:0.85rem; color:#aaa;">Max TF Rem (s):</label>
                                                             <input type="number" id="reshift_over_tf_dur" value="1.0" min="0" max="6.0" step="0.1" style="width:60px; padding:4px;">
                                                         </div>
-                                                        <label class="toggle"><input type="checkbox" id="use_pounce"><span class="slider"></span><span class="label-text">Use Pounce (Opener)</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_pounce" checked><span class="slider"></span><span class="label-text">Use Pounce (Opener)</span></label>
                                                         <label class="toggle"><input type="checkbox" id="use_shred"><span class="slider"></span><span class="label-text">Use Shred</span></label>
                                                         <label class="toggle"><input type="checkbox" id="shred_ooc_only"><span class="slider"></span><span class="label-text">Use Shred only with OoC</span></label>
-                                                        <label class="toggle"><input type="checkbox" id="use_rake"><span class="slider"></span><span class="label-text">Use Rake</span></label>
-                                                        <label class="toggle"><input type="checkbox" id="use_claw"><span class="slider"></span><span class="label-text">Use Claw</span></label>
-                                                        <label class="toggle"><input type="checkbox" id="use_tf"><span class="slider"></span><span class="label-text">Tiger's Fury</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_rake" checked><span class="slider"></span><span class="label-text">Use Rake</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_claw" checked><span class="slider"></span><span class="label-text">Use Claw</span></label>
+                                                        <label class="toggle"><input type="checkbox" id="use_tf" checked><span class="slider"></span><span class="label-text">Tiger's Fury</span></label>
                                                         <label class="toggle"><input type="checkbox" id="use_ff"><span class="slider"></span><span class="label-text">Faerie Fire</span></label>
                                                     </div>
                                                 </div>
@@ -558,7 +558,7 @@
                                     <h2>📊 Damage Scaling Calculation</h2>
                                     <span class="toggle-icon">▼</span>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body" style="display:none">
                                     <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">
                                         This table shows the calculated non-crit damage of your abilities based on current AP and active talents/buffs before enemy armor.
                                     </p>

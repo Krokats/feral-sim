@@ -158,7 +158,7 @@ function addSim(isInit) {
     // Copy from current state if not initializing
     if (!isInit && SIM_LIST.length > 0) {
         // FIX: Copy all values (Config, Gear, Enchants, Name) from current state
-        newConfig = getSimInputs(); // Grab current UI inputs
+        newConfig = getCurrentConfigFromUI(); // Grab current UI inputs
         newGear = JSON.parse(JSON.stringify(GEAR_SELECTION)); // Clone global gear
         newEnchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION)); // Clone global enchants
 
@@ -357,10 +357,10 @@ function renderComparisonTable() {
             <td><b style="color:var(--druid-orange); cursor:pointer;" onclick="switchSim(${idx})">${sim.name}</b></td>
             <td style="text-align:center;">${c.simTime || 60}s</td>
             <td style="text-align:center;">${c.iterations || 1000}</td>
-            <td style="text-align:center;">${getSavedStat(sim, 'inputAP')}</td>
-            <td style="text-align:center;">${getSavedStat(sim, 'inputCrit')}%</td>
-            <td style="text-align:center;">${getSavedStat(sim, 'inputHit')}%</td>
-            <td style="text-align:center;">${getSavedStat(sim, 'inputHaste')}%</td>
+            <td style="text-align:center;">${getSavedStat(sim, 'stat_ap')}</td>
+            <td style="text-align:center;">${getSavedStat(sim, 'stat_crit')}%</td>
+            <td style="text-align:center;">${getSavedStat(sim, 'stat_hit')}%</td>
+            <td style="text-align:center;">${getSavedStat(sim, 'stat_haste')}%</td>
             <td style="text-align:center;">${c.enemy_level || 63}</td>
             <td style="font-size:0.75rem; color:#aaa;">${getRotationShort(c)}</td>
             <td style="font-size:0.75rem; color:var(--druid-orange);">${getGearShort(sim)}</td>
@@ -536,11 +536,13 @@ function getGearShort(sim) {
 }
 
 function runAllSims() {
-    showProgress("Running All Simulations...");
+    showProgress("Initializing Batch Run...");
     var idx = 0;
+    var total = SIM_LIST.length;
 
     function next() {
-        if (idx >= SIM_LIST.length) {
+        // Abbruchbedingung: Wenn alle durch sind
+        if (idx >= total) {
             hideProgress();
             renderComparisonTable();
             return;
@@ -549,37 +551,48 @@ function runAllSims() {
         var sim = SIM_LIST[idx];
 
         try {
-            // Engine must be available as runCoreSimulation
-            if (typeof runCoreSimulation !== 'function') {
-                throw new Error("Engine not loaded");
-            }
-
-            // Reload data first to ensure Globals are correct
+            // 1. Daten in das UI laden (damit getSimInputs korrekte Werte greift)
             loadSimDataToUI(sim);
 
-            var all = [];
-            var iterations = sim.config.iterations || 100;
+            // 2. Visuelles Feedback VOR der Berechnung aktualisieren
+            var progressEl = document.getElementById("progressText");
+            if (progressEl) progressEl.innerText = "Simulating: " + (sim.name || ("Sim " + (idx + 1)));
 
-            // Small delay to allow UI/Globals to settle
+            // 3. Berechnung in setTimeout verlagern, damit der Browser rendern kann
             setTimeout(function () {
-                var cfg = getSimInputs();
+                var all = [];
+                // Korrekte Iterationszahl aus der Config holen (Fallback 1000)
+                var iterations = sim.config.simCount || 1000;
+                var cfg = getSimInputs(); 
+
+                // Blocking Loop (Synchron für EINE Simulation)
                 for (var i = 0; i < iterations; i++) {
+                    // Seed-Varianz sicherstellen
+                    cfg.seed = (cfg.seed || Math.floor(Math.random() * 0xFFFFFFFF)) + i;
                     all.push(runCoreSimulation(cfg));
                 }
+
+                // Ergebnisse aggregieren und speichern
                 sim.results = aggregateResults(all);
 
-                updateProgress(Math.floor(((idx + 1) / SIM_LIST.length) * 100));
+                // Progressbar aktualisieren (Nach Abschluss dieser Sim)
+                var pct = Math.floor(((idx + 1) / total) * 100);
+                updateProgress(pct);
+
+                // Nächsten Schritt einleiten (mit kleiner Pause für UI Repaint)
                 idx++;
-                next();
-            }, 5);
+                setTimeout(next, 20); 
+
+            }, 20); // Kurze Verzögerung vor Start, damit Text-Update sichtbar wird
 
         } catch (e) {
-            console.error(e);
+            console.error("Error in Sim " + idx, e);
             idx++;
-            setTimeout(next, 10);
+            setTimeout(next, 20);
         }
     }
 
+    // Starten
     setTimeout(next, 50);
 }
 
