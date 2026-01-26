@@ -1601,8 +1601,6 @@ function runCoreSimulation(cfg) {
     };
 }
 
-// Helper: Aggregate multiple runs
-// Helper: Aggregate multiple runs
 function aggregateResults(results) {
     if (!results || results.length === 0) return {};
     var totalDPS = 0, totalDmg = 0;
@@ -1610,7 +1608,10 @@ function aggregateResults(results) {
     var minDps = Infinity, maxDps = 0;
     var minRun = null, maxRun = null;
 
-    // First Pass: Sums and Min/Max
+    // Ergebnisse sortieren für Median und Histogramm-Berechnung
+    results.sort((a, b) => a.dps - b.dps);
+
+    // Erster Durchlauf: Summen und Min/Max ermitteln
     results.forEach(r => {
         if (r.dps < minDps) { minDps = r.dps; minRun = r; }
         if (r.dps > maxDps) { maxDps = r.dps; maxRun = r; }
@@ -1626,7 +1627,34 @@ function aggregateResults(results) {
     var n = results.length;
     var avgDpsVal = totalDPS / n;
 
-    // Second Pass: Variance & Standard Deviation for DPS
+    // Den Run finden, der dem mathematischen Durchschnitt am nächsten liegt
+    var closestDiff = Infinity;
+    var avgRun = results[0];
+    results.forEach(r => {
+        var diff = Math.abs(r.dps - avgDpsVal);
+        if (diff < closestDiff) {
+            closestDiff = diff;
+            avgRun = r;
+        }
+    });
+
+    // DPS-Verteilung (Histogramm) Daten berechnen
+    var numBins = 25;
+    var binSize = (maxDps - minDps) / numBins;
+    if (binSize <= 0) binSize = 1; 
+    
+    var bins = new Array(numBins).fill(0);
+    results.forEach(r => {
+        var binIdx = Math.floor((r.dps - minDps) / binSize);
+        if (binIdx >= numBins) binIdx = numBins - 1;
+        if (binIdx < 0) binIdx = 0;
+        bins[binIdx]++;
+    });
+
+    // NEU: maxBin definieren für die Y-Achsen-Skalierung
+    var maxBin = Math.max(...bins);
+
+    // Varianz & Standardabweichung
     var sumSqDiff = 0;
     results.forEach(r => {
         var diff = r.dps - avgDpsVal;
@@ -1634,20 +1662,35 @@ function aggregateResults(results) {
     });
     var variance = (n > 1) ? sumSqDiff / (n - 1) : 0;
     var stdDev = Math.sqrt(variance);
-    var stdErr = stdDev / Math.sqrt(n); // Standard Error of the Mean
+    var stdErr = stdDev / Math.sqrt(n); 
 
     for (var k in counts) counts[k] /= n;
     for (var k in dmgSources) dmgSources[k] /= n;
 
-    var avg = results[0]; // Clone structure from first
+    // Das finale Objekt zusammenbauen
+    var avg = JSON.parse(JSON.stringify(avgRun)); // Deep Copy des avgRun für die Struktur
     avg.dps = avgDpsVal; 
-    avg.dpsStdDev = stdDev; // New: Standard Deviation
-    avg.dpsSE = stdErr;     // New: Standard Error for Weight Calc
+    avg.dpsStdDev = stdDev;
+    avg.dpsSE = stdErr; 
     avg.totalDmg = totalDmg / n;
-    avg.minDps = minDps; avg.maxDps = maxDps;
-    avg.minRun = minRun; avg.maxRun = maxRun;
+    avg.minDps = minDps; 
+    avg.maxDps = maxDps;
+    
+    // Wichtig: Wir speichern den echten avgRun separat, damit wir im UI darauf zugreifen können
+    avg.avgRun = avgRun; 
+    avg.minRun = minRun;
+    avg.maxRun = maxRun;
+    
+    avg.distribution = {
+        bins: bins,
+        min: minDps,
+        max: maxDps,
+        binSize: binSize,
+        maxBin: maxBin // Jetzt korrekt definiert
+    };
 
-    avg.counts = counts; avg.dmgSources = dmgSources;
+    avg.counts = counts; 
+    avg.dmgSources = dmgSources;
 
     return avg;
 }

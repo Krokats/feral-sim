@@ -968,8 +968,12 @@ function updateViewButtons() {
 function updateSimulationResults(sim) {
     if (!sim || !sim.results) return;
 
-    // Choose data set based on current View
-    var data = sim.results; // Default Avg
+    // SICHERSTELLUNG: Ergebnisse im globalen Objekt ablegen, bevor UI-Logik startet
+    if (SIM_LIST[ACTIVE_SIM_INDEX]) {
+        SIM_LIST[ACTIVE_SIM_INDEX].results = sim.results;
+    }
+
+    var data = sim.results; 
     var isAvg = true;
 
     if (CURRENT_RESULT_VIEW === 'min' && sim.results.minRun) {
@@ -978,10 +982,20 @@ function updateSimulationResults(sim) {
     } else if (CURRENT_RESULT_VIEW === 'max' && sim.results.maxRun) {
         data = sim.results.maxRun;
         isAvg = false;
+    } else if (CURRENT_RESULT_VIEW === 'avg' && sim.results.avgRun) {
+        // Nutze den Median-Run für die Durchschnittsansicht
+        data = sim.results.avgRun;
+        isAvg = true;
     }
 
     var r = data;
-    var avgR = sim.results; // Always keep reference to Avg for top stats
+    var avgR = sim.results; 
+
+    var resDiv = document.getElementById("simResultsArea");
+    if (resDiv) resDiv.classList.remove("hidden");
+
+    // Chart rendern (avgR enthält die Verteilungsdaten)
+    renderDPSChart(avgR);
 
     var resDiv = document.getElementById("simResultsArea");
     if (resDiv) resDiv.classList.remove("hidden");
@@ -1048,14 +1062,10 @@ function updateSimulationResults(sim) {
     renderDistBar(r);
     renderResultTable(r);
 
-    // Log Visibility Control
     var logSec = document.getElementById("combatLogSection");
-    if (isAvg) {
-        // Hide log for Average (as it is aggregated data)
-        if (logSec) logSec.classList.add("hidden");
-    } else {
-        // Show log for Min/Max
-        if (logSec) logSec.classList.remove("hidden");
+    if (logSec) {
+        // Immer anzeigen, da wir nun für alle 3 Ansichten (Min/Avg/Max) reale Runs haben
+        logSec.classList.remove("hidden");
         renderLogTable(r.log);
     }
 }
@@ -1932,3 +1942,73 @@ function closeWarningModal() {
     if (m) m.classList.add("hidden");
 }
 
+function renderDPSChart(results) {
+    const container = document.getElementById("dpsChartContainer");
+    const canvas = document.getElementById("dpsChart");
+    if (!container || !canvas || !results.distribution) return;
+
+    // 1. Globale Grenzwerte über alle Simulationen ermitteln für identische Skalen
+    let globalMin = results.distribution.min;
+    let globalMax = results.distribution.max;
+    let globalMaxBin = results.distribution.maxBin;
+
+    SIM_LIST.forEach(sim => {
+        if (sim.results && sim.results.distribution) {
+            globalMin = Math.min(globalMin, sim.results.distribution.min);
+            globalMax = Math.max(globalMax, sim.results.distribution.max);
+            globalMaxBin = Math.max(globalMaxBin, sim.results.distribution.maxBin);
+        }
+    });
+
+    container.style.display = "block";
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    const dist = results.distribution;
+    const bins = dist.bins;
+    const margin = 20;
+    const chartWidth = rect.width - (margin * 2);
+    const chartHeight = rect.height - (margin * 2.5);
+
+    ctx.clearRect(0, 0, rect.width, rect.height);
+
+    // 2. Balken zeichnen mit globaler X-Achsen-Positionierung
+    bins.forEach((count, i) => {
+        if (count === 0) return;
+
+        // Position berechnen basierend auf dem globalen Min/Max
+        const binStartDps = dist.min + (i * dist.binSize);
+        const xPosPercent = (binStartDps - globalMin) / (globalMax - globalMin);
+        
+        const h = (count / globalMaxBin) * chartHeight; // Y-Skala global
+        const x = margin + (xPosPercent * chartWidth);
+        const y = rect.height - margin - h;
+        const bWidth = (dist.binSize / (globalMax - globalMin)) * chartWidth;
+
+        ctx.fillStyle = '#ff7d0a';
+        ctx.fillRect(x, y, Math.max(1, bWidth - 1), h);
+    });
+
+    // Achsen-Beschriftung mit globalen Werten
+    ctx.fillStyle = "#aaa";
+    ctx.font = "10px Inter";
+    ctx.textAlign = "left";
+    ctx.fillText(Math.floor(globalMin) + " DPS", margin, rect.height - 5);
+    ctx.textAlign = "right";
+    ctx.fillText(Math.floor(globalMax) + " DPS", rect.width - margin, rect.height - 5);
+    
+    // Durchschnitts-Linie (relativ zum globalen Scale)
+    if (globalMax > globalMin) {
+        const avgPos = ((results.dps - globalMin) / (globalMax - globalMin)) * chartWidth;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.setLineDash([5, 3]);
+        ctx.beginPath();
+        ctx.moveTo(margin + avgPos, 5);
+        ctx.lineTo(margin + avgPos, rect.height - margin);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+}

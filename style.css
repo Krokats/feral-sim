@@ -1430,3 +1430,29 @@ label[style*="dotted"]:hover {
     margin-top: 5px;
     display: block;
 }
+
+/* DPS Distribution Chart */
+#dpsChartContainer {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+#dpsChartContainer div {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: var(--druid-orange);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#dpsChart {
+    width: 100%;
+    height: 140px; /* Leicht erhöht für bessere Lesbarkeit */
+    display: block;
+    image-rendering: auto;
+}

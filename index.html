@@ -604,6 +604,13 @@
                                     <div class="right-actions"><button onclick="generateSummaryImage()" class="btn-mini">📸 Save Image</button></div>
                                 </div>
 
+                                <div id="dpsChartContainer" style="display:none; margin-bottom: 20px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 15px; border-radius: 8px;">
+                                    <div style="font-family: 'Cinzel', serif; font-size: 0.9rem; color: var(--druid-orange); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                                        DPS Distribution
+                                    </div>
+                                    <canvas id="dpsChart" style="width: 100%; height: 120px;"></canvas>
+                                </div>
+
                                 <div class="stats-grid">
                                     <div class="stat-box primary">
                                         <h3>DPS</h3>
