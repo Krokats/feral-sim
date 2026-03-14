@@ -1804,11 +1804,15 @@ async function runArmoryImport() {
     status.innerText = "Fetching HTML from turtlecraft.gg...";
     status.style.color = "#aaa";
 
-    var targetUrl = `https://turtlecraft.gg/armory/${realm}/${name}`;
-    var proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
+   var targetUrl = `https://turtlecraft.gg/armory/${realm}/${name}`;
 
+    var workerUrl = `https://turtle-armory.johnrdoe89.workers.dev/?url=`; 
+    var finalUrl = workerUrl + encodeURIComponent(targetUrl);
+    
+    
     try {
-        var response = await fetch(proxyUrl);
+        var response = await fetch(finalUrl);
+
         if (!response.ok) {
             throw new Error("Network Error or Character not found (Status " + response.status + ")");
         }
@@ -1817,32 +1821,38 @@ async function runArmoryImport() {
         var parser = new DOMParser();
         var doc = parser.parseFromString(htmlText, 'text/html');
 
-        // Extract Data
-        var uniqueFoundItems = extractItemsFromHtml(doc);
+        // NEU: Rasse aus dem HTML/JSON extrahieren
+        var raceString = "Tauren"; // Fallback
+        var raceMatch = htmlText.match(/&quot;race&quot;:(\d+)/) || htmlText.match(/"race":(\d+)/);
+        if (raceMatch) {
+            var rId = parseInt(raceMatch[1]);
+            if (rId === 4) raceString = "NightElf";
+            if (rId === 6) raceString = "Tauren";
+        }
 
+        // Extract Data (Items & Enchants)
+        var uniqueFoundItems = extractItemsFromHtml(doc);
         if (uniqueFoundItems.length === 0) {
             throw new Error("No items found on page. Character might be naked or parsing failed.");
         }
 
         // Apply Data & Get Match Statistics
-        var results = applyImportData(uniqueFoundItems, name);
-
+        var results = applyImportData(uniqueFoundItems, raceString, name);
+        
         // Feedback Message
         var msg = "Armory Scan: Found " + uniqueFoundItems.length + " unique Item-IDs.<br>";
+
         if (results.matched > 0) {
             msg += "<span style='color:#4caf50'>Successfully imported " + results.matched + " items.</span>";
         } else {
             msg += "<span style='color:#f44336'>No items matched your local DB.</span>";
         }
 
-        // Hint about missing items
         if (results.matched < uniqueFoundItems.length) {
             msg += "<br><span style='font-size:0.8em; color:#888;'>(" + (uniqueFoundItems.length - results.matched) + " items skipped - not in local DB)</span>";
         }
 
         status.innerHTML = msg;
-
-        // Close modal only if successful match occurred
         if (results.matched > 0) {
             setTimeout(closeArmoryModal, 3000);
         }
@@ -1853,13 +1863,13 @@ async function runArmoryImport() {
         status.style.color = "#f44336";
     }
 }
-
 /**
  * Scans HTML for item links and returns a UNIQUE list of objects.
  */
 function extractItemsFromHtml(doc) {
-    var foundMap = new Map(); // Use Map to deduplicate by ItemID immediately
+    var foundMap = new Map();
 
+    // 1. Items aus den regulären Links auslesen
     var links = doc.querySelectorAll('a[href*="item="]');
     links.forEach(function (a) {
         var href = a.getAttribute('href');
@@ -1867,35 +1877,56 @@ function extractItemsFromHtml(doc) {
 
         if (itemMatch) {
             var iId = parseInt(itemMatch[1]);
-            // Only add if not already present 
             if (!foundMap.has(iId)) {
-                foundMap.set(iId, {
-                    itemId: iId,
-
-                });
+                foundMap.set(iId, { itemId: iId });
             }
         }
     });
 
+    // 2. NEU: Quelltext nach dem versteckten JSON (itemEntry & enchantments) durchsuchen
+    var htmlString = doc.documentElement.innerHTML;
+    var regex = /&quot;itemEntry&quot;:(\d+)[^}]*?&quot;enchantments&quot;:(\d+)/g;
+    var match;
+
+    while ((match = regex.exec(htmlString)) !== null) {
+        var iId = parseInt(match[1]);
+        var eId = parseInt(match[2]);
+
+        // Trage die effectId bei dem Item ein
+        if (foundMap.has(iId)) {
+            foundMap.get(iId).effectId = eId;
+        } else {
+            foundMap.set(iId, { itemId: iId, effectId: eId });
+        }
+    }
+
     return Array.from(foundMap.values());
 }
 
-
+/**
+ * Applies extracted data to the Simulation state
+ */
 function applyImportData(importedItems, race, charName) {
     var matchCount = 0;
 
+    // 1. NEU: Rasse im UI setzen, falls erkannt
+    if (race) {
+        var raceSel = document.getElementById('char_race');
+        if (raceSel) {
+            raceSel.value = race;
+        }
+    }
 
-    // 2. Clear current gear
+    // 2. Clear current gear & enchants
     GEAR_SELECTION = {};
+    ENCHANT_SELECTION = {}; // NEU
 
-    // 3. Map Items
+    // 3. Map Items & Enchants
     importedItems.forEach(function (entry) {
         var dbItem = ITEM_ID_MAP[entry.itemId];
 
         // Skip if not in DB
-        if (!dbItem) {
-            return;
-        }
+        if (!dbItem) return;
 
         var slotToAssign = null;
         var slotKey = dbItem.slot; // e.g. "Head", "Two-Hand", "Trinket"
@@ -1909,11 +1940,10 @@ function applyImportData(importedItems, race, charName) {
             if (!GEAR_SELECTION["Trinket 1"]) slotToAssign = "Trinket 1";
             else slotToAssign = "Trinket 2";
         }
-        // FIXED: Added "Two-Hand" and "Mainhand" for Staves/Maces/Polearms
-        else if (slotKey === "One-hand" || slotKey === "Two-hand") {
+        else if (slotKey === "One-hand" || slotKey === "Two-hand" || slotKey === "Mainhand" || slotKey === "Weapon") {
             slotToAssign = "Main Hand";
         }
-        else if (slotKey === "Held In Off-Hand") {
+        else if (slotKey === "Held In Off-Hand" || slotKey === "Shield") {
             slotToAssign = "Off Hand";
         }
         else {
@@ -1922,17 +1952,27 @@ function applyImportData(importedItems, race, charName) {
         }
 
         if (slotToAssign) {
+            // Item zuweisen
             GEAR_SELECTION[slotToAssign] = entry.itemId;
             matchCount++;
+
+            // NEU: Enchantment zuweisen, falls eine effectId gefunden wurde
+            // Setzt voraus, dass ENCHANT_DB geladen ist
+            if (entry.effectId && entry.effectId !== 0 && typeof ENCHANT_DB !== 'undefined') {
+                var enchant = ENCHANT_DB.find(function (e) { return e.effectId === entry.effectId; });
+                if (enchant) {
+                    ENCHANT_SELECTION[slotToAssign] = enchant.id;
+                }
+            }
         }
     });
 
     // 4. Update UI
-    initGearPlannerUI();
+    if (typeof initGearPlannerUI === 'function') initGearPlannerUI();
     saveCurrentState();
-    updatePlayerStats();
-    updateEnemyInfo();
-    showToast("Imported data");
+    if (typeof updatePlayerStats === 'function') updatePlayerStats();
+    if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
+    showToast("Imported data for " + (charName || "character"));
 
     return { matched: matchCount };
 }
