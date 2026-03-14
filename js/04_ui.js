@@ -1742,7 +1742,7 @@ function updateDamageScaling() {
             name: "Claw, Rank 5 (3 Bleeds)",
             formula: `(1.05 * NormalDmg + 115) * PredatoryStrikes * OpenWounds * NaturalWeapons`,
             calc: `(1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes} * ${1.3} * ${tNatWep}`,
-            final: (1.05 * normalDmg + 115) * tPredStrikes * tOpenWounds * tNatWep
+            final: (1.05 * normalDmg + 115) * tPredStrikes * 1.3 * tNatWep
         },
         {
             name: "Shred, Rank 5",
