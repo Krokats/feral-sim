@@ -1,7 +1,7 @@
 [
   {
     "id": 61081,
-    "effectId": 45739,
+    "effectId": 3004,
     "url": "https://database.turtlecraft.gg/?item=61081",
     "name": "Gift of Ferocity",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -50,7 +50,7 @@
   },
   {
     "id": 11645,
-    "effectId": 15397,
+    "effectId": 1506,
     "url": "https://database.turtlecraft.gg/?item=11645",
     "name": "Lesser Arcanum of  Voracity",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -99,9 +99,9 @@
   },
   {
     "id": 11645,
-    "effectId": 15397,
+    "effectId": 1506,
     "url": "https://database.turtlecraft.gg/?item=11645",
-    "name": "Lesser Arcanum of  Voracity",
+    "name": "Lesser Arcanum of Voracity",
     "icon": "spell_shadow_detectlesserinvisibility",
     "allowableClasses": 0,
     "slot": "Legs",
@@ -148,7 +148,7 @@
   },
   {
     "id": 11647,
-    "effectId": 15402,
+    "effectId": 1508,
     "url": "https://database.turtlecraft.gg/?item=11647",
     "name": "Lesser Arcanum of  Voracity",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -197,7 +197,7 @@
   },
   {
     "id": 11647,
-    "effectId": 15402,
+    "effectId": 1508,
     "url": "https://database.turtlecraft.gg/?item=11647",
     "name": "Lesser Arcanum of  Voracity",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -246,7 +246,7 @@
   },
   {
     "id": 56014,
-    "effectId": 51045,
+    "effectId": 928,
     "url": "https://database.turtlecraft.gg/?item=56014",
     "name": "Stunning Imperial Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -295,7 +295,7 @@
   },
   {
     "id": 56014,
-    "effectId": 51045,
+    "effectId": 928,
     "url": "https://database.turtlecraft.gg/?item=56014",
     "name": "Stunning Imperial Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -344,7 +344,7 @@
   },
   {
     "id": 56015,
-    "effectId": 51042,
+    "effectId": 108,
     "url": "https://database.turtlecraft.gg/?item=56015",
     "name": "Azerothian Ruby Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -393,7 +393,7 @@
   },
   {
     "id": 56015,
-    "effectId": 51042,
+    "effectId": 108,
     "url": "https://database.turtlecraft.gg/?item=56015",
     "name": "Azerothian Ruby Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -442,7 +442,7 @@
   },
   {
     "id": 56008,
-    "effectId": 51035,
+    "effectId": 92,
     "url": "https://database.turtlecraft.gg/?item=56008",
     "name": "Brilliant Opal Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -491,7 +491,7 @@
   },
   {
     "id": 56008,
-    "effectId": 51035,
+    "effectId": 92,
     "url": "https://database.turtlecraft.gg/?item=56008",
     "name": "Brilliant Opal Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -540,7 +540,7 @@
   },
   {
     "id": 56056,
-    "effectId": 51031,
+    "effectId": 107,
     "url": "https://database.turtlecraft.gg/?item=56056",
     "name": "Burning Star Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -589,7 +589,7 @@
   },
   {
     "id": 56056,
-    "effectId": 51031,
+    "effectId": 107,
     "url": "https://database.turtlecraft.gg/?item=56056",
     "name": "Burning Star Gemstone",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -638,7 +638,7 @@
   },
   {
     "id": 23548,
-    "effectId": 29483,
+    "effectId": 2717,
     "url": "https://database.turtlecraft.gg/?item=23548",
     "name": "Might of the Scourge",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -687,7 +687,7 @@
   },
   {
     "id": 20077,
-    "effectId": 24422,
+    "effectId": 2606,
     "url": "https://database.turtlecraft.gg/?item=20077",
     "name": "Zandalar Signet of Might",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -736,7 +736,7 @@
   },
   {
     "id": 61437,
-    "effectId": 57156,
+    "effectId": 3017,
     "url": "https://database.turtlecraft.gg/?item=61437",
     "name": "Sigil of Quickness",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -785,7 +785,7 @@
   },
   {
     "id": 61438,
-    "effectId": 57157,
+    "effectId": 3038,
     "url": "https://database.turtlecraft.gg/?item=61438",
     "name": "Sigil of Penetration",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -834,7 +834,7 @@
   },
   {
     "id": 11206,
-    "effectId": 13883,
+    "effectId": 36,
     "url": "https://database.turtlecraft.gg/?item=11206",
     "name": "Enchant Cloak - Lesser Agility",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -883,7 +883,7 @@
   },
   {
     "id": 16253,
-    "effectId": 20088,
+    "effectId": 36,
     "url": "https://database.turtlecraft.gg/?item=16253",
     "name": "Enchant Chest - Greater Stats",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -932,7 +932,7 @@
   },
   {
     "id": 13941,
-    "effectId": 18252,
+    "effectId": 53,
     "url": "https://database.turtlecraft.gg/?item=13941",
     "name": "Enchant Chest - Stats",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -1079,6 +1079,7 @@
   },
   {
     "id": 13939,
+    "effectId": 18250,
     "url": "https://database.turtlecraft.gg/?item=13939",
     "name": "Enchant Bracer - Greater Strength",
     "icon": "spell_shadow_detectlesserinvisibility",
@@ -1126,8 +1127,9 @@
     }
   },
   {
-    "id": 25080,
-    "url": "https://database.turtlecraft.gg/?item=25080",
+    "id": 20731,
+    "effectId": 25092,
+    "url": "https://database.turtlecraft.gg/?item=20731",
     "name": "Enchant Gloves - Superior Agility",
     "icon": "spell_shadow_detectlesserinvisibility",
     "allowableClasses": 0,
@@ -1174,8 +1176,9 @@
     }
   },
   {
-    "id": 46086,
-    "url": "https://database.turtlecraft.gg/?item=46086",
+    "id": 53017,
+    "effectId": 46087,
+    "url": "https://database.turtlecraft.gg/?item=53017",
     "name": "Enchant Gloves - Major Strength",
     "icon": "spell_shadow_detectlesserinvisibility",
     "allowableClasses": 0,
@@ -1222,8 +1225,9 @@
     }
   },
   {
-    "id": 20012,
-    "url": "https://database.turtlecraft.gg/?item=20012",
+    "id": 16219,
+    "effectId": 20071,
+    "url": "https://database.turtlecraft.gg/?item=16219",
     "name": "Enchant Gloves - Greater Agility",
     "icon": "spell_shadow_detectlesserinvisibility",
     "allowableClasses": 0,
