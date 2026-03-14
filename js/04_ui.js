@@ -29,7 +29,8 @@ const HELP_TEXTS = {
     "use_reshift": "Powershifting: Shifting out of Cat form and back in to instantly gain 40-60 energy (Furor/Gift of Ferocity).",
     "reshift_energy": "The simulation will shift whenever energy falls to or below this value.",
     "use_rake": "Applies a bleed that deals damage over time and increases Claw damage (if Open Wounds is talented).",
-    "use_tf": "Tiger's Fury. Increases physical damage but costs energy. Best used during low energy/Clearcasting.",
+    "use_tf": "Tiger's Fury. Increases physical damage but costs energy. Best used during low energy.",
+    "tf_after_fb": "If enabled, casting Ferocious Bite will force an immediate refresh of Tiger's Fury (once you have 30 Energy), even if the TF buff is still active.",
     "idol_savagery": "Increases the tick frequency of Rip and Rake (making them deal damage faster).",
     "idol_ferocity": "Reduces the energy cost of Claw and Rake by 3.",
     "gear_gift_of_ferocity": "Turtle WoW specific head enchant. Grants 20 energy upon shifting into Cat form.",
@@ -509,6 +510,7 @@ function getRotationShort(c) {
     if (c.use_reshift) parts.push("Shift<" + c.reshift_energy);
     if (c.use_rip) parts.push("Rip>" + c.rip_cp);
     if (c.use_fb) parts.push("FB>" + c.fb_energy);
+    if (c.use_tf) parts.push(c.tf_after_fb ? "TF(FB)" : "TF");
 
     return parts.join(", ");
 }
@@ -779,6 +781,21 @@ function updateRotationConstraints() {
         if (parentDur) { parentDur.style.opacity = "0.5"; parentDur.style.pointerEvents = "none"; }
     }
 
+    // --- NEU: TF after FB Constraint ---
+    var useFB = getVal("use_fb") === 1;
+    var chkTFafterFB = document.getElementById("tf_after_fb");
+    var lblTFafterFB = document.getElementById("lbl_tf_after_fb");
+
+    if (useTF && useFB) {
+        if (chkTFafterFB) chkTFafterFB.disabled = false;
+        if (lblTFafterFB) { lblTFafterFB.style.opacity = "1"; lblTFafterFB.style.pointerEvents = "auto"; }
+    } else {
+        if (chkTFafterFB) { chkTFafterFB.disabled = true; chkTFafterFB.checked = false; }
+        if (lblTFafterFB) { lblTFafterFB.style.opacity = "0.5"; lblTFafterFB.style.pointerEvents = "none"; }
+    }
+
+    // --- NEU: Pounce Constraint (Requires Behind) ---
+    
     // --- NEU: Pounce Constraint (Requires Behind) ---
     var lblPounce = document.getElementById("use_pounce") ? document.getElementById("use_pounce").parentElement : null;
     var chkPounce = document.getElementById("use_pounce");
@@ -912,7 +929,10 @@ function updateRotaSummary() {
     if (getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
 
     if (getVal("use_reshift")) add("Reshift (<" + getVal("reshift_energy") + " En)", "#4caf50");
-    if (getVal("use_tf")) add("Tiger's Fury", "#ff9800");
+    if (getVal("use_tf")) {
+        if (getVal("tf_after_fb")) add("Tiger's Fury (After FB)", "#ff9800");
+        else add("Tiger's Fury", "#ff9800");
+    }
     if (getVal("use_ff")) add("Faerie Fire", "#a335ee");
     if (getVal("use_rake")) add("Rake", "#e57373");
 
@@ -1701,22 +1721,34 @@ function updateDamageScaling() {
 
     const abilities = [
         {
+            name: "Normal Damage",
+            formula: `BaseDmg + (AP-295)/14`,
+            calc: `${avgBase.toFixed(1)} + ${apBonus.toFixed(1)}`,
+            final: normalDmg
+        },
+        {
             name: "Auto Attack",
-            formula: `(BaseDmg + (AP-295)/14) * NaturalWeapons`,
-            calc: `(${avgBase.toFixed(1)} + ${apBonus.toFixed(1)}) * ${tNatWep}`,
+            formula: `NormalDmg * NaturalWeapons`,
+            calc: `${normalDmg.toFixed(1)} * ${tNatWep}`,
             final: normalDmg * tNatWep
         },
         {
-            name: "Shred",
-            formula: `((2.25 * NormalDmg + 180) * (1 + ImpShred)) * NaturalWeapons`,
-            calc: `((2.25 * ${normalDmg.toFixed(1)} + 180) * ${(1 + tImpShred).toFixed(2)}) * ${tNatWep}`,
-            final: ((2.25 * normalDmg + 180) * (1 + tImpShred)) * tNatWep
+            name: "Claw, Rank 5 (0 Bleeds)",
+            formula: `(1.05 * NormalDmg + 115) * PredatoryStrikes * NaturalWeapons`,
+            calc: `(1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes} * ${tNatWep}`,
+            final: (1.05 * normalDmg + 115) * tPredStrikes * tNatWep
         },
         {
-            name: "Claw",
-            formula: `((1.05 * NormalDmg + 115) * PredatoryStrikes) * NaturalWeapons`,
-            calc: `((1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes}) * ${tNatWep}`,
-            final: ((1.05 * normalDmg + 115) * tPredStrikes) * tNatWep
+            name: "Claw, Rank 5 (3 Bleeds)",
+            formula: `(1.05 * NormalDmg + 115) * PredatoryStrikes * OpenWounds * NaturalWeapons`,
+            calc: `(1.05 * ${normalDmg.toFixed(1)} + 115) * ${tPredStrikes} * ${1.3} * ${tNatWep}`,
+            final: (1.05 * normalDmg + 115) * tPredStrikes * tOpenWounds * tNatWep
+        },
+        {
+            name: "Shred, Rank 5",
+            formula: `(2.25 * NormalDmg + 180) * (1 + ImpShred) * NaturalWeapons`,
+            calc: `(2.25 * ${normalDmg.toFixed(1)} + 180) * ${(1 + tImpShred).toFixed(2)} * ${tNatWep}`,
+            final: (2.25 * normalDmg + 180) * (1 + tImpShred) * tNatWep
         },
         {
             name: "Rake (Initial)",
@@ -1755,8 +1787,9 @@ function updateDamageScaling() {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td class="text-left" style="font-weight:600;">${a.name} <i class="formula-help" style="cursor:help; color:var(--text-muted); font-size:0.7rem;" data-formula="${a.formula}">ⓘ</i></td>
+            <td class="text-left scaling-formula-preview">${a.formula}</td>
             <td class="text-right scaling-formula-preview">${a.calc}</td>
-            <td class="text-right" style="color:var(--druid-orange); font-weight:700; font-size:1rem;">${Math.floor(a.final)}</td>
+            <td class="text-right" style="color:var(--druid-orange); font-weight:700; font-size:1rem;">${a.final.toFixed(1)}</td>
         `;
 
         // Tooltip Event für die Formel

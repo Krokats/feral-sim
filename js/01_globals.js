@@ -46,7 +46,7 @@ var CONFIG_IDS = [
     "use_rip", "rip_cp",
     "use_fb", "fb_cp", "fb_energy",
     "use_reshift", "reshift_energy",
-    "use_tf",
+    "use_tf","tf_after_fb",
     "reshift_over_tf", "reshift_over_tf_dur",
     "use_rake",
     "use_shred", "use_claw",

@@ -407,7 +407,7 @@ function getSimInputs() {
         reshift_over_tf: getCheck("reshift_over_tf") === 1,
         reshift_over_tf_dur: getNum("reshift_over_tf_dur"),
         use_tf: getCheck("use_tf"),
-        use_tf: getCheck("use_tf"),
+        tf_after_fb: getCheck("tf_after_fb") === 1,
         use_rake: getCheck("use_rake"),
         use_shred: getCheck("use_shred"),
         use_claw: getCheck("use_claw"),
@@ -521,6 +521,8 @@ function runCoreSimulation(cfg) {
     var swingTimer = 0.0;
     var isExtra;
     var activeRipCP = 0; // Merkt sich die CP des laufenden Rips
+    var tfCastedOnce = false; // Prüft, ob TF schon mal genutzt wurde (für Kampfbeginn)
+    var fbJustCast = false;   // Markiert, dass gerade FB genutzt wurde
 
     // Auras & Buffs
     var auras = {
@@ -885,7 +887,7 @@ function runCoreSimulation(cfg) {
 
             // Log the tick
             // action="Energy Tick", info="Regen", res="Tick", dmg=0, crit=false, isTick=false (to treat as generic event), eChange=gained
-            logAction("Energy Tick", "Regen", "Tick", 0, false, false, gained);
+            logAction("Energy Tick", "Regen", "Tick", 0, false, true, gained);
 
             nextEnergyTick += 2.0;
         }
@@ -1080,8 +1082,23 @@ function runCoreSimulation(cfg) {
         }
 
         // Tiger's Fury
-        if (auras.tigersFury <= t && cfg.use_tf && energy >= costTF && t >= gcdEnd) {
+        var tfAllowed = (auras.tigersFury <= t);
+        if (cfg.tf_after_fb) {
+            tfAllowed = (!tfCastedOnce || fbJustCast); // Erlaubt TF am Start ODER nach FB
+        }
+
+        if (tfAllowed && cfg.use_tf && energy >= costTF && t >= gcdEnd) {
+            // NEU: Wenn TF noch läuft und überschrieben wird, müssen wir alte Energie-Ticks löschen!
+            if (auras.tigersFury > t) {
+                for (var i = events.length - 1; i >= 0; i--) {
+                    if (events[i].type === "tf_energy") events.splice(i, 1);
+                }
+            }
+
             energy -= costTF;
+            tfCastedOnce = true;
+            fbJustCast = false; // Flag wieder zurücksetzen
+            
             // Update: TF Base Duration is 18s with Energy ticks
             var dur = 18;
             auras.tigersFury = t + dur;
@@ -1393,6 +1410,7 @@ function runCoreSimulation(cfg) {
                             var cpUsed = cp;
 
                             var extraE = energy; energy = 0;
+                            if (cfg.tf_after_fb) fbJustCast = true; // NEU: Meldet der Engine, dass FB gewirkt wurde
                             var baseFB = 70 + 128 * cp + 0.07 * curAP;
                             var multiplier = Math.pow(1.005, extraE);
                             abilityDmg = baseFB * multiplier;
