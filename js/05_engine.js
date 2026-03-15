@@ -74,6 +74,9 @@ function runSimulation() {
 
                 SIM_DATA = SIM_LIST[ACTIVE_SIM_INDEX];
                 updateSimulationResults(SIM_DATA);
+
+                if (typeof renderRotationList === 'function') renderRotationList();
+
                 showToast("Simulation Complete!");
                 hideProgress(); // Stop Animation
             }
@@ -370,6 +373,8 @@ function getSimInputs() {
     var getSel = (id) => { var el = document.getElementById(id); return el ? el.value : ""; };
 
     return {
+        custom_rotation: typeof CUSTOM_ROTATION !== 'undefined' ? CUSTOM_ROTATION : [],
+        gearSelection: typeof GEAR_SELECTION !== 'undefined' ? GEAR_SELECTION : {},
         // Sim Settings
         simTime: getNum("simTime") || 60,
         iterations: getNum("simCount") || 1000,
@@ -521,8 +526,7 @@ function runCoreSimulation(cfg) {
     var swingTimer = 0.0;
     var isExtra;
     var activeRipCP = 0; // Merkt sich die CP des laufenden Rips
-    var tfCastedOnce = false; // Prüft, ob TF schon mal genutzt wurde (für Kampfbeginn)
-    var fbJustCast = false;   // Markiert, dass gerade FB genutzt wurde
+    var lastSpellCast = "None"; // Speichert den zuletzt genutzten Skill für Conditions
 
     // Auras & Buffs
     var auras = {
@@ -626,21 +630,25 @@ function runCoreSimulation(cfg) {
     }
 
     // --- HELPER: Haste Calculation ---
+    // --- HELPER: Haste Calculation ---
     function getHasteMod() {
-        var hPercent = 0;
-        if (cfg.inputHaste > 0) hPercent += cfg.inputHaste;
+        var hasteMult = 1.0;
 
-        if (auras.BloodFrenzy > t && auras.BloodFrenzy > 0) hPercent += 20;
-        if (auras.potionQuickness > t && auras.potionQuickness > 0) hPercent += 5;
-        if (auras.jujuFlurry > t && auras.jujuFlurry > 0) hPercent += 3; // NEU
+        // Gear & Enchants/Food Haste (Additive im UI, hier als ein gemeinsamer Faktor)
+        if (cfg.inputHaste > 0) hasteMult *= (1 + (cfg.inputHaste / 100));
+
+        // Buffs & Procs (Multiplikativ)
+        if (auras.BloodFrenzy > t && auras.BloodFrenzy > 0) hasteMult *= 1.20;
+        if (auras.potionQuickness > t && auras.potionQuickness > 0) hasteMult *= 1.05;
+        if (auras.jujuFlurry > t && auras.jujuFlurry > 0) hasteMult *= 1.03; // NEU
 
         // Cenarion 8p: +15% Speed
-        if (auras.cenarionHaste > t && stacks.cenarion > 0 && auras.cenarionHaste > 0) hPercent += 15;
+        if (auras.cenarionHaste > t && stacks.cenarion > 0 && auras.cenarionHaste > 0) hasteMult *= 1.15;
 
         // Kiss of the Spider: +20% Speed
-        if (auras.spider > t && auras.spider > 0) hPercent += 20;
+        if (auras.spider > t && auras.spider > 0) hasteMult *= 1.20;
 
-        return 1 + (hPercent / 100);
+        return hasteMult;
     }
 
     // --- HELPER: Armor Reduction ---
@@ -782,27 +790,6 @@ function runCoreSimulation(cfg) {
     function rollDamageRange(min, max) { return rng.dmg(min, max); }
 
 
-    // ========================================================================
-    // --- POUNCE OPENER LOGIC (BEFORE LOOP) ---
-    // ========================================================================
-    if (cfg.use_pounce && cfg.rota_position === 'back') {
-        energy -= 50;
-        cp += 1;
-        gcdEnd = 1.0;
-
-        // Pounce Formula: 0.18 * AP + 147.5 (Total Bleed over 18s)
-        var pounceTotal = (147.5 + (0.18 * getCurrentAP())) * modNaturalWeapons; //Natural Weapon Modifier
-        var pounceTick = pounceTotal / 6;
-
-        auras.pounce = 18.0; // 6 ticks * 3s
-        // Manuelles Hinzufügen der Ticks
-        for (var i = 1; i <= 6; i++) {
-            addEvent(i * 3.0, "dot_tick", { name: "pounce", dmg: pounceTick, label: "Pounce" });
-        }
-
-        logAction("Pounce", "Opener", "Cast", 0, false, false, -50);
-    }
-
     // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
     // -----------------------------------------
@@ -878,7 +865,7 @@ function runCoreSimulation(cfg) {
 
         // Energy Tick
         if (t >= nextEnergyTick - 0.001) {
-            var tickAmt = (auras.berserk > t && cfg.use_berserk) ? 40 : 20;
+            var tickAmt = (auras.berserk > t) ? 40 : 20;
 
             // Capture old energy to calc actual gain for log
             var oldEnergy = energy;
@@ -1052,214 +1039,218 @@ function runCoreSimulation(cfg) {
             costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0;
         }
 
-        // 2. OFF-GCD ACTIONS (Simultaneous Execution)
+        // -----------------------------------------
+        // 2 & 3. DYNAMIC ROTATION BUILDER
+        // -----------------------------------------
+        var action = null;
+        var actionStepId = null;
+        var waitingForEnergy = false;
+        var rotationList = cfg.custom_rotation || [];
 
-        // Potion
-        if (cds.potion <= t) {
-            if (cfg.consum_potion_quickness) {
-                auras.potionQuickness = t + 30.0;
-                cds.potion = t + 120.0;
-                logAction("Potion", "Quickness", "Buff", 0, false, false, 0);
+        // Condition Evaluator Hilfsfunktion
+        function checkCondition(cond) {
+            var val;
+            if (cond.type === "cp") val = cp;
+            else if (cond.type === "energy") val = energy;
+            else if (cond.type === "time_elapsed") val = t;
+            else if (cond.type === "time_remaining") val = maxT - t;
+            else if (cond.type === "debuff_rem") {
+                var target = cond.target.replace(" ", "");
+                if (target === "FaerieFire") val = cfg.debuff_ff ? 999 : Math.max(0, auras.ff - t);
+                else if (target === "Rip") val = Math.max(0, auras.rip - t);
+                else if (target === "Rake") val = Math.max(0, auras.rake - t);
+                else if (target === "Pounce") val = Math.max(0, auras.pounce - t);
+                else val = 0;
             }
-            else if (cfg.consum_mighty_rage) {
-                auras.mightyRage = t + 20.0;
-                cds.potion = t + 120.0;
-                logAction("Potion", "Mighty Rage", "Buff", 0, false, false, 0);
+            else if (cond.type === "buff_rem") {
+                var target = cond.target;
+                if (target === "Tiger's Fury") val = Math.max(0, auras.tigersFury - t);
+                else if (target === "Clearcasting") val = Math.max(0, auras.clearcasting - t);
+                else if (target === "Blood Frenzy") val = Math.max(0, auras.BloodFrenzy - t);
+                else if (target === "Slayer") val = Math.max(0, auras.slayer - t);
+                else if (target === "Spider") val = Math.max(0, auras.spider - t);
+                else if (target === "Earthstrike") val = Math.max(0, auras.earthstrike - t);
+                else if (target === "Jom") val = Math.max(0, auras.jom - t);
+                else if (target === "ZHM") val = Math.max(0, auras.zhm - t);
+                else val = 0;
             }
-        }
-
-        // Juju Flurry (Independent CD, usually 1 min)
-        if (cfg.consum_juju_flurry && cds.jujuFlurry <= t) {
-            auras.jujuFlurry = t + 20.0;
-            cds.jujuFlurry = t + 60.0;
-            logAction("Juju", "Flurry", "Buff", 0, false, false, 0);
-        }
-
-        // Berserk
-        if (cfg.tal_berserk > 0 && cds.berserk <= t && cfg.use_berserk) {
-            auras.berserk = t + 20.0; cds.berserk = t + 360.0;
-            logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0);
-        }
-
-        // Tiger's Fury
-        var tfAllowed = (auras.tigersFury <= t);
-        if (cfg.tf_after_fb) {
-            tfAllowed = (!tfCastedOnce || fbJustCast); // Erlaubt TF am Start ODER nach FB
-        }
-
-        if (tfAllowed && cfg.use_tf && energy >= costTF && t >= gcdEnd) {
-            // NEU: Wenn TF noch läuft und überschrieben wird, müssen wir alte Energie-Ticks löschen!
-            if (auras.tigersFury > t) {
-                for (var i = events.length - 1; i >= 0; i--) {
-                    if (events[i].type === "tf_energy") events.splice(i, 1);
-                }
+            else if (cond.type === "last_spell") {
+                val = lastSpellCast;
             }
 
-            energy -= costTF;
-            tfCastedOnce = true;
-            fbJustCast = false; // Flag wieder zurücksetzen
+            if (cond.type === "last_spell") {
+                if (cond.op === "==") return val === cond.target;
+                if (cond.op === "!=") return val !== cond.target;
+                return false;
+            }
+
+            var cVal = cond.val;
+            if (cond.op === ">=") return val >= cVal;
+            if (cond.op === "<=") return val <= cVal;
+            if (cond.op === "==") return val === cVal;
+            return false;
+        }
+
+        // Evaluate Priority List (Top to Bottom)
+        for (var idx = 0; idx < rotationList.length; idx++) {
+            var step = rotationList[idx];
+            if (step.disabled) continue; // NEU: Ignoriert diesen Schritt komplett
+            var skill = step.skill;
+            var isOffGCD = ["Tiger's Fury", "Berserk", "Trinket 1", "Trinket 2", "Potion"].includes(skill);
+
+            // Strikte Prio: Wenn schon eine Action für diesen Frame gefunden wurde, bricht er ab.
+            if (action) break; 
             
-            // Update: TF Base Duration is 18s with Energy ticks
-            var dur = 18;
-            auras.tigersFury = t + dur;
-
-            // Blood Frenzy Talent triggers separate Attack Speed Buff
-            if (cfg.tal_blood_frenzy > 0) auras.BloodFrenzy = t + 18;
-
-            for (var i = 1; i * 3 <= dur; i++) addEvent(t + (i * 3.0), "tf_energy");
-            logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
-        }
-
-        // Trinkets (Priority 0)
-        // Slayer's Crest
-        if (cfg.t_slayer && cds.slayer <= t) {
-            auras.slayer = t + 20;
-            cds.slayer = t + 120;
-            logAction("Slayer", "Activated", "Buff", 0, false, false);
-        }
-
-        // Kiss of the Spider
-        if (cfg.t_spider && cds.spider <= t) {
-            auras.spider = t + 15;
-            cds.spider = t + 120;
-            logAction("Spider", "Activated", "Buff", 0, false, false);
-        }
-
-        // Earthstrike
-        if (cfg.t_earthstrike && cds.earthstrike <= t) {
-            auras.earthstrike = t + 20;
-            cds.earthstrike = t + 120;
-            logAction("Earthstrike", "Activated", "Buff", 0, false, false);
-        }
-
-        // Jom Gabbar
-        if (cfg.t_jomgabbar && cds.jom <= t) {
-            auras.jom = t + 20;
-            auras.jomStart = t;
-            cds.jom = t + 120;
-            logAction("JomGabbar", "Activated", "Buff", 0, false, false);
-        }
-
-        // Molten Emberstone
-        if (cfg.t_emberstone && cds.emberstone <= t) {
-            auras.emberstone = t + 20;
-            cds.emberstone = t + 180;
-            logAction("Emberstone", "Activated", "Buff", 0, false, false);
-        }
-
-        // Zandalarian Hero Medallion
-        if (cfg.t_zhm && cds.zhm <= t) {
-            auras.zhm = t + 20;
-            stacks.zhm = 20;
-            cds.zhm = t + 120;
-            logAction("ZHM", "Activated", "Buff", 0, false, false);
-        }
-
-        // Swarmguard (Stacking Logic handled in Hits)
-        if (cfg.t_swarmguard && cds.swarmguard <= t && auras.swarmguard <= t) {
-            auras.swarmguard = t + 30;
-            stacks.swarmguard = 0;
-            cds.swarmguard = t + 180;
-            logAction("Swarmguard", "Activated", "Buff", 0, false, false);
-        }
-
-
-        // 3. GCD ROTATION (Main Actions)
-        if (t >= gcdEnd) {
-            var action = null;
-            var waitingForEnergy = false;
-
-            // Standard Rotation Prio
-
-            if (!action && !waitingForEnergy && cp >= cfg.rip_cp && cfg.use_rip && cfg.canBleed && auras.rip <= t) {
-                if (energy >= costRip) action = "Rip"; else waitingForEnergy = true;
-            }
-            if (!action && !waitingForEnergy && cp >= cfg.fb_cp && cfg.use_fb) {
-                // FIX: Priority Check - Only Bite if Rip is active (or Rip is disabled/impossible)
-                var biteAllowed = (!cfg.use_rip || !cfg.canBleed || auras.rip > t);
-
-                if (biteAllowed) {
-                    if (energy >= cfg.fb_energy) { if (energy >= costBite) action = "Ferocious Bite"; }
-                    else waitingForEnergy = true;
-                }
-            }
-
-            if (!action && !waitingForEnergy && energy < cfg.reshift_energy && cfg.use_reshift) {
-                // Check TF Overwrite Logic
-                var tfRem = Math.max(0, auras.tigersFury - t);
-                var canShift = true;
-
-                // Wenn TF aktiv ist
-                if (tfRem > 0) {
-                    // Darf nur shiften, wenn Overwrite erlaubt UND Restzeit <= Limit
-                    if (!cfg.reshift_over_tf || tfRem > cfg.reshift_over_tf_dur) {
-                        canShift = false;
+            var conditionsMet = true;
+            if (step.conditions) {
+                for (var c = 0; c < step.conditions.length; c++) {
+                    if (!checkCondition(step.conditions[c])) {
+                        conditionsMet = false;
+                        break;
                     }
                 }
-
-                if (canShift) action = "Reshift";
             }
 
-
-            if (!action && !waitingForEnergy && cfg.canBleed && auras.rake <= t && cfg.use_rake) {
-                if (cfg.rota_position === "back" && isOoc && cfg.shred_ooc_only && cfg.use_shred) {
-                    if (energy >= costShred || isOoc) {
-                        action = "Shred";
+            if (conditionsMet) {
+                // Execute Off-GCD Actions direkt
+                if (isOffGCD) {
+                    if (skill === "Tiger's Fury") {
+                        if (auras.tigersFury <= t && energy >= costTF && t >= gcdEnd) {
+                            if (!counts[step.id]) counts[step.id] = 0; counts[step.id]++;
+                            if (auras.tigersFury > t) {
+                                for (var k = events.length - 1; k >= 0; k--) {
+                                    if (events[k].type === "tf_energy") events.splice(k, 1);
+                                }
+                            }
+                            energy -= costTF;
+                            lastSpellCast = "Tiger's Fury";
+                            var dur = 18;
+                            auras.tigersFury = t + dur;
+                            if (cfg.tal_blood_frenzy > 0) auras.BloodFrenzy = t + 18;
+                            for (var k = 1; k * 3 <= dur; k++) addEvent(t + (k * 3.0), "tf_energy");
+                            logAction("Tiger's Fury", "Buff", "Buff", 0, false, false, -costTF);
+                        } else if (auras.tigersFury <= t && energy < costTF && t >= gcdEnd) {
+                            waitingForEnergy = true; 
+                            break;
+                        }
+                    }
+                    else if (skill === "Berserk") {
+                        if (cfg.tal_berserk > 0 && cds.berserk <= t) {
+                            if (!counts[step.id]) counts[step.id] = 0; counts[step.id]++;
+                            auras.berserk = t + 20.0; cds.berserk = t + 360.0;
+                            lastSpellCast = "Berserk";
+                            logAction("Berserk", "+100% Regen", "Buff", 0, false, false, 0);
+                        }
+                    }
+                    else if (skill === "Potion") {
+                        var potUsed = false;
+                        if (cds.potion <= t) {
+                            if (cfg.consum_potion_quickness) {
+                                potUsed = true;
+                                auras.potionQuickness = t + 30.0; cds.potion = t + 120.0;
+                                lastSpellCast = "Potion";
+                                logAction("Potion", "Quickness", "Buff", 0, false, false, 0);
+                            } else if (cfg.consum_mighty_rage) {
+                                potUsed = true;
+                                auras.mightyRage = t + 20.0; cds.potion = t + 120.0;
+                                lastSpellCast = "Potion";
+                                logAction("Potion", "Mighty Rage", "Buff", 0, false, false, 0);
+                            }   
+                        }
+                        if (cfg.consum_juju_flurry && cds.jujuFlurry <= t) {
+                            potUsed = true;
+                            auras.jujuFlurry = t + 20.0;
+                            cds.jujuFlurry = t + 60.0;
+                            lastSpellCast = "Potion";
+                            logAction("Juju", "Flurry", "Buff", 0, false, false, 0);
+                        }
+                        if (potUsed) {
+                            if (!counts[step.id]) counts[step.id] = 0; counts[step.id]++; // NEU
+                        }
+                    }
+                    else if (skill === "Trinket 1" || skill === "Trinket 2") {
+                        var tId = cfg.gearSelection ? cfg.gearSelection[skill] : null;
+                        var trinketUsed = false;
+                        if (tId == 21180 && cds.earthstrike <= t) { trinketUsed = true; auras.earthstrike = t + 20; cds.earthstrike = t + 120; logAction("Earthstrike", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 23570 && cds.jom <= t) { trinketUsed = true; auras.jom = t + 20; auras.jomStart = t; cds.jom = t + 120; logAction("JomGabbar", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 23041 && cds.slayer <= t) { trinketUsed = true; auras.slayer = t + 20; cds.slayer = t + 120; logAction("Slayer", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 22954 && cds.spider <= t) { trinketUsed = true; auras.spider = t + 15; cds.spider = t + 120; logAction("Spider", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 21670 && cds.swarmguard <= t) { trinketUsed = true; auras.swarmguard = t + 30; stacks.swarmguard = 0; cds.swarmguard = t + 180; logAction("Swarmguard", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 19950 && cds.zhm <= t) { trinketUsed = true; auras.zhm = t + 20; stacks.zhm = 20; cds.zhm = t + 120; logAction("ZHM", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        else if (tId == 58211 && cds.emberstone <= t) { trinketUsed = true; auras.emberstone = t + 20; cds.emberstone = t + 180; logAction("Emberstone", "Activated", "Buff", 0, false, false); lastSpellCast = skill; }
+                        if (trinketUsed) {
+                            if (!counts[step.id]) counts[step.id] = 0; counts[step.id]++; // NEU
+                        }
                     }
                 }
-                else {
-                    if (energy >= costRake) action = "Rake";
-                }
-            }
+                // Mark GCD Actions
+                else if (t >= gcdEnd) {
+                    var cost = 0;
+                    if (skill === "Rip") cost = costRip;
+                    else if (skill === "Ferocious Bite") cost = costBite;
+                    else if (skill === "Shred") cost = costShred;
+                    else if (skill === "Claw") cost = costClaw;
+                    else if (skill === "Rake") cost = costRake;
+                    else if (skill === "Pounce") cost = 50;
 
-            if (!action && !waitingForEnergy) {
-                if (cfg.rota_position === "back" && cfg.use_shred) {
-                    if (cfg.shred_ooc_only && isOoc) {
-                        action = "Shred";
-                    } else if (energy >= costShred && !cfg.shred_ooc_only && cfg.use_shred) {
-                        action = "Shred";
+                    if (skill === "Reshift" || skill === "Faerie Fire") {
+                        action = skill;
+                        actionStepId = step.id;
+                    } 
+                    else {
+                        if (energy >= cost || (oocState && ["Shred", "Claw", "Rake"].includes(skill))) {
+                            action = skill;
+                            actionStepId = step.id;
+                        } else {
+                            waitingForEnergy = true;
+                            break; // Stop - waiting for energy for this high-prio spell
+                        }
                     }
                 }
-                if (!action && cfg.use_claw) {
-                    if (energy >= costClaw || isOoc) action = "Claw";
-                }
             }
+        }
 
-            // UPDATED: Cast Faerie Fire only if NOT provided externally
-            if (!action && !cfg.debuff_ff && auras.ff <= t && cfg.use_ff) action = "Faerie Fire";
+        // Execute GCD Action
+        if (action) {
+            var castCost = 0;
+            var performAttack = false;
 
-            // Execute
-            if (action) {
-                var castCost = 0;
-                var performAttack = false;
-                var triggersGCD = true;
-
-                if (action === "Reshift") {
-                    // Update: Only remove TF Damage/Energy buff, keep Blood Frenzy (Speed)
-                    mana -= 300; auras.tigersFury = 0;
-                    var furorEnergy = (cfg.tal_furor * 8);
-
-                    // UPDATED: Furor (Talent) + Gift of Ferocity (Enchant)
-                    var furorEnergy = (cfg.tal_furor * 8);
-                    var giftEnergy = cfg.hasGiftOfFerocity ? 20 : 0;
-                    var newE = furorEnergy + giftEnergy;
-
-                    var eChange = newE - energy; // Differenz berechnen
-                    energy = Math.min(100, newE);
-                    logAction("Reshift", "Energy -> " + energy, "Cast", 0, false, false, eChange);
-                    gcdEnd = t + 1.5;
+            if (action === "Reshift") {
+                mana -= 300; auras.tigersFury = 0;
+                var furorEnergy = (cfg.tal_furor * 8);
+                var giftEnergy = cfg.hasGiftOfFerocity ? 20 : 0;
+                var newE = furorEnergy + giftEnergy;
+                var eChange = newE - energy; 
+                energy = Math.min(100, newE);
+                lastSpellCast = "Reshift";
+                logAction("Reshift", "Energy -> " + energy, "Cast", 0, false, false, eChange);
+                gcdEnd = t + 1.5;
+            }
+            else if (action === "Faerie Fire") {
+                auras.ff = t + 40.0; lastSpellCast = "Faerie Fire"; logAction("Faerie Fire", "-505 Armor", "Debuff", 0, false, false, 0); gcdEnd = t + 1.0;
+            }
+            else if (action === "Pounce") {
+                energy -= 50;
+                cp += 1;
+                gcdEnd = t + 1.0;
+                var pounceTotal = (147.5 + (0.18 * getCurrentAP())) * modNaturalWeapons;
+                var pounceTick = pounceTotal / 6;
+                auras.pounce = t + 18.0;
+                for (var i = 1; i <= 6; i++) {
+                    addEvent(t + i * 3.0, "dot_tick", { name: "pounce", dmg: pounceTick, label: "Pounce" });
                 }
-                else if (action === "Faerie Fire") {
-                    auras.ff = t + 40.0; logAction("Faerie Fire", "-505 Armor", "Debuff", 0, false, false, 0); gcdEnd = t + 1.0;
-                }
-                else {
-                    performAttack = true;
-                    if (action === "Claw") castCost = costClaw;
-                    if (action === "Rake") castCost = costRake;
-                    if (action === "Shred") castCost = costShred;
-                    if (action === "Rip") castCost = costRip;
-                    if (action === "Ferocious Bite") castCost = costBite;
-                }
+                lastSpellCast = "Pounce";
+                logAction("Pounce", "Opener", "Cast", 0, false, false, -50);
+            }
+            else {
+                performAttack = true;
+                lastSpellCast = action;
+                if (action === "Claw") castCost = costClaw;
+                if (action === "Rake") castCost = costRake;
+                if (action === "Shred") castCost = costShred;
+                if (action === "Rip") castCost = costRip;
+                if (action === "Ferocious Bite") castCost = costBite;
+            }
 
                 if (performAttack) {
                     energy -= castCost;
@@ -1600,10 +1591,17 @@ function runCoreSimulation(cfg) {
                         }
                     }
 
-                    if (!counts[action]) counts[action] = 0; counts[action]++;
+                    if (!counts[action]) counts[action] = 0; counts[action]++;          
+            
                     gcdEnd = t + 1.0;
                 }
-            }
+
+                // NEU: Zähler für das UI
+                if (actionStepId) { 
+                    if (!counts[actionStepId]) counts[actionStepId] = 0; 
+                    counts[actionStepId]++; 
+                }
+            
         }
 
         if (t > maxT + 10) break;

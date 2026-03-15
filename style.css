@@ -1456,3 +1456,225 @@ label[style*="dotted"]:hover {
     display: block;
     image-rendering: auto;
 }
+
+/* ==========================================================================
+   ROTATION BUILDER (DRAG & DROP)
+   ========================================================================== */
+
+/* Toolbox Items (Draggable) */
+.rb-skill {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: grab;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.rb-skill:hover {
+    border-color: var(--druid-orange);
+    transform: translateX(2px);
+}
+
+.rb-skill:active {
+    cursor: grabbing;
+}
+
+.rb-skill-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1px solid #000;
+    vertical-align: middle;
+}
+
+/* Dropzone & Steps */
+.rb-dropzone.drag-over {
+    background: rgba(255, 125, 10, 0.1) !important;
+    border-color: var(--druid-orange) !important;
+}
+
+.rb-step {
+    background: #252525;
+    border: 1px solid #444;
+    border-left: 4px solid var(--druid-orange);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    cursor: grab;
+    transition: border-color 0.2s;
+}
+
+.rb-step:active {
+    cursor: grabbing;
+}
+
+.rb-step.drag-over {
+    border-top: 2px dashed var(--druid-orange);
+}
+
+.rb-step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid #333;
+}
+
+.rb-step-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Conditions List within a Step */
+.rb-conditions {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Bedingungs-Reihe kompakter machen und Scrollbalken verhindern */
+.rb-condition-row {
+    display: flex;
+    align-items: center;
+    gap: 4px; /* Abstände zwischen den Feldern verringern */
+    background: rgba(0,0,0,0.15);
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    font-size: 0.8em; /* Schriftgröße minimal anpassen */
+    flex-wrap: nowrap;     
+    overflow-x: hidden; /* Scrollbalken zwingend ausblenden */
+    white-space: nowrap;
+}
+
+/* Dropdowns verkleinern und flexibel machen */
+.rb-condition-row select, .rb-condition-row input {
+    flex-shrink: 1; /* Dropdowns dürfen nun bei Platzmangel schrumpfen */
+    min-width: 0;   /* Zwingend nötig, damit lange Texte im Dropdown gestaucht werden können */
+    max-width: 120px; /* Verhindert, dass ein einzelnes Feld zu dominant wird */
+    text-overflow: ellipsis; /* Zu langer Text wird mit ... abgekürzt */
+    padding: 2px 4px;
+}
+
+/* Das Eingabefeld für Zahlen (Werte) ganz klein machen */
+.rb-condition-row input[type="number"] {
+    width: 45px !important;
+    padding: 2px;
+}
+
+/* Der Löschen-Button (✖) darf niemals schrumpfen */
+.rb-condition-row .rb-delete-btn {
+    flex-shrink: 0;
+}
+
+.rb-condition-row select {
+    cursor: pointer;
+}
+
+.rb-condition-row input[type="number"] {
+    width: 50px;
+    text-align: center;
+}
+
+.rb-add-condition {
+    align-self: flex-start;
+    background: none;
+    border: 1px dashed #555;
+    color: var(--text-muted);
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s;
+}
+
+.rb-add-condition:hover {
+    color: var(--text-color);
+    border-color: var(--druid-orange);
+    background: rgba(255, 125, 10, 0.1);
+}
+
+.rb-delete-btn {
+    background: none;
+    border: none;
+    color: var(--feral-red);
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0 4px;
+    opacity: 0.7;
+}
+
+.rb-delete-btn:hover {
+    opacity: 1;
+}
+
+/* Bedingungs-Reihe zwingend in einer Zeile halten */
+.rb-condition-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.15);
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    font-size: 0.85em;
+    flex-wrap: nowrap;     /* Verhindert Umbrüche */
+    overflow-x: auto;      /* Ermöglicht Scrollen bei Platzmangel */
+    white-space: nowrap;
+}
+
+/* Verhindert, dass die Dropdowns zusammengestaucht werden */
+.rb-condition-row select, .rb-condition-row input {
+    flex-shrink: 0; 
+}
+
+/* Das Badge für die Ausführungshäufigkeit */
+.rb-step-count {
+    background: rgba(255, 125, 10, 0.2);
+    color: var(--druid-orange);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    margin-right: 10px;
+    font-family: monospace;
+}
+
+/* Deaktivierte Rotations-Schritte */
+.rb-step.is-disabled {
+    opacity: 0.5;
+    filter: grayscale(80%);
+    border-left-color: #555;
+}
+
+.rb-step.is-disabled .rb-step-title {
+    text-decoration: line-through;
+    color: #888;
+}
+
+/* Toggle Button (Aktivieren/Deaktivieren) */
+.rb-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 0 4px;
+    opacity: 0.7;
+    margin-right: 4px;
+}
+
+.rb-toggle-btn:hover {
+    opacity: 1;
+}

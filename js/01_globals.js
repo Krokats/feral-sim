@@ -18,10 +18,60 @@ var ENCHANT_DB = [];
 var GEAR_SELECTION = {};
 var ENCHANT_SELECTION = {};
 
+const ROTATION_SKILLS = [
+    { id: "Pounce", name: "Pounce (Opener)", icon: "ability_druid_supriseattack" },
+    { id: "Faerie Fire", name: "Faerie Fire", icon: "spell_nature_faeriefire" },
+    { id: "Tiger's Fury", name: "Tiger's Fury", icon: "ability_mount_jungletiger" },
+    { id: "Berserk", name: "Berserk", icon: "ability_druid_berserk" },
+    { id: "Rake", name: "Rake", icon: "ability_druid_disembowel" },
+    { id: "Rip", name: "Rip", icon: "ability_ghoulfrenzy" },
+    { id: "Ferocious Bite", name: "Ferocious Bite", icon: "ability_hunter_pet_cat" },
+    { id: "Shred", name: "Shred", icon: "spell_shadow_vampiricaura" },
+    { id: "Claw", name: "Claw", icon: "ability_druid_rake" },
+    { id: "Reshift", name: "Powershift", icon: "spell_nature_forceofnature" },
+    { id: "Trinket 1", name: "Use Trinket 1", icon: "inv_jewelry_trinket_04" },
+    { id: "Trinket 2", name: "Use Trinket 2", icon: "inv_jewelry_trinket_04" },
+    { id: "Potion", name: "Use Potion/Juju", icon: "inv_potion_27" }
+];
+
+const CONDITION_TYPES = {
+    "cp": { label: "Combo Points", type: "number", ops: [">=", "<=", "=="] },
+    "energy": { label: "Energy", type: "number", ops: [">=", "<=", "=="] },
+    "time_elapsed": { label: "Time Elapsed (s)", type: "number", ops: [">=", "<="] },
+    "time_remaining": { label: "Time Remaining (s)", type: "number", ops: [">=", "<="] },
+    "debuff_rem": { label: "Target Debuff Rem. (s)", type: "select", options: ["Rip", "Rake", "Faerie Fire", "Pounce"], ops: [">=", "<=", "=="] },
+    "buff_rem": { label: "Player Buff Rem. (s)", type: "select", options: ["Tiger's Fury", "Clearcasting", "Blood Frenzy", "Slayer", "Spider", "Earthstrike", "Jom", "ZHM"], ops: [">=", "<=", "=="] },
+    "last_spell": { label: "Last Spell Cast", type: "select", options: ["Ferocious Bite", "Rip", "Shred", "Claw", "Reshift", "Pounce", "None"], ops: ["==", "!="] }
+};
+
+const PRESET_ROTATIONS = {
+    "standard": [
+        { id: "step_1", skill: "Trinket 1", conditions: [] },
+        { id: "step_2", skill: "Trinket 2", conditions: [] },
+        { id: "step_3", skill: "Potion", conditions: [] },
+        { id: "step_4", skill: "Berserk", conditions: [] },
+        { id: "step_5", skill: "Pounce", conditions: [{ type: "time_elapsed", op: "<=", val: 0 }] },
+        { id: "step_6", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
+        { id: "step_7", skill: "Rake", conditions: [{ type: "debuff_rem", target: "Rake", op: "<=", val: 0 }] },
+        { id: "step_8", skill: "Tiger's Fury", conditions: [{ type: "time_elapsed", op: "<=", val: 1 }] },
+        { id: "step_9", skill: "Rip", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: "<=", val: 0 }] },
+        { id: "step_10", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: ">=", val: 0.1 }, { type: "energy", op: ">=", val: 35 }] },
+        { id: "step_11", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
+        { id: "step_12", skill: "Tiger's Fury", conditions: [{ type: "energy", op: "<=", val: 30 }] },
+        { id: "step_13", skill: "Reshift", conditions: [{ type: "energy", op: "<=", val: 10 }, { type: "buff_rem", target: "Tiger's Fury", op: "<=", val: 1.5 }] },
+        { id: "step_14", skill: "Shred", conditions: [{ type: "buff_rem", target: "Clearcasting", op: ">=", val: 0.1 }] },
+        { id: "step_15", skill: "Claw", conditions: [] }
+    ]
+};
+
+// Lädt das Standard-Preset als Standard-Rotation beim Start
+var CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard"]));
+
 // Configuration IDs mapped to UI elements
 var CONFIG_IDS = [
     // Sim Settings
     "simTime", "simCount", "sim_mode", "sim_seed","statWeightIt",
+    "active_rotation_template",
 
     // Player Stats
     "stat_str", "stat_agi", "stat_ap",

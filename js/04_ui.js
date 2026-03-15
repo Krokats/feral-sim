@@ -711,6 +711,9 @@ function setupUIListeners() {
     // Init Rotation Help
     renderRotationHelp();
 
+    // Init Rotation Builder
+    if(typeof initRotationBuilder === 'function') initRotationBuilder();
+
 }
 
 // NEW: Handles visual enabling/disabling of rotation inputs
@@ -921,26 +924,33 @@ function updateRotaSummary() {
     var list = document.getElementById("sumRotaList");
     if (!list) return;
     list.innerHTML = "";
-    var add = (t, c) => { var li = document.createElement("li"); li.innerText = t; if (c) li.style.color = c; list.appendChild(li); };
 
-    // Priority Display
-    if (getVal("use_pounce")) add("Pounce (Opener)", "#e91e63"); // NEU
-    if (getVal("use_rip")) add("Rip (>" + getVal("rip_cp") + " CP)", "#f44336");
-    if (getVal("use_fb")) add("Bite (> 5 CP, >" + getVal("fb_energy") + " En)", "#ff5722");
-
-    if (getVal("use_reshift")) add("Reshift (<" + getVal("reshift_energy") + " En)", "#4caf50");
-    if (getVal("use_tf")) {
-        if (getVal("tf_after_fb")) add("Tiger's Fury (After FB)", "#ff9800");
-        else add("Tiger's Fury", "#ff9800");
-    }
-    if (getVal("use_ff")) add("Faerie Fire", "#a335ee");
-    if (getVal("use_rake")) add("Rake", "#e57373");
-
-    if (getVal("rota_position") === "back") {
-        if (getVal("use_shred")) add("Shred (Behind)", "#ffeb3b");
+    if (typeof CUSTOM_ROTATION !== 'undefined' && CUSTOM_ROTATION.length > 0) {
+        CUSTOM_ROTATION.forEach((step, idx) => {
+            var li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.alignItems = "center";
+            li.style.gap = "6px";
+            li.style.marginBottom = "4px";
+            
+            var def = ROTATION_SKILLS.find(s => s.id === step.skill);
+            var styleStr = step.disabled ? "text-decoration:line-through; opacity:0.5;" : "";
+            
+            if(def) {
+                li.innerHTML = `<img src="https://wow.zamimg.com/images/wow/icons/large/${def.icon}.jpg" class="rb-skill-icon" style="width:14px; height:14px;" alt=""> <span style="${styleStr}">${idx + 1}. ${def.name}</span>`;
+            } else {
+                li.innerText = (idx + 1) + ". " + step.skill;
+            }
+            list.appendChild(li);
+        });
     } else {
-        if (getVal("use_claw")) add("Claw (Front)", "#ff9800");
+        var li = document.createElement("li");
+        li.innerText = "No custom rotation set.";
+        li.style.color = "#777";
+        list.appendChild(li);
     }
+
+    
 }
 
 function updateTrinketSummary() {
@@ -1088,6 +1098,9 @@ function updateSimulationResults(sim) {
         logSec.classList.remove("hidden");
         renderLogTable(r.log);
     }
+
+    // Aktualisiert die Drag-and-Drop Liste, um die neuen Badge-Werte (avgRun.counts) anzuzeigen
+    if (typeof renderRotationList === 'function') renderRotationList();
 }
 
 function renderDistBar(r) {
@@ -1202,14 +1215,14 @@ function renderLogTable(log) {
 function updateLogView() {
     // Check Config for Column Visibility
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
+    var rota = cfg.custom_rotation || [];
 
-    // Logic: Show Pounce if used. Show Rake if used. Show Rip if used. 
-    // Show OW if Talent > 0. Show FF if used (internal).
-    var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
-    var showRake = (cfg.use_rake);
-    var showRip = (cfg.use_rip);
+    // Logic: Check if skills exist in the new Custom Rotation
+    var showPounce = rota.some(s => s.skill === "Pounce");
+    var showRake = rota.some(s => s.skill === "Rake");
+    var showRip = rota.some(s => s.skill === "Rip");
     var showOW = (cfg.tal_open_wounds > 0);
-    var showFF = (cfg.use_ff || cfg.debuff_ff);
+    var showFF = rota.some(s => s.skill === "Faerie Fire") || cfg.debuff_ff;
 
     var container = document.querySelector(".log-container table thead tr");
     if (container) {
@@ -1321,11 +1334,13 @@ function downloadCSV() {
 
     // Check Config for Column Visibility (Same logic as updateLogView)
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
-    var showPounce = (cfg.use_pounce && cfg.rota_position === 'back');
-    var showRake = (cfg.use_rake);
-    var showRip = (cfg.use_rip);
+    var rota = cfg.custom_rotation || [];
+    
+    var showPounce = rota.some(s => s.skill === "Pounce");
+    var showRake = rota.some(s => s.skill === "Rake");
+    var showRip = rota.some(s => s.skill === "Rip");
     var showOW = (cfg.tal_open_wounds > 0);
-    var showFF = (cfg.use_ff);
+    var showFF = rota.some(s => s.skill === "Faerie Fire") || cfg.debuff_ff;
 
     // 1. Build Headers
     var csvHeaders = [
@@ -1420,6 +1435,11 @@ function getCurrentConfigFromUI() {
         cfg.enchantSelection = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
     }
 
+    // Rotation Builder Status speichern
+    if (typeof CUSTOM_ROTATION !== 'undefined') {
+        cfg.custom_rotation = JSON.parse(JSON.stringify(CUSTOM_ROTATION));
+    }
+
     return cfg;
 }
 
@@ -1446,6 +1466,19 @@ function applyConfigToUI(cfg) {
 
         if (cfg.enchantSelection) ENCHANT_SELECTION = JSON.parse(JSON.stringify(cfg.enchantSelection));
         else ENCHANT_SELECTION = {};
+
+        // Restore Custom Rotation oder Fallback auf Standard
+        if (cfg.custom_rotation && cfg.custom_rotation.length > 0) {
+            CUSTOM_ROTATION = JSON.parse(JSON.stringify(cfg.custom_rotation));
+        } else {
+            // Wenn keine Custom Rotation im Speicher ist (z.B. bei alten Links), lade Standard
+            if (typeof PRESET_ROTATIONS !== 'undefined' && PRESET_ROTATIONS["standard"]) {
+                CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard"]));
+            } else {
+                CUSTOM_ROTATION = [];
+            }
+        }
+        if (typeof renderRotationList === 'function') renderRotationList();
 
         // 3. Refresh UI Components
         if (typeof initGearPlannerUI === 'function') initGearPlannerUI();
@@ -1521,7 +1554,7 @@ function packConfig(cfg) {
     }
 
     return {
-        data: [values, gearIds, enchantIds],
+        data: [values, gearIds, enchantIds, cfg.custom_rotation],
         itemCount: itemCount
     };
 }
@@ -1558,6 +1591,11 @@ function unpackConfig(packed) {
         for (var slot in enchantIds) {
             cfg.enchantSelection[slot] = enchantIds[slot];
         }
+    }
+
+    // 4. Restore Custom Rotation (Array Index 3)
+    if (packed.length > 3 && packed[3]) {
+        cfg.custom_rotation = packed[3];
     }
 
     return cfg;
@@ -2084,4 +2122,343 @@ function renderDPSChart(results) {
         ctx.stroke();
         ctx.setLineDash([]);
     }
+}
+
+// ============================================================================
+// ROTATION BUILDER LOGIC (DRAG & DROP)
+// ============================================================================
+var draggedSkillId = null;
+var draggedStepIndex = null;
+
+function initRotationBuilder() {
+    populatePresetDropdown();
+    renderRotationToolbox();
+    renderRotationList();
+
+    var dropzone = document.getElementById("rbDropzone");
+    if (dropzone) {
+        dropzone.addEventListener("dragover", function(e) {
+            e.preventDefault();
+            dropzone.classList.add("drag-over");
+        });
+        dropzone.addEventListener("dragleave", function(e) {
+            dropzone.classList.remove("drag-over");
+        });
+        dropzone.addEventListener("drop", function(e) {
+            e.preventDefault();
+            dropzone.classList.remove("drag-over");
+            
+            if (draggedSkillId) {
+                addRotationStep(draggedSkillId);
+            } else if (draggedStepIndex !== null) {
+                moveRotationStep(draggedStepIndex, CUSTOM_ROTATION.length);
+            }
+            draggedSkillId = null;
+            draggedStepIndex = null;
+        });
+    }
+}
+
+function renderRotationToolbox() {
+    var tb = document.getElementById("rbSkillsList");
+    if (!tb) return;
+    tb.innerHTML = "";
+    
+    ROTATION_SKILLS.forEach(skill => {
+        var el = document.createElement("div");
+        el.className = "rb-skill";
+        el.draggable = true;
+        el.innerHTML = `<img src="https://wow.zamimg.com/images/wow/icons/large/${skill.icon}.jpg" class="rb-skill-icon" alt=""> ${skill.name}`;
+        
+        el.addEventListener("dragstart", function(e) {
+            draggedSkillId = skill.id;
+            draggedStepIndex = null;
+        });
+        tb.appendChild(el);
+    });
+}
+
+function renderRotationList() {
+    var dz = document.getElementById("rbDropzone");
+    var empty = document.getElementById("rbEmptyState");
+    if (!dz) return;
+    
+    document.querySelectorAll(".rb-step").forEach(el => el.remove());
+
+    if (!CUSTOM_ROTATION || CUSTOM_ROTATION.length === 0) {
+        if (empty) empty.style.display = "block";
+        return;
+    }
+    if (empty) empty.style.display = "none";
+
+    CUSTOM_ROTATION.forEach((step, idx) => {
+        var skillDef = ROTATION_SKILLS.find(s => s.id === step.skill) || { name: step.skill, color: "#fff" };
+        
+        var stepEl = document.createElement("div");
+        stepEl.className = "rb-step";
+        stepEl.draggable = true;
+        if (step.disabled) stepEl.classList.add("is-disabled");
+        
+        stepEl.addEventListener("dragstart", function(e) {
+            draggedStepIndex = idx;
+            draggedSkillId = null;
+            e.stopPropagation();
+        });
+        stepEl.addEventListener("dragover", function(e) {
+            e.preventDefault();
+            stepEl.classList.add("drag-over");
+        });
+        stepEl.addEventListener("dragleave", function(e) {
+            stepEl.classList.remove("drag-over");
+        });
+        stepEl.addEventListener("drop", function(e) {
+            e.preventDefault();
+            stepEl.classList.remove("drag-over");
+            e.stopPropagation(); 
+            
+            if (draggedSkillId) {
+                addRotationStep(draggedSkillId, idx);
+            } else if (draggedStepIndex !== null) {
+                moveRotationStep(draggedStepIndex, idx);
+            }
+            draggedSkillId = null;
+            draggedStepIndex = null;
+        });
+
+        // Hole die durchschnittlichen Ausführungen aus der letzten Simulation
+        var avgCount = 0;
+        if (typeof SIM_DATA !== 'undefined' && SIM_DATA && SIM_DATA.results && SIM_DATA.results.counts && SIM_DATA.results.counts[step.id]) {
+            avgCount = SIM_DATA.results.counts[step.id];
+        }
+        var countHtml = avgCount > 0 ? `<span class="rb-step-count" title="Average uses per sim (from last run)">${avgCount.toFixed(1)}x</span>` : '';
+
+        var html = `
+            <div class="rb-step-header">
+                <div class="rb-step-title">
+                    <img src="https://wow.zamimg.com/images/wow/icons/large/${skillDef.icon}.jpg" class="rb-skill-icon" alt="">
+                    ${idx + 1}. ${skillDef.name}
+                </div>
+                <div style="display:flex; align-items:center;">
+                    ${countHtml}
+                    <button class="rb-toggle-btn" onclick="toggleStepDisabled(${idx})" title="Enable/Disable Step">${step.disabled ? '🚫' : '✅'}</button>
+                    <button class="rb-delete-btn" onclick="removeRotationStep(${idx})">✖</button>
+                </div>
+            </div>
+            <div class="rb-conditions" id="rb_conds_${idx}"></div>
+        `;
+        stepEl.innerHTML = html;
+        dz.appendChild(stepEl);
+
+        var condContainer = document.getElementById(`rb_conds_${idx}`);
+        if (step.conditions && step.conditions.length > 0) {
+            step.conditions.forEach((cond, cIdx) => {
+                condContainer.appendChild(createConditionRow(idx, cIdx, cond));
+            });
+        }
+        
+        var addBtn = document.createElement("button");
+        addBtn.className = "rb-add-condition";
+        addBtn.innerText = "+ Add Condition";
+        addBtn.onclick = function() { addCondition(idx); };
+        condContainer.appendChild(addBtn);
+    });
+    
+    saveCurrentState();
+}
+
+function createConditionRow(stepIdx, condIdx, cond) {
+    var row = document.createElement("div");
+    row.className = "rb-condition-row";
+    
+    var typeSel = document.createElement("select");
+    Object.keys(CONDITION_TYPES).forEach(k => {
+        var opt = document.createElement("option");
+        opt.value = k;
+        opt.innerText = CONDITION_TYPES[k].label;
+        if (k === cond.type) opt.selected = true;
+        typeSel.appendChild(opt);
+    });
+    typeSel.onchange = function() { updateCondition(stepIdx, condIdx, "type", this.value); };
+    row.appendChild(typeSel);
+
+    var cDef = CONDITION_TYPES[cond.type];
+    
+    if (cDef.type === "select") {
+        var targetSel = document.createElement("select");
+        cDef.options.forEach(o => {
+            var opt = document.createElement("option");
+            opt.value = o;
+            opt.innerText = o;
+            if (o === cond.target) opt.selected = true;
+            targetSel.appendChild(opt);
+        });
+        targetSel.onchange = function() { updateCondition(stepIdx, condIdx, "target", this.value); };
+        row.appendChild(targetSel);
+    }
+
+    var opSel = document.createElement("select");
+    cDef.ops.forEach(o => {
+        var opt = document.createElement("option");
+        opt.value = o;
+        opt.innerText = o;
+        if (o === cond.op) opt.selected = true;
+        opSel.appendChild(opt);
+    });
+    opSel.onchange = function() { updateCondition(stepIdx, condIdx, "op", this.value); };
+    row.appendChild(opSel);
+
+    if (cond.type !== "last_spell") {
+        var valInp = document.createElement("input");
+        valInp.type = "number";
+        valInp.value = cond.val !== undefined ? cond.val : 0;
+        valInp.onchange = function() { updateCondition(stepIdx, condIdx, "val", parseFloat(this.value)); };
+        row.appendChild(valInp);
+    }
+
+    var delBtn = document.createElement("button");
+    delBtn.className = "rb-delete-btn";
+    delBtn.innerText = "✖";
+    delBtn.onclick = function() { removeCondition(stepIdx, condIdx); };
+    row.appendChild(delBtn);
+
+    return row;
+}
+
+function updateCondition(sIdx, cIdx, field, value) {
+    var cond = CUSTOM_ROTATION[sIdx].conditions[cIdx];
+    cond[field] = value;
+    
+    if (field === "type") {
+        var def = CONDITION_TYPES[value];
+        cond.op = def.ops[0];
+        if (def.type === "select") cond.target = def.options[0];
+        if (value !== "last_spell") cond.val = 0;
+    }
+    renderRotationList();
+}
+
+function addRotationStep(skillId, insertAtIdx) {
+    var newStep = {
+        id: "step_" + Date.now() + "_" + Math.floor(Math.random()*1000),
+        skill: skillId,
+        conditions: []
+    };
+    if (insertAtIdx !== undefined && insertAtIdx !== null) {
+        CUSTOM_ROTATION.splice(insertAtIdx, 0, newStep);
+    } else {
+        CUSTOM_ROTATION.push(newStep);
+    }
+    renderRotationList();
+}
+
+function removeRotationStep(idx) {
+    CUSTOM_ROTATION.splice(idx, 1);
+    renderRotationList();
+}
+
+function moveRotationStep(fromIdx, toIdx) {
+    if (toIdx > fromIdx) toIdx--; 
+    var step = CUSTOM_ROTATION.splice(fromIdx, 1)[0];
+    CUSTOM_ROTATION.splice(toIdx, 0, step);
+    renderRotationList();
+}
+
+function addCondition(sIdx) {
+    CUSTOM_ROTATION[sIdx].conditions.push({ type: "cp", op: ">=", val: 5 });
+    renderRotationList();
+}
+
+function removeCondition(sIdx, cIdx) {
+    CUSTOM_ROTATION[sIdx].conditions.splice(cIdx, 1);
+    renderRotationList();
+}
+
+function populatePresetDropdown() {
+    var sel = document.getElementById("rotation_preset_select");
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Select Preset --</option>';
+    
+    var grpDef = document.createElement("optgroup");
+    grpDef.label = "Default Presets";
+    Object.keys(PRESET_ROTATIONS).forEach(k => {
+        var opt = document.createElement("option"); opt.value = "def_" + k; opt.innerText = k;
+        grpDef.appendChild(opt);
+    });
+    sel.appendChild(grpDef);
+
+    var customStr = localStorage.getItem("feral_sim_custom_rotations");
+    if (customStr) {
+        try {
+            var custom = JSON.parse(customStr);
+            var grpCus = document.createElement("optgroup");
+            grpCus.label = "My Saved Presets";
+            Object.keys(custom).forEach(k => {
+                var opt = document.createElement("option"); opt.value = "cus_" + k; opt.innerText = k;
+                grpCus.appendChild(opt);
+            });
+            if (grpCus.children.length > 0) sel.appendChild(grpCus);
+        } catch(e){}
+    }
+}
+
+function loadSelectedPreset() {
+    var val = document.getElementById("rotation_preset_select").value;
+    if (!val) { alert("Please select a preset from the dropdown first."); return; }
+    if (CUSTOM_ROTATION && CUSTOM_ROTATION.length > 0) {
+        if(!confirm("Overwrite your current rotation?")) return;
+    }
+    
+    if (val.startsWith("def_")) {
+        var k = val.substring(4);
+        CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS[k]));
+    } else if (val.startsWith("cus_")) {
+        var k = val.substring(4);
+        var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
+        if (custom[k]) CUSTOM_ROTATION = JSON.parse(JSON.stringify(custom[k]));
+    }
+    renderRotationList();
+    showToast("Preset loaded!");
+}
+
+function saveCustomPreset() {
+    if (!CUSTOM_ROTATION || CUSTOM_ROTATION.length === 0) { alert("Rotation is empty."); return; }
+    var name = prompt("Enter a name for this rotation:");
+    if (!name) return;
+    
+    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
+    custom[name] = CUSTOM_ROTATION;
+    localStorage.setItem("feral_sim_custom_rotations", JSON.stringify(custom));
+    
+    populatePresetDropdown();
+    document.getElementById("rotation_preset_select").value = "cus_" + name;
+    showToast("Preset saved locally!");
+}
+
+function deleteCustomPreset() {
+    var val = document.getElementById("rotation_preset_select").value;
+    if (!val || !val.startsWith("cus_")) { alert("Please select one of 'My Saved Presets' to delete."); return; }
+    if (!confirm("Are you sure you want to delete this preset?")) return;
+    
+    var k = val.substring(4);
+    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
+    delete custom[k];
+    localStorage.setItem("feral_sim_custom_rotations", JSON.stringify(custom));
+    
+    populatePresetDropdown();
+    showToast("Preset deleted!");
+}
+
+function clearRotation() {
+    if (confirm("Are you sure you want to clear your custom rotation?")) {
+        CUSTOM_ROTATION = [];
+        document.getElementById("rotation_preset_select").value = "";
+        renderRotationList();
+    }
+}
+
+function toggleStepDisabled(idx) {
+    if (!CUSTOM_ROTATION[idx]) return;
+    CUSTOM_ROTATION[idx].disabled = !CUSTOM_ROTATION[idx].disabled;
+    renderRotationList();
+    saveCurrentState();
 }
