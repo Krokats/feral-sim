@@ -1553,15 +1553,18 @@ function packConfig(cfg) {
         }
     }
 
+    // 4. Return combined Data (Index 3 ist die neue Custom Rotation)
     return {
-        data: [values, gearIds, enchantIds, cfg.custom_rotation],
+        data: [values, gearIds, enchantIds, cfg.custom_rotation || []],
         itemCount: itemCount
     };
 }
 
 function unpackConfig(packed) {
     console.log("--- UNPACKING CONFIG ---", packed);
-    if (!Array.isArray(packed) || packed.length !== 3 || !Array.isArray(packed[0])) {
+    
+    // HIER WAR DER FEHLER: Wir erlauben nun Längen ab 3 (für Abwärtskompatibilität alter Links)
+    if (!Array.isArray(packed) || packed.length < 3 || !Array.isArray(packed[0])) {
         console.warn("Invalid packed format", packed);
         return packed;
     }
