@@ -45,7 +45,10 @@ const CONDITION_TYPES = {
 };
 
 const PRESET_ROTATIONS = {
-    "standard": [
+    "standard": {
+        name: "Standard Feral",
+        desc: "Optimal priority logic including Reshifting, TF after FB and OOC Shreds.",
+        steps: [
         { id: "step_1", skill: "Trinket 1", conditions: [] },
         { id: "step_2", skill: "Trinket 2", conditions: [] },
         { id: "step_3", skill: "Potion", conditions: [] },
@@ -62,6 +65,7 @@ const PRESET_ROTATIONS = {
         { id: "step_14", skill: "Shred", conditions: [{ type: "buff_rem", target: "Clearcasting", op: ">=", val: 0.1 }] },
         { id: "step_15", skill: "Claw", conditions: [] }
     ]
+}
 };
 
 // Lädt das Standard-Preset als Standard-Rotation beim Start

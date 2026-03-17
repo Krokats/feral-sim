@@ -504,6 +504,17 @@
                                             <button class="btn-mini" onclick="clearRotation()" style="color:#f44336; border-color:#f44336; padding:8px 12px;">🗑️ Clear Rotation</button>
                                         </div>
                                         
+                                        <div class="rb-meta" style="display:flex; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #444;">
+                                            <div class="input-group" style="margin:0; flex:1; max-width:250px;">
+                                                <label>Rotation Name</label>
+                                                <input type="text" id="rb_meta_name" placeholder="My Custom Rota" onchange="updateRotationMeta('name', this.value)">
+                                            </div>
+                                            <div class="input-group" style="margin:0; flex:2;">
+                                                <label>Description (Optional)</label>
+                                                <input type="text" id="rb_meta_desc" placeholder="Describe what this rotation does..." onchange="updateRotationMeta('desc', this.value)">
+                                            </div>
+                                        </div>
+                                        
                                         <div class="rb-layout" style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
                                             
                                             <div class="rb-toolbox" id="rbToolbox" style="width:220px; flex-shrink:0;">

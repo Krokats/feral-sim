@@ -925,8 +925,8 @@ function updateRotaSummary() {
     if (!list) return;
     list.innerHTML = "";
 
-    if (typeof CUSTOM_ROTATION !== 'undefined' && CUSTOM_ROTATION.length > 0) {
-        CUSTOM_ROTATION.forEach((step, idx) => {
+    if (typeof CUSTOM_ROTATION !== 'undefined' && CUSTOM_ROTATION.steps && CUSTOM_ROTATION.steps.length > 0) {
+        CUSTOM_ROTATION.steps.forEach((step, idx) => {
             var li = document.createElement("li");
             li.style.display = "flex";
             li.style.alignItems = "center";
@@ -1215,7 +1215,7 @@ function renderLogTable(log) {
 function updateLogView() {
     // Check Config for Column Visibility
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
-    var rota = cfg.custom_rotation || [];
+    var rota = (cfg.custom_rotation && cfg.custom_rotation.steps) ? cfg.custom_rotation.steps : [];
 
     // Logic: Check if skills exist in the new Custom Rotation
     var showPounce = rota.some(s => s.skill === "Pounce");
@@ -1334,7 +1334,7 @@ function downloadCSV() {
 
     // Check Config for Column Visibility (Same logic as updateLogView)
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
-    var rota = cfg.custom_rotation || [];
+    var rota = (cfg.custom_rotation && cfg.custom_rotation.steps) ? cfg.custom_rotation.steps : [];
     
     var showPounce = rota.some(s => s.skill === "Pounce");
     var showRake = rota.some(s => s.skill === "Rake");
@@ -1515,12 +1515,7 @@ function saveCurrentState() {
 
 
 
-// ============================================================================
-// IMPORT / EXPORT LOGIC
-// ============================================================================
-
 function packConfig(cfg) {
-    console.log("--- PACKING CONFIG ---");
     // 1. Map simple values
     var values = CONFIG_IDS.map(function (id) { return cfg[id]; });
 
@@ -1531,14 +1526,9 @@ function packConfig(cfg) {
         for (var slot in cfg.gearSelection) {
             var val = cfg.gearSelection[slot];
             var idToSave = (val && typeof val === 'object' && val.id) ? val.id : val;
-
-            if (idToSave && idToSave != 0) {
-                gearIds[slot] = idToSave;
-                itemCount++;
-            }
+            if (idToSave && idToSave != 0) { gearIds[slot] = idToSave; itemCount++; }
         }
     }
-    console.log("Packed Gear IDs found:", itemCount, gearIds);
 
     // 3. Compress Enchants
     var enchantIds = {};
@@ -1546,26 +1536,28 @@ function packConfig(cfg) {
         for (var slot in cfg.enchantSelection) {
             var val = cfg.enchantSelection[slot];
             var idToSave = (val && typeof val === 'object' && val.id) ? val.id : val;
-
-            if (idToSave && idToSave != 0) {
-                enchantIds[slot] = idToSave;
-            }
+            if (idToSave && idToSave != 0) { enchantIds[slot] = idToSave; }
         }
     }
 
-    // 4. Return combined Data (Index 3 ist die neue Custom Rotation)
+    // 4. Compress Rotation to tiny keys (n = name, d = desc, s = steps)
+    var rotaPack = null;
+    if (cfg.custom_rotation) {
+        rotaPack = {
+            n: cfg.custom_rotation.name || "",
+            d: cfg.custom_rotation.desc || "",
+            s: cfg.custom_rotation.steps || []
+        };
+    }
+
     return {
-        data: [values, gearIds, enchantIds, cfg.custom_rotation || []],
+        data: [values, gearIds, enchantIds, rotaPack],
         itemCount: itemCount
     };
 }
 
 function unpackConfig(packed) {
-    console.log("--- UNPACKING CONFIG ---", packed);
-    
-    // HIER WAR DER FEHLER: Wir erlauben nun Längen ab 3 (für Abwärtskompatibilität alter Links)
     if (!Array.isArray(packed) || packed.length < 3 || !Array.isArray(packed[0])) {
-        console.warn("Invalid packed format", packed);
         return packed;
     }
 
@@ -1573,6 +1565,11 @@ function unpackConfig(packed) {
     var gearIds = packed[1];
     var enchantIds = packed[2];
     var cfg = {};
+
+    // SICHERHEITSWARNUNG für alte Links, deren Feld-Anzahl nicht mehr stimmt
+    if (values.length !== CONFIG_IDS.length) {
+        setTimeout(() => showToast("⚠️ Warning: Loaded link is from a different version. Some settings might be misplaced!"), 1500);
+    }
 
     // 1. Restore Values
     CONFIG_IDS.forEach(function (id, idx) {
@@ -1582,23 +1579,25 @@ function unpackConfig(packed) {
     // 2. Restore Gear
     cfg.gearSelection = {};
     if (gearIds) {
-        console.log("Restoring Gear IDs:", gearIds);
-        for (var slot in gearIds) {
-            cfg.gearSelection[slot] = gearIds[slot];
-        }
+        for (var slot in gearIds) cfg.gearSelection[slot] = gearIds[slot];
     }
 
     // 3. Restore Enchants
     cfg.enchantSelection = {};
     if (enchantIds) {
-        for (var slot in enchantIds) {
-            cfg.enchantSelection[slot] = enchantIds[slot];
-        }
+        for (var slot in enchantIds) cfg.enchantSelection[slot] = enchantIds[slot];
     }
 
     // 4. Restore Custom Rotation (Array Index 3)
     if (packed.length > 3 && packed[3]) {
-        cfg.custom_rotation = packed[3];
+        var p3 = packed[3];
+        if (Array.isArray(p3)) {
+            // Fallback: Wenn es ein altes, reines Array ist, packen wir es in das neue Objekt
+            cfg.custom_rotation = { name: "Imported Custom", desc: "", steps: p3 };
+        } else {
+            // Neues Format entpacken
+            cfg.custom_rotation = { name: p3.n || "", desc: p3.d || "", steps: p3.s || [] };
+        }
     }
 
     return cfg;
@@ -2154,12 +2153,19 @@ function initRotationBuilder() {
             if (draggedSkillId) {
                 addRotationStep(draggedSkillId);
             } else if (draggedStepIndex !== null) {
-                moveRotationStep(draggedStepIndex, CUSTOM_ROTATION.length);
+                var steps = CUSTOM_ROTATION.steps || [];
+                moveRotationStep(draggedStepIndex, steps.length);
             }
             draggedSkillId = null;
             draggedStepIndex = null;
         });
     }
+}
+
+function updateRotationMeta(field, val) {
+    if (!CUSTOM_ROTATION) CUSTOM_ROTATION = { name: "", desc: "", steps: [] };
+    CUSTOM_ROTATION[field] = val;
+    saveCurrentState();
 }
 
 function renderRotationToolbox() {
@@ -2186,21 +2192,27 @@ function renderRotationList() {
     var empty = document.getElementById("rbEmptyState");
     if (!dz) return;
     
+    // Update Meta UI Fields
+    var nInput = document.getElementById("rb_meta_name");
+    var dInput = document.getElementById("rb_meta_desc");
+    if (nInput) nInput.value = CUSTOM_ROTATION.name || "";
+    if (dInput) dInput.value = CUSTOM_ROTATION.desc || "";
+
     document.querySelectorAll(".rb-step").forEach(el => el.remove());
 
-    if (!CUSTOM_ROTATION || CUSTOM_ROTATION.length === 0) {
+    if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || CUSTOM_ROTATION.steps.length === 0) {
         if (empty) empty.style.display = "block";
         return;
     }
     if (empty) empty.style.display = "none";
 
-    CUSTOM_ROTATION.forEach((step, idx) => {
-        var skillDef = ROTATION_SKILLS.find(s => s.id === step.skill) || { name: step.skill, color: "#fff" };
+    CUSTOM_ROTATION.steps.forEach((step, idx) => {
+        var skillDef = ROTATION_SKILLS.find(s => s.id === step.skill) || { name: step.skill, icon: "inv_misc_questionmark" };
         
         var stepEl = document.createElement("div");
         stepEl.className = "rb-step";
-        stepEl.draggable = true;
         if (step.disabled) stepEl.classList.add("is-disabled");
+        stepEl.draggable = true;
         
         stepEl.addEventListener("dragstart", function(e) {
             draggedStepIndex = idx;
@@ -2228,12 +2240,12 @@ function renderRotationList() {
             draggedStepIndex = null;
         });
 
-        // Hole die durchschnittlichen Ausführungen aus der letzten Simulation
-        var avgCount = 0;
-        if (typeof SIM_DATA !== 'undefined' && SIM_DATA && SIM_DATA.results && SIM_DATA.results.counts && SIM_DATA.results.counts[step.id]) {
-            avgCount = SIM_DATA.results.counts[step.id];
+        // Hole die exakten Ausführungen aus dem repräsentativen Durchlauf (avgRun)
+        var exactCount = 0;
+        if (typeof SIM_DATA !== 'undefined' && SIM_DATA && SIM_DATA.results && SIM_DATA.results.avgRun && SIM_DATA.results.avgRun.counts && SIM_DATA.results.avgRun.counts[step.id]) {
+            exactCount = SIM_DATA.results.avgRun.counts[step.id];
         }
-        var countHtml = avgCount > 0 ? `<span class="rb-step-count" title="Average uses per sim (from last run)">${avgCount.toFixed(1)}x</span>` : '';
+        var countHtml = exactCount > 0 ? `<span class="rb-step-count" title="Uses in representative run">${exactCount}x</span>` : '';
 
         var html = `
             <div class="rb-step-header">
@@ -2328,7 +2340,7 @@ function createConditionRow(stepIdx, condIdx, cond) {
 }
 
 function updateCondition(sIdx, cIdx, field, value) {
-    var cond = CUSTOM_ROTATION[sIdx].conditions[cIdx];
+    var cond = CUSTOM_ROTATION.steps[sIdx].conditions[cIdx];
     cond[field] = value;
     
     if (field === "type") {
@@ -2340,39 +2352,47 @@ function updateCondition(sIdx, cIdx, field, value) {
     renderRotationList();
 }
 
+function toggleStepDisabled(idx) {
+    if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || !CUSTOM_ROTATION.steps[idx]) return;
+    CUSTOM_ROTATION.steps[idx].disabled = !CUSTOM_ROTATION.steps[idx].disabled;
+    renderRotationList();
+}
+
 function addRotationStep(skillId, insertAtIdx) {
+    if (!CUSTOM_ROTATION.steps) CUSTOM_ROTATION.steps = [];
     var newStep = {
         id: "step_" + Date.now() + "_" + Math.floor(Math.random()*1000),
         skill: skillId,
-        conditions: []
+        conditions: [],
+        disabled: false
     };
     if (insertAtIdx !== undefined && insertAtIdx !== null) {
-        CUSTOM_ROTATION.splice(insertAtIdx, 0, newStep);
+        CUSTOM_ROTATION.steps.splice(insertAtIdx, 0, newStep);
     } else {
-        CUSTOM_ROTATION.push(newStep);
+        CUSTOM_ROTATION.steps.push(newStep);
     }
     renderRotationList();
 }
 
 function removeRotationStep(idx) {
-    CUSTOM_ROTATION.splice(idx, 1);
+    CUSTOM_ROTATION.steps.splice(idx, 1);
     renderRotationList();
 }
 
 function moveRotationStep(fromIdx, toIdx) {
     if (toIdx > fromIdx) toIdx--; 
-    var step = CUSTOM_ROTATION.splice(fromIdx, 1)[0];
-    CUSTOM_ROTATION.splice(toIdx, 0, step);
+    var step = CUSTOM_ROTATION.steps.splice(fromIdx, 1)[0];
+    CUSTOM_ROTATION.steps.splice(toIdx, 0, step);
     renderRotationList();
 }
 
 function addCondition(sIdx) {
-    CUSTOM_ROTATION[sIdx].conditions.push({ type: "cp", op: ">=", val: 5 });
+    CUSTOM_ROTATION.steps[sIdx].conditions.push({ type: "cp", op: ">=", val: 5 });
     renderRotationList();
 }
 
 function removeCondition(sIdx, cIdx) {
-    CUSTOM_ROTATION[sIdx].conditions.splice(cIdx, 1);
+    CUSTOM_ROTATION.steps[sIdx].conditions.splice(cIdx, 1);
     renderRotationList();
 }
 
@@ -2384,7 +2404,7 @@ function populatePresetDropdown() {
     var grpDef = document.createElement("optgroup");
     grpDef.label = "Default Presets";
     Object.keys(PRESET_ROTATIONS).forEach(k => {
-        var opt = document.createElement("option"); opt.value = "def_" + k; opt.innerText = k;
+        var opt = document.createElement("option"); opt.value = "def_" + k; opt.innerText = PRESET_ROTATIONS[k].name || k;
         grpDef.appendChild(opt);
     });
     sel.appendChild(grpDef);
@@ -2396,7 +2416,7 @@ function populatePresetDropdown() {
             var grpCus = document.createElement("optgroup");
             grpCus.label = "My Saved Presets";
             Object.keys(custom).forEach(k => {
-                var opt = document.createElement("option"); opt.value = "cus_" + k; opt.innerText = k;
+                var opt = document.createElement("option"); opt.value = "cus_" + k; opt.innerText = custom[k].name || k;
                 grpCus.appendChild(opt);
             });
             if (grpCus.children.length > 0) sel.appendChild(grpCus);
@@ -2407,7 +2427,7 @@ function populatePresetDropdown() {
 function loadSelectedPreset() {
     var val = document.getElementById("rotation_preset_select").value;
     if (!val) { alert("Please select a preset from the dropdown first."); return; }
-    if (CUSTOM_ROTATION && CUSTOM_ROTATION.length > 0) {
+    if (CUSTOM_ROTATION && CUSTOM_ROTATION.steps && CUSTOM_ROTATION.steps.length > 0) {
         if(!confirm("Overwrite your current rotation?")) return;
     }
     
@@ -2424,16 +2444,19 @@ function loadSelectedPreset() {
 }
 
 function saveCustomPreset() {
-    if (!CUSTOM_ROTATION || CUSTOM_ROTATION.length === 0) { alert("Rotation is empty."); return; }
-    var name = prompt("Enter a name for this rotation:");
-    if (!name) return;
+    if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || CUSTOM_ROTATION.steps.length === 0) { alert("Rotation is empty."); return; }
+    var name = CUSTOM_ROTATION.name || "Custom Rota";
+    var safeName = prompt("Enter a save name for your local storage:", name);
+    if (!safeName) return;
     
     var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
-    custom[name] = CUSTOM_ROTATION;
+    CUSTOM_ROTATION.name = safeName; // Updates the input field
+    custom[safeName] = JSON.parse(JSON.stringify(CUSTOM_ROTATION));
     localStorage.setItem("feral_sim_custom_rotations", JSON.stringify(custom));
     
     populatePresetDropdown();
-    document.getElementById("rotation_preset_select").value = "cus_" + name;
+    document.getElementById("rotation_preset_select").value = "cus_" + safeName;
+    renderRotationList(); // Update UI
     showToast("Preset saved locally!");
 }
 
@@ -2453,15 +2476,15 @@ function deleteCustomPreset() {
 
 function clearRotation() {
     if (confirm("Are you sure you want to clear your custom rotation?")) {
-        CUSTOM_ROTATION = [];
+        CUSTOM_ROTATION = { name: "", desc: "", steps: [] };
         document.getElementById("rotation_preset_select").value = "";
         renderRotationList();
     }
 }
 
 function toggleStepDisabled(idx) {
-    if (!CUSTOM_ROTATION[idx]) return;
-    CUSTOM_ROTATION[idx].disabled = !CUSTOM_ROTATION[idx].disabled;
+    if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || !CUSTOM_ROTATION.steps[idx]) return;
+    CUSTOM_ROTATION.steps[idx].disabled = !CUSTOM_ROTATION.steps[idx].disabled;
     renderRotationList();
-    saveCurrentState();
+    saveCurrentState(); 
 }

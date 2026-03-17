@@ -1045,7 +1045,7 @@ function runCoreSimulation(cfg) {
         var action = null;
         var actionStepId = null;
         var waitingForEnergy = false;
-        var rotationList = cfg.custom_rotation || [];
+        var rotationList = (cfg.custom_rotation && cfg.custom_rotation.steps) ? cfg.custom_rotation.steps : (Array.isArray(cfg.custom_rotation) ? cfg.custom_rotation : []);
 
         // Condition Evaluator Hilfsfunktion
         function checkCondition(cond) {
@@ -1366,6 +1366,7 @@ function runCoreSimulation(cfg) {
                         }
                         else if (action === "Rake") {
                             abilityDmg = 61 + (0.115 * curAP);
+                            if (auras.tigersFury > t) abilityDmg += 50;
                             abilityDmg *= modPredatoryStrikes;
                             // DoT Teil
                             var dotTotal = 102 + (0.09 * curAP);
