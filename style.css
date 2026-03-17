@@ -1477,6 +1477,13 @@ label[style*="dotted"]:hover {
     transition: transform 0.1s, border-color 0.2s;
 }
 
+.rb-toolbox {
+    position: sticky;
+    top: 20px; /* Abstand zum oberen Bildschirmrand */
+    align-self: flex-start; /* GANZ WICHTIG: Verhindert, dass die Box so hoch wie die rechte Liste wird */
+    z-index: 10; 
+}
+
 .rb-skill:hover {
     border-color: var(--druid-orange);
     transform: translateX(2px);
