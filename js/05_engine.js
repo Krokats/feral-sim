@@ -455,6 +455,10 @@ function getSimInputs() {
         set_talon_3p: getCheck("set_talon_3p") === 1,
         set_talon_5p: getCheck("set_talon_5p") === 1,
 
+        // NEU: Stormshroud Armor
+        set_stormshroud_3p: getCheck("set_stormshroud_3p") === 1,
+        set_stormshroud_4p: getCheck("set_stormshroud_4p") === 1,
+
         idol_savagery: getCheck("idol_savagery") === 1,
         idol_emeral_rot: getCheck("idol_emeral_rot") === 1,
         idol_ferocity: getCheck("idol_ferocity") === 1,
@@ -540,6 +544,7 @@ function runCoreSimulation(cfg) {
 
         // New Buffs
         cenarionHaste: 0, // T1 8p
+        stormshroudHaste: 0, // NEU: Stormshroud 4p
         genesisProc: 0,   // T2.5 5p (Empowered Next Cast)
         talonAP: 0,       // T3.5 3p
         talonBuff: 0,     // T3.5 5p (25% AP + Energy)
@@ -644,6 +649,9 @@ function runCoreSimulation(cfg) {
 
         // Cenarion 8p: +15% Speed
         if (auras.cenarionHaste > t && stacks.cenarion > 0 && auras.cenarionHaste > 0) hasteMult *= 1.15;
+
+        // NEU: Stormshroud 4p: +10% Speed
+        if (auras.stormshroudHaste > t && auras.stormshroudHaste > 0) hasteMult *= 1.10;
 
         // Kiss of the Spider: +20% Speed
         if (auras.spider > t && auras.spider > 0) hasteMult *= 1.20;
@@ -953,6 +961,17 @@ function runCoreSimulation(cfg) {
                         auras.clearcasting = t + 15.0;
                         logAction("Proc", "Clearcasting", "Proc", 0, false, false);
                     }
+                    // NEU: Stormshroud Procs (White Hits)
+                    if (cfg.set_stormshroud_3p && rng.proc("Stormshroud3p", 5)) {
+                        dealDamage("Stormshroud", rollDamageRange(35, 52), "Nature", "Proc", false, false);
+                    }
+                    if (cfg.set_stormshroud_4p && rng.proc("Stormshroud4p", 2)) {
+                        var energyGain = (energy <= 70) ? 30 : (100 - energy);
+                        energy = Math.min(100, energy + 30);
+                        auras.stormshroudHaste = t + 8.0;
+                        logAction("Stormshroud 4p", "Proc (+30 Eng, +10% Haste)", "Proc", 0, false, false, energyGain);
+                    }
+
                     if (cfg.buff_ft_totem) {
                         // Vanilla Rank 4: 15-45 Dmg flat -> Avg 30
                         // Scaled by Weapon Speed logic usually: (Dmg * Speed / 4.0)
@@ -1541,7 +1560,17 @@ function runCoreSimulation(cfg) {
 
 
                             // 2. Instants
-
+                            // --- STANDARD MODE (Legacy Instants) ---
+                            // NEU: Stormshroud Procs (Yellow Hits)
+                            if (cfg.set_stormshroud_3p && rng.proc("Stormshroud3p", 5 * pScale)) {
+                                dealDamage("Stormshroud", rollDamageRange(35, 52), "Nature", "Proc", false, false);
+                            }
+                            if (cfg.set_stormshroud_4p && rng.proc("Stormshroud4p", 2 * pScale)) {
+                                var energyGain = (energy <= 70) ? 30 : (100 - energy);
+                                energy = Math.min(100, energy + 30);
+                                auras.stormshroudHaste = t + 8.0;
+                                logAction("Stormshroud 4p", "Proc (+30 Eng, +10% Haste)", "Proc", 0, false, false, energyGain);
+                            }
                             // --- STANDARD MODE (Legacy Instants) ---
                             if (cfg.hasT05_4p && rng.proc("T05", 2)) {
                                 var EnergyGain = (energy <= 80) ? 20 : (100 - energy);

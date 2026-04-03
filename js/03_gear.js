@@ -880,6 +880,10 @@ function calculateGearStats() {
     checkSet("set_talon_3p", "Harness of the Talon", 3);
     checkSet("set_talon_5p", "Harness of the Talon", 5);
 
+    // Stormshroud Armor
+    checkSet("set_stormshroud_3p", "Stormshroud Armor", 3);
+    checkSet("set_stormshroud_4p", "Stormshroud Armor", 4);
+
     // Helper to check Trinkets
     var checkTrinket = function (id, searchName) {
         var el = document.getElementById(id);

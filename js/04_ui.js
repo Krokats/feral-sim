@@ -451,6 +451,8 @@ function generateSummaryImage() {
         else if (c.set_genesis_3p) addGear("Genesis (3pc)");
         if (c.set_talon_5p) addGear("Talon (5pc)");
         else if (c.set_talon_3p) addGear("Talon (3pc)");
+        if (c.set_stormshroud_4p) addGear("Stormshroud (4pc)");
+        else if (c.set_stormshroud_3p) addGear("Stormshroud (3pc)");
         if (c.hasGiftOfFerocity) addGear("Gift of Ferocity");
     }
 
@@ -527,6 +529,8 @@ function getGearShort(sim) {
     if (c.set_genesis_5p) sets += "T2.5-5 ";
     if (c.set_talon_3p) sets += "T3.5-3 ";
     if (c.set_talon_5p) sets += "T3.5-5 ";
+    if (c.set_stormshroud_3p && !c.set_stormshroud_4p) sets += "Storm-3 ";
+    if (c.set_stormshroud_4p) sets += "Storm-4 ";
 
     // Important Trinkets
     if (c.t_slayer) sets += "Slayer ";

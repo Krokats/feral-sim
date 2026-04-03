@@ -113,6 +113,7 @@ var CONFIG_IDS = [
     "set_cenarion_5p", "set_cenarion_8p",
     "set_genesis_3p", "set_genesis_5p",
     "set_talon_3p", "set_talon_5p",
+    "set_stormshroud_3p", "set_stormshroud_4p",
 
     // Idols (Swapping allowed)
     "idol_savagery", "idol_emeral_rot", "idol_ferocity", "idol_laceration",
