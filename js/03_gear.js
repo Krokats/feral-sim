@@ -20,12 +20,21 @@ async function loadDatabase() {
     try {
         updateProgress(20);
         const [rItems, rEnchants] = await Promise.all([
-            fetch('data/items.json'),
+            fetch('data/items.jsonl'),
             fetch('data/enchants.json')
         ]);
         if (!rItems.ok) throw new Error("Items DB Error " + rItems.status);
         if (!rEnchants.ok) throw new Error("Enchants DB Error " + rEnchants.status);
-        const items = await rItems.json();
+
+        // 1. JSONL einlesen: Als Text laden, in Zeilen aufteilen und jede Zeile parsen
+        const itemsText = await rItems.text();
+        const items = itemsText
+            .split(/\r?\n/) // Berücksichtigt Windows (\r\n) und Linux (\n) Zeilenumbrüche
+            .filter(line => line.trim() !== '') // Leere Zeilen (z.B. am Ende der Datei) ignorieren
+            .map(line => JSON.parse(line)); // Jede einzelne Zeile als JSON parsen
+
+
+        //const items = await rItems.json();
         const enchants = await rEnchants.json();
         updateProgress(60);
 

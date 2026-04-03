@@ -949,7 +949,7 @@
     "frostRes": 0,
     "shadowRes": 0,
     "arcaneRes": 0,
-    "text": "+3 All Stats",
+    "text": "Permanently enchant a piece of chest armor to grant +3 to all stats.",
     "effects": {
       "mp5": 0,
       "hp5": 0,
