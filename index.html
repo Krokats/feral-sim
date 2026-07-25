@@ -47,11 +47,23 @@
                 <header>
                     <div class="header-title-row">
                         <img src="Krokat.png" alt="Krokat" class="header-avatar">
-                        <h1>Krokat's Feralsim</h1>
+                        <h1>Krokat's Feral Sim 1.18.1</h1>
                     </div>
                     <input type="text" id="simName" class="sim-name-input" value="Simulation 1"
                         onchange="updateSimName()">
                     <div class="header-actions">
+
+                        <!-- Dropdown für alle Simulationen -->
+                        <div class="sim-selector-dropdown">
+                            <button class="share-btn sim-selector-btn">Other Simulations ▼</button>
+                            <div class="sim-dropdown-content">
+                                <a href="https://krokats.github.io/feral-sim/" class="active-sim">🐾 Feral Sim</a>
+                                <a href="https://krokats.github.io/boomkin-sim/">🦉 Moonkin Sim</a>
+                                <a href="https://krokats.github.io/bear-sim/" class="disabled-sim">🐻 Bear Sim (Soon)</a> 
+                                <a href="https://krokats.github.io/resto-sim/" class="disabled-sim">🌿 Resto Sim (Soon)</a> 
+                            </div>
+                        </div>
+
                         <button onclick="importFromClipboard()" class="share-btn" style="margin-right: 5px;">📥 Import Config</button>
                         <button onclick="exportSettings()" class="share-btn">🔗 Save Config</button>
                     </div>
