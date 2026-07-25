@@ -130,7 +130,7 @@ function renderSlotColumn(pos, containerId) {
         }
 
         var canEnchant = true;
-        if (slotName.includes("Trinket") || slotName.includes("Off")) canEnchant = false;
+        if (slotName.includes("Trinket") || slotName.includes("Off") || slotName === "Idol") canEnchant = false;
         if (!item && slotName.includes("Main Hand")) canEnchant = false;
         
 
@@ -376,7 +376,7 @@ function renderItemList(filterText) {
     var slotKey = CURRENT_SELECTING_SLOT;
     if (slotKey.includes("Finger")) slotKey = "Finger";
     if (slotKey.includes("Trinket")) slotKey = "Trinket";
-    //if (slotKey === "Idol") slotKey = "Relic";
+    if (slotKey === "Idol") slotKey = "Relic";
 
     var relevantItems = ITEM_DB.filter(function (i) {
         if (CURRENT_SELECTING_SLOT === "Main Hand") {
@@ -386,21 +386,40 @@ function renderItemList(filterText) {
             return i.weaponType;
         }
 
-        if (CURRENT_SELECTING_SLOT === "Finger 1" && GEAR_SELECTION["Finger 2"] == i.id) return false;
-        if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id) return false;
-        if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id) return false;
-        if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id) return false;
+        // Erlaube das doppelte Ausrüsten, es sei denn, das Item ist als 'unique' markiert
+        if (CURRENT_SELECTING_SLOT === "Finger 1" && GEAR_SELECTION["Finger 2"] == i.id && i.unique) return false;
+        if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id && i.unique) return false;
+        if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id && i.unique) return false;
+        if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id && i.unique) return false;
 
         if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Held In Off-Hand");
+        if (CURRENT_SELECTING_SLOT === "Idol") return (i.slot === "Relic" || i.slot === "Idol"); 
         return i.slot === slotKey;
     });
 
     relevantItems.forEach(function (i) { i.simScore = calculateItemScore(i, CURRENT_SELECTING_SLOT); });
     relevantItems.sort(function (a, b) { return b.simScore - a.simScore; });
+    
     if (filterText) {
         var ft = filterText.toLowerCase();
         relevantItems = relevantItems.filter(function (i) { return i.name.toLowerCase().includes(ft); });
     }
+
+    // --- MARGINAL SCORE LOGIC START ---
+    var currentEquippedId = GEAR_SELECTION[CURRENT_SELECTING_SLOT];
+    if (currentEquippedId && typeof currentEquippedId === 'object' && currentEquippedId.id) {
+        currentEquippedId = currentEquippedId.id;
+    }
+    
+    var currentEquippedScore = 0;
+    if (currentEquippedId && currentEquippedId !== 0) {
+        var currentItem = ITEM_ID_MAP[currentEquippedId];
+        if (currentItem) {
+            currentEquippedScore = calculateItemScore(currentItem, CURRENT_SELECTING_SLOT);
+        }
+    }
+    // --- MARGINAL SCORE LOGIC END ---
+
     relevantItems.slice(0, 100).forEach(function (item) {
         var iconUrl = getIconUrl(item.icon);
         var row = document.createElement("div");
@@ -410,9 +429,23 @@ function renderItemList(filterText) {
         row.onmousemove = function (e) { moveTooltip(e); };
         row.onmouseleave = function () { hideTooltip(); };
         var levelText = item.requiredLevel ? 'Req: ' + item.requiredLevel : '';
+
+        // --- DELTA HTML BERECHNUNG ---
+        var delta = item.simScore - currentEquippedScore;
+        var deltaHtml = "";
+        
+        if (delta > 0.05) {
+            deltaHtml = ' <span style="color:#1eff00; font-size:0.85em; margin-left: 5px;">(+' + delta.toFixed(1) + ')</span>';
+        } else if (delta < -0.05) {
+            deltaHtml = ' <span style="color:#f44336; font-size:0.85em; margin-left: 5px;">(' + delta.toFixed(1) + ')</span>';
+        } else {
+            deltaHtml = ' <span style="color:#888; font-size:0.85em; margin-left: 5px;">(0.0)</span>';
+        }
+
         var html = '<div class="item-row-icon"><img src="' + iconUrl + '" style="width:100%; height:100%; border-radius:3px;"></div>' +
             '<div class="item-row-details"><div class="item-row-name" style="color: ' + getItemColor(item.quality) + '">' + item.name + '</div><div class="item-row-sub">' + levelText + '</div></div>' +
-            '<div class="item-score-badge"><span class="score-label">EP</span>' + item.simScore.toFixed(1) + '</div>';
+            '<div class="item-score-badge" style="display:flex; align-items:center;"><span class="score-label" style="margin-right: 4px;">EP</span>' + item.simScore.toFixed(1) + deltaHtml + '</div>';
+            
         row.innerHTML = html;
         list.appendChild(row);
     });
@@ -673,6 +706,7 @@ function calculateGearStats() {
     var bonus = { str: 0, agi: 0, int: 0, ap: 0, crit: 0, hit: 0, haste: 0, arp: 0 };
     var setCounts = {};
     var activeTrinketNames = [];
+    var activeIdolNames = [];
 
     // Total Gear Score accumulator
     var totalScore = 0;
@@ -709,6 +743,9 @@ function calculateGearStats() {
                 // Collect Trinket Names for Auto-Config
                 if (slot === "Trinket 1" || slot === "Trinket 2") {
                     activeTrinketNames.push(item.name.toLowerCase());
+                }
+                if (slot === "Idol") {
+                    activeIdolNames.push(item.name.toLowerCase()); // Variable muss darüber deklariert werden
                 }
             }
         }
@@ -914,6 +951,27 @@ function calculateGearStats() {
     checkTrinket("trinket_coil", "Overloaded Heating Coil");
     checkTrinket("trinket_zhm", "Zandalarian Hero Medallion");
 
+    // Helper to check Idols
+    var checkIdol = function (id, searchName) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var found = false;
+        activeIdolNames.forEach(function (n) {
+            if (n.includes(searchName.toLowerCase())) found = true;
+        });
+        el.checked = found;
+
+        if (el.parentElement) {
+            if (found) el.parentElement.classList.add("gear-active");
+            else el.parentElement.classList.remove("gear-active");
+        }
+    };
+
+    checkIdol("idol_savagery", "savagery");
+    checkIdol("idol_emeral_rot", "emerald rot");
+    checkIdol("idol_ferocity", "ferocity");
+    checkIdol("idol_laceration", "laceration");
+
     // NEW: Detect Gift of Ferocity Enchant on Head
     var elGoF = document.getElementById("gear_gift_of_ferocity");
     if (elGoF) {
@@ -935,4 +993,121 @@ function calculateGearStats() {
             else elGoF.parentElement.classList.remove("gear-active");
         }
     }
+}
+
+// ============================================================================
+// GEAR PRESET LOGIC (BiS & Custom)
+// ============================================================================
+//var GEAR_PRESETS = {}; // Hier definierst du später deine Presets
+
+function populateBiSDropdown() {
+    var sel = document.getElementById("bis_preset_select");
+    if (!sel) return;
+    
+    sel.innerHTML = '<option value="">-- Select Preset --</option>';
+    
+    // Globale Presets
+    if (typeof GEAR_PRESETS !== 'undefined') {
+        var grpDef = document.createElement("optgroup");
+        grpDef.label = "Default Presets";
+        Object.keys(GEAR_PRESETS).forEach(function(k) {
+            var opt = document.createElement("option");
+            opt.value = "def_" + k;
+            opt.innerText = k;
+            grpDef.appendChild(opt);
+        });
+        sel.appendChild(grpDef);
+    }
+
+    // Lokale Presets (aus localStorage)
+    var customStr = localStorage.getItem("feral_sim_custom_gear");
+    if (customStr) {
+        try {
+            var custom = JSON.parse(customStr);
+            var grpCus = document.createElement("optgroup");
+            grpCus.label = "My Saved Gear";
+            Object.keys(custom).forEach(function(k) {
+                var opt = document.createElement("option");
+                opt.value = "cus_" + k;
+                opt.innerText = k;
+                grpCus.appendChild(opt);
+            });
+            if (grpCus.children.length > 0) sel.appendChild(grpCus);
+        } catch(e) {}
+    }
+}
+
+function loadBiSPreset() {
+    var sel = document.getElementById("bis_preset_select");
+    if (!sel) return;
+    var val = sel.value;
+    if (!val) { showToast("Please select a preset first."); return; }
+    
+    if (!confirm("Load preset? This will overwrite your currently equipped gear and enchants.")) return;
+
+    var preset = null;
+    if (val.startsWith("def_")) {
+        var k = val.substring(4);
+        preset = GEAR_PRESETS[k];
+    } else if (val.startsWith("cus_")) {
+        var k = val.substring(4);
+        var custom = JSON.parse(localStorage.getItem("feral_sim_custom_gear") || "{}");
+        preset = custom[k];
+    }
+
+    if (!preset) return;
+
+    GEAR_SELECTION = {};
+    ENCHANT_SELECTION = {};
+
+    if (preset.gear) {
+        for (var slot in preset.gear) {
+            if (preset.gear[slot] !== 0) GEAR_SELECTION[slot] = preset.gear[slot];
+        }
+    }
+    if (preset.enchants) {
+        for (var slot in preset.enchants) {
+            if (preset.enchants[slot] !== 0) ENCHANT_SELECTION[slot] = preset.enchants[slot];
+        }
+    }
+
+    initGearPlannerUI();
+    saveCurrentState();
+    
+    if (typeof updatePlayerStats === 'function') updatePlayerStats();
+    if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
+    
+    showToast("Gear Preset loaded!");
+}
+
+function saveCustomGearPreset() {
+    if (Object.keys(GEAR_SELECTION).length === 0) { showToast("No gear equipped to save."); return; }
+    
+    var safeName = prompt("Enter a name for your Gear Preset:");
+    if (!safeName) return;
+    
+    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_gear") || "{}");
+    custom[safeName] = {
+        gear: JSON.parse(JSON.stringify(GEAR_SELECTION)),
+        enchants: JSON.parse(JSON.stringify(ENCHANT_SELECTION))
+    };
+    localStorage.setItem("feral_sim_custom_gear", JSON.stringify(custom));
+    
+    populateBiSDropdown();
+    document.getElementById("bis_preset_select").value = "cus_" + safeName;
+    showToast("Gear Preset saved!");
+}
+
+function deleteCustomGearPreset() {
+    var val = document.getElementById("bis_preset_select").value;
+    if (!val || !val.startsWith("cus_")) { showToast("Please select a saved preset to delete."); return; }
+    if (!confirm("Are you sure you want to delete this gear preset?")) return;
+    
+    var k = val.substring(4);
+    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_gear") || "{}");
+    delete custom[k];
+    localStorage.setItem("feral_sim_custom_gear", JSON.stringify(custom));
+    
+    populateBiSDropdown();
+    showToast("Preset deleted!");
 }

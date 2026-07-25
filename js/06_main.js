@@ -72,6 +72,8 @@ function init() {
         console.error("DB Error:", err);
         if (SIM_LIST.length === 0) addSim(true);
     });
+
+    populateBiSDropdown();
 }
 
 

@@ -156,7 +156,7 @@ var SLOT_LAYOUT = {
     left: ["Head", "Neck", "Shoulder", "Back", "Chest", "Wrist"],
     right: ["Hands", "Waist", "Legs", "Feet", "Finger 1", "Finger 2", "Trinket 1", "Trinket 2"],
     // Removed Idol as requested
-    bottom: ["Main Hand", "Off Hand"]
+    bottom: ["Main Hand", "Off Hand", "Idol"]
 };
 
 // Base Stats (Level 60 - Turtle WoW 1.18)
@@ -239,6 +239,55 @@ const BOSS_PRESETS = [
     { group: "Other", name: "UBRS: Lord Valthalak", armor: 3400, level: 63, canBleed: true, canBlock: false, type: "Humanoid" },
     { group: "Other", name: "Strat UD: Atiesh", armor: 3850, level: 63, canBleed: true, canBlock: false, type: "Humanoid" }
 ];
+
+// ============================================================================
+// GEAR PRESETS (BiS Lists)
+// ============================================================================
+
+var GEAR_PRESETS = {
+    "Pre-Raid + Kara10 BiS": {
+        gear: {
+            "Head": 61060,       
+            "Neck": 22340,       
+            "Shoulder": 12927,   
+            "Back": 21187,
+            "Chest": 50427,
+            "Wrist": 19687,
+            "Hands": 83463,
+            "Waist": 60550,
+            "Legs": 18736,
+            "Feet": 83442,
+            "Finger 1": 18500,
+            "Finger 2": 18500,
+            "Trinket 1": 13965,  // Hand of Justice
+            "Trinket 2": 11815,  // Blackhand's Breadth
+            "Main Hand": 84603,   // Manual Crowd Pummeler (oder ähnliches)
+            "Off Hand": 0,       // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
+            "Idol": 61699        // Idol of Ferocity
+        },
+        enchants: {
+            "Head": 61081,        // Z.B. +8 Agility
+            "Neck": 56008,
+            "Shoulder": 61437,
+            "Back": 11206,        // +3 Agility
+            "Chest": 16253,       // +3 Stats
+            "Wrist": 60969,       // +9 Strength
+            "Hands": 16219,       // +15 Agility
+            "Waist": 61782,
+            "Legs": 11645,        // +8 Agility
+            "Feet": 20023,        // Minor Speed
+            "Finger 1": 56008,
+            "Finger 2": 56008,
+            "Trinket 1": 0,
+            "Trinket 2": 0,
+            "Main Hand": 27837,   // +15 Agility oder +25 Agility
+            "Off Hand": 0,
+            "Idol": 0
+        }
+    }
+
+
+};
 
 // ============================================================================
 // PIXEL ART ANIMATION DATA

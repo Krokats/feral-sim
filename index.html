@@ -173,6 +173,24 @@
                             <div class="char-left" id="charLeftCol"></div>
 
                             <div class="char-middle">
+
+                                <!-- NEU: Gear Presets -->
+                                <div style="margin-top:20px; width:100%;">
+                                    <div style="font-size:0.85rem; color:#aaa; margin-bottom:5px;">Equipment Presets</div>
+                                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                        <div class="select-wrapper" style="flex: 1;">
+                                            <select id="bis_preset_select"></select>
+                                        </div>
+                                        <button onclick="loadBiSPreset()" class="btn-mini primary-btn">Load</button>
+                                    </div>
+                                    <div style="display:flex; gap:10px;">
+                                        <button onclick="saveCustomGearPreset()" class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7; flex:1;">Save</button>
+                                        <button onclick="deleteCustomGearPreset()" class="btn-mini" style="color:#f44336; border-color:#f44336; flex:1;">Delete</button>
+                                    </div>
+                                </div>
+
+                                
+
                                 <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights</h2>
                                 <div class="gp-three-col">
                                     <div class="gp-input-group"><label>AP</label><input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
@@ -183,6 +201,8 @@
                                     <div class="gp-input-group"><label>Haste</label><input type="number" id="weight_haste" value="13.6" onchange="recalcItemScores()"></div>
                                     <div class="gp-input-group"><label>Armor Penetration</label><input type="number" id="weight_Arp" value="0.5" onchange="recalcItemScores()"></div>
                                 </div>
+
+                                
 
                                 <h2 style="margin:20px 0 10px 0; font-size:1rem;">Current Gear Stats</h2>
                                 <div class="gp-stats-preview">
@@ -200,9 +220,11 @@
                                     </div>
                                 </div>
 
-                                <div style="margin-top:20px; width:100%;">
+                                <div style="margin-top:10px; width:100%;">
                                     <button onclick="resetGear()" class="btn-mini" style="background:#333; width:100%;">Reset Gear</button>
                                 </div>
+                                
+
                                 <div id="dbStatus" style="font-size:0.65rem; color:#666; margin-top:10px;">DB not loaded</div>
                                 <div class="char-bottom" id="charBottomRow"></div>
                             </div>
@@ -542,12 +564,12 @@
                                     <span class="toggle-icon">▼</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="gear-section-title">Idol Swapping (Select all active)</div>
+                                    <div class="gear-section-title">Active Idols (Detected)</div>
                                     <div class="checkbox-grid">
-                                        <label class="custom-checkbox"><input type="checkbox" id="idol_savagery"><span class="checkmark"></span> Idol of Savagery (Rake/Rip duration)</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="idol_emeral_rot"><span class="checkmark"></span> Idol of the Emerald Rot (Nature Proc)</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="idol_ferocity"><span class="checkmark"></span> Idol of Ferocity (Cost Reduct)</label>
-                                        <label class="custom-checkbox"><input type="checkbox" id="idol_laceration"><span class="checkmark"></span> Idol of Laceration (Energy Refund)</label>
+                                        <label class="custom-checkbox"><input type="checkbox" id="idol_savagery" disabled><span class="checkmark"></span> Idol of Savagery (Rake/Rip duration)</label>
+                                        <label class="custom-checkbox"><input type="checkbox" id="idol_emeral_rot" disabled><span class="checkmark"></span> Idol of the Emerald Rot (Nature Proc)</label>
+                                        <label class="custom-checkbox"><input type="checkbox" id="idol_ferocity" disabled><span class="checkmark"></span> Idol of Ferocity (Cost Reduct)</label>
+                                        <label class="custom-checkbox"><input type="checkbox" id="idol_laceration" disabled><span class="checkmark"></span> Idol of Laceration (Energy Refund)</label>
                                     </div>
 
                                     <div class="gear-section-title">Active Sets (Detected)</div>
