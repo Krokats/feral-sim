@@ -1736,3 +1736,70 @@ input:checked + .slider::before { transform: translateX(16px); background-color:
 .desc-spell-nature { color: var(--energy-yellow); font-weight: 600; }
 .desc-spell-item { color: #ce93d8; font-weight: 600; }
 .desc-condition { color: #ffd54f; font-style: italic; }
+
+/* --- SIMULATION SELECTOR DROPDOWN --- */
+.sim-selector-dropdown {
+    position: relative;
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.sim-selector-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent; /* Passt sich dem Header an */
+}
+
+.sim-dropdown-content {
+    display: none; /* Standardmäßig versteckt */
+    position: absolute;
+    right: 0;
+    top: 110%; /* Leicht unter dem Button */
+    background-color: var(--card-bg);
+    min-width: 200px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.6);
+    z-index: 2000;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.sim-dropdown-content a {
+    color: var(--text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s, color 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.sim-dropdown-content a:last-child {
+    border-bottom: none;
+}
+
+.sim-dropdown-content a:hover:not(.disabled-sim) {
+    background-color: rgba(255, 125, 10, 0.1);
+    color: var(--druid-orange);
+}
+
+/* Aktuelle Simulation hervorheben */
+.sim-dropdown-content a.active-sim {
+    color: var(--druid-orange);
+    border-left: 3px solid var(--druid-orange);
+    background-color: rgba(0,0,0,0.2);
+}
+
+/* Noch nicht fertige Simulationen ausgrauen */
+.sim-dropdown-content a.disabled-sim {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Dropdown anzeigen beim Hover */
+.sim-selector-dropdown:hover .sim-dropdown-content {
+    display: block;
+}
