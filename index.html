@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krokat's Feral 1.18</title>
+    <title>Krokat's Feral Sim 1.18.1</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap"
         rel="stylesheet">
@@ -47,7 +47,7 @@
                 <header>
                     <div class="header-title-row">
                         <img src="Krokat.png" alt="Krokat" class="header-avatar">
-                        <h1>Krokat's Feral Sim 1.18.1</h1>
+                        <h1>Krokat's Feral Sim</h1>
                     </div>
                     <input type="text" id="simName" class="sim-name-input" value="Simulation 1"
                         onchange="updateSimName()">
@@ -201,15 +201,44 @@
                                     </div>
                                 </div>
 
-                                <h2 style="margin-bottom:10px; font-size:1rem;">Stat Weights</h2>
-                                <div class="gp-stats-config" style="grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                                    <div class="gp-input-group"><label>AP</label><input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>Str</label><input type="number" id="weight_str" value="2.64" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>Agi</label><input type="number" id="weight_agi" value="2.76" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>Hit</label><input type="number" id="weight_hit" value="31.85" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>Crit</label><input type="number" id="weight_crit" value="30.13" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>Haste</label><input type="number" id="weight_haste" value="13.6" onchange="recalcItemScores()"></div>
-                                    <div class="gp-input-group"><label>ArP</label><input type="number" id="weight_Arp" value="0.5" onchange="recalcItemScores()"></div>
+                                <h2 style="margin-bottom:10px; font-size:1rem; text-align: center;">Stat Weights</h2>
+                                <div class="gp-stats-config" style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">AP</label>
+                                        <input type="number" id="weight_ap" value="1.0" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">Str</label>
+                                        <input type="number" id="weight_str" value="2.64" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">Agi</label>
+                                        <input type="number" id="weight_agi" value="2.76" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">Hit</label>
+                                        <input type="number" id="weight_hit" value="31.85" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">Crit</label>
+                                        <input type="number" id="weight_crit" value="30.13" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">Haste</label>
+                                        <input type="number" id="weight_haste" value="13.6" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
+                                    <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
+                                        <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">ArP</label>
+                                        <input type="number" id="weight_Arp" value="0.5" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                    </div>
+                                    
                                 </div>
 
                                 <h2 style="margin:20px 0 10px 0; font-size:1rem;">Current Gear Stats</h2>
@@ -313,7 +342,7 @@
 
                             <div class="card full-width collapsed">
                                 <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-                                    <h2>⚙️ Settings & Configuration</h2>
+                                    <h2>⚙️ Configuration</h2>
                                 </div>
                                 <div class="card-body">
                                     <div class="grid-container" style="margin:0; padding:0;">
@@ -493,68 +522,9 @@
                                 </div>
                             </div>
 
-                            <div class="card full-width collapsed" id="rotationBuilderCard" style="overflow: visible !important;">
-                                <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-                                    <h2>🛠️ Rotation Builder</h2>
-                                </div>
-                                <div class="card-body">
-                                    <div class="rotation-builder-container">
-                                        <div class="rb-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
-                                            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                                                <div class="input-group" style="margin:0; width:200px;">
-                                                    <label>Presets</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="rotation_preset_select"></select>
-                                                    </div>
-                                                </div>
-                                                <button class="btn-mini" onclick="loadSelectedPreset()">Load Preset</button>
-                                                <button class="btn-mini" onclick="saveCustomPreset()" style="color:#a5d6a7; border-color:#a5d6a7;">Save</button>
-                                                <button class="btn-mini" onclick="deleteCustomPreset()" style="color:#f44336; border-color:#f44336;">Del</button>
-                                            </div>
-                                            <button class="btn-mini" onclick="clearRotation()" style="color:#f44336; border-color:#f44336; padding:8px 12px;">🗑️ Clear Rotation</button>
-                                        </div>
-                                        
-                                        <div class="rb-meta" style="display:flex; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #444;">
-                                            <div class="input-group" style="margin:0; flex:1; max-width:250px;">
-                                                <label>Rotation Name</label>
-                                                <input type="text" id="rb_meta_name" placeholder="My Custom Rota" onchange="updateRotationMeta('name', this.value)">
-                                            </div>
-                                            <div class="input-group" style="margin:0; flex:2;">
-                                                <label>Description (Optional)</label>
-                                                <input type="text" id="rb_meta_desc" placeholder="Describe what this rotation does..." onchange="updateRotationMeta('desc', this.value)">
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="rb-auto-desc-wrapper" style="margin-bottom: 20px;">
-                                            <div id="rb_auto_desc_header" class="rb-auto-desc-header" onclick="toggleAutoDesc()" style="display: none;">
-                                                <strong>Rotation Priority</strong> <span id="rb_auto_desc_icon">&#9660;</span>
-                                            </div>
-                                            <div id="rb_auto_desc" class="rb-auto-desc" style="display: none; margin-bottom: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;"></div>
-                                        </div>
-
-                                        <div class="rb-layout" style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
-                                            
-                                            <div class="rb-toolbox" id="rbToolbox" style="width:220px; flex-shrink:0;">
-                                                <div class="gear-section-title" style="margin-top:0;">Skills (Drag)</div>
-                                                <div class="rb-skills-grid" id="rbSkillsList" style="display:flex; flex-direction:column; gap:8px;">
-                                                </div>
-                                            </div>
-
-                                            <div class="rb-dropzone-container" style="flex:1; min-width:300px;">
-                                                <div class="gear-section-title" style="margin-top:0;">Priority List (Top to Bottom)</div>
-                                                <div class="rb-dropzone" id="rbDropzone" style="min-height:150px; background:rgba(0,0,0,0.2); border:1px dashed #555; border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:10px;">
-                                                    <div style="color:#666; text-align:center; padding:20px; font-style:italic;" id="rbEmptyState">Drag skills here...</div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div class="card full-width collapsed">
                                 <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-                                    <h2>🛡️ Special Gear / Sets</h2>
+                                    <h2>🛡️ Gear & Sets</h2>
                                 </div>
                                 <div class="card-body">
                                     <div class="gear-section-title">Active Idols (Detected)</div>
@@ -618,6 +588,65 @@
                                             <tbody id="scalingTableBody">
                                                 </tbody>
                                         </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card full-width collapsed" id="rotationBuilderCard" style="overflow: visible !important;">
+                                <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                                    <h2>🛠️ Rotation Builder</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="rotation-builder-container">
+                                        <div class="rb-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
+                                            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                                                <div class="input-group" style="margin:0; width:200px;">
+                                                    <label>Presets</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="rotation_preset_select"></select>
+                                                    </div>
+                                                </div>
+                                                <button class="btn-mini" onclick="loadSelectedPreset()">Load Preset</button>
+                                                <button class="btn-mini" onclick="saveCustomPreset()" style="color:#a5d6a7; border-color:#a5d6a7;">Save</button>
+                                                <button class="btn-mini" onclick="deleteCustomPreset()" style="color:#f44336; border-color:#f44336;">Del</button>
+                                            </div>
+                                            <button class="btn-mini" onclick="clearRotation()" style="color:#f44336; border-color:#f44336; padding:8px 12px;">🗑️ Clear Rotation</button>
+                                        </div>
+                                        
+                                        <div class="rb-meta" style="display:flex; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #444;">
+                                            <div class="input-group" style="margin:0; flex:1; max-width:250px;">
+                                                <label>Rotation Name</label>
+                                                <input type="text" id="rb_meta_name" placeholder="My Custom Rota" onchange="updateRotationMeta('name', this.value)">
+                                            </div>
+                                            <div class="input-group" style="margin:0; flex:2;">
+                                                <label>Description (Optional)</label>
+                                                <input type="text" id="rb_meta_desc" placeholder="Describe what this rotation does..." onchange="updateRotationMeta('desc', this.value)">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="rb-auto-desc-wrapper" style="margin-bottom: 20px;">
+                                            <div id="rb_auto_desc_header" class="rb-auto-desc-header" onclick="toggleAutoDesc()" style="display: none;">
+                                                <strong>Rotation Priority</strong> <span id="rb_auto_desc_icon">&#9660;</span>
+                                            </div>
+                                            <div id="rb_auto_desc" class="rb-auto-desc" style="display: none; margin-bottom: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;"></div>
+                                        </div>
+
+                                        <div class="rb-layout" style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+                                            
+                                            <div class="rb-toolbox" id="rbToolbox" style="width:220px; flex-shrink:0;">
+                                                <div class="gear-section-title" style="margin-top:0;">Skills (Drag)</div>
+                                                <div class="rb-skills-grid" id="rbSkillsList" style="display:flex; flex-direction:column; gap:8px;">
+                                                </div>
+                                            </div>
+
+                                            <div class="rb-dropzone-container" style="flex:1; min-width:300px;">
+                                                <div class="gear-section-title" style="margin-top:0;">Priority List (Top to Bottom)</div>
+                                                <div class="rb-dropzone" id="rbDropzone" style="min-height:150px; background:rgba(0,0,0,0.2); border:1px dashed #555; border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:10px;">
+                                                    <div style="color:#666; text-align:center; padding:20px; font-style:italic;" id="rbEmptyState">Drag skills here...</div>
+                                                </div>
+                                            </div>
+
+                                        </div>
                                     </div>
                                 </div>
                             </div>
