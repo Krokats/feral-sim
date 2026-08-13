@@ -289,6 +289,46 @@ var GEAR_PRESETS = {
             "Off Hand": 0,
             "Idol": 0
         }
+    },
+    "Spellstrike": {
+        gear: {
+            "Head": 61060,       
+            "Neck": 17111,       
+            "Shoulder": 60572,   
+            "Back": 81308,
+            "Chest": 50427,
+            "Wrist": 19687,
+            "Hands": 60582,
+            "Waist": 60550,
+            "Legs": 18736,
+            "Feet": 60568,
+            "Finger 1": 61332,
+            "Finger 2": 18500,
+            "Trinket 1": 33147,  
+            "Trinket 2": 11815,  // Hand of Justice
+            "Main Hand": 17780,   
+            "Off Hand": 65030,       // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
+            "Idol": 61699        // Idol of Ferocity
+        },
+        enchants: {
+            "Head": 61081,        // Z.B. +8 Agility
+            "Neck": 56008,
+            "Shoulder": 61437,
+            "Back": 11206,        // +3 Agility
+            "Chest": 16253,       // +3 Stats
+            "Wrist": 60969,       // +9 Strength
+            "Hands": 16219,       // +15 Agility
+            "Waist": 61782,
+            "Legs": 11645,        // +8 Agility
+            "Feet": 20023,        // Minor Speed
+            "Finger 1": 56008,
+            "Finger 2": 56008,
+            "Trinket 1": 0,
+            "Trinket 2": 0,
+            "Main Hand": 27837,   // +15 Agility oder +25 Agility
+            "Off Hand": 0,
+            "Idol": 0
+        }
     }
 
 
