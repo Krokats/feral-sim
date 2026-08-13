@@ -341,15 +341,15 @@ var GEAR_PRESETS = {
             "Wrist": 47341,
             "Hands": 47342,
             "Waist": 47343,
-            "Legs": 47345,
-            "Feet": 60568,
+            "Legs": 47344,
+            "Feet": 47345,
             "Finger 1": 18821,
             "Finger 2": 18500,
-            "Trinket 1": 33147,  
+            "Trinket 1": 13965,  
             "Trinket 2": 11815,  // Hand of Justice
-            "Main Hand": 17780,   
-            "Off Hand": 65030,       // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
-            "Idol": 61699        // Idol of Ferocity
+            "Main Hand": 84603,   
+            "Off Hand": 0,        // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
+            "Idol": 61699        
         },
         enchants: {
             "Head": 61081,        // Z.B. +8 Agility
