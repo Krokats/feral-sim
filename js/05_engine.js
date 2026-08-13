@@ -806,61 +806,71 @@ function runCoreSimulation(cfg) {
     // UPDATED: Use RNG Handler
     function rollDamageRange(min, max) { return rng.dmg(min, max); }
 
+    // Globale Sperre für diesen Simulations-Durchlauf
+    var isHandlingSpellstrikes = false;
+
     function handleSpellstrikes(actionName) {
+        // ANTI-RECURSION LOCK: Wenn wir gerade schon Proccs berechnen, brich ab!
+        // Das verhindert zu 100%, dass Spell-Hits weitere Spell-Hits auslösen.
+        if (isHandlingSpellstrikes) return; 
+        
+        isHandlingSpellstrikes = true; // Sperre aktivieren
+
         // Hilfsfunktion: Prüft und triggert Blade of Eternal Darkness
         function triggerBoED(sourceName) {
             if (cfg.hasBoED && rng.proc("BoED_" + sourceName, 10)) {
                 mana = Math.min(cfg.manaPool, mana + 100);
                 dealDamage("Blade of Eternal Darkness", 100, "Shadow", "Proc", false, false, 0);
-                // Info-Feld nutzen, um Mana-Gain darzustellen, ohne Energy (eChange) zu verfälschen
                 logAction("BoED", "+100 Mana (via " + sourceName + ")", "Proc", 0, false, false, 0);
             }
         }
 
-        // 1. Ring of Electrical Binding (100% Chance auf +3 Dmg)
+        // 1. Ring of Electrical Binding
         if (cfg.hasRingElec) {
             dealDamage("Ring of Elec. Binding", 3, "Nature", "Hit", false, false, 0);
             triggerBoED("RingElec");
         }
 
-        // 2. Repaired Electro-Lantern (100% Chance auf +3 Dmg)
+        // 2. Repaired Electro-Lantern
         if (cfg.hasLantern) {
             dealDamage("Electro-Lantern", 3, "Nature", "Hit", false, false, 0);
             triggerBoED("Lantern");
         }
 
-        // 3. Thunder Lizard's Hide (100% Chance auf +3 Dmg)
+        // 3. Thunder Lizard's Hide
         if (cfg.hasThunderLizard) {
             dealDamage("Thunder Lizard", 3, "Nature", "Hit", false, false, 0);
             triggerBoED("ThunderLizard");
         }
 
-        // 4. Incendosaur 2-Set (100% Chance auf +2 Dmg)
+        // 4. Incendosaur 2-Set
         if (cfg.hasIncendosaur2p) {
             dealDamage("Incendosaur (2pc)", 2, "Fire", "Hit", false, false, 0);
             triggerBoED("Incend2p");
         }
 
-        // 5. Blazefury Medallion (100% Chance auf +2 Dmg)
+        // 5. Blazefury Medallion
         if (cfg.hasBlazefury) {
             dealDamage("Blazefury Medallion", 2, "Fire", "Hit", false, false, 0);
             triggerBoED("Blazefury");
         }
 
-        // 6. Incendosaur 3-Set (5% Chance auf 15-25 Dmg)
+        // 6. Incendosaur 3-Set (5% Chance)
         if (cfg.hasIncendosaur3p && rng.proc("Incend3p", 5)) {
             var incDmg = rng.dmg(15, 25);
             dealDamage("Incendosaur (3pc)", incDmg, "Fire", "Proc", false, false, 0);
             triggerBoED("Incend3p");
         }
 
-        // 7. Mar'kali (10% Chance auf 3% Max Mana Dmg, 1s ICD)
+        // 7. Mar'kali (10% Chance, 1s ICD)
         if (cfg.hasMarkali && cds.markali <= t && rng.proc("Markali", 10)) {
             var markDmg = cfg.manaPool * 0.03;
             dealDamage("Mar'kali", markDmg, "Arcane", "Proc", false, false, 0);
-            cds.markali = t + 1.0; // 1 Sekunde ICD
+            cds.markali = t + 1.0; 
             triggerBoED("Markali");
         }
+
+        isHandlingSpellstrikes = false; // Sperre wieder aufheben
     }
 
 
