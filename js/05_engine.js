@@ -438,6 +438,9 @@ function getSimInputs() {
         hasMarkali: getCheck("gear_markali") === 1,
         hasBlazefury: getCheck("gear_blazefury_medallion") === 1,
         hasThunderLizard: getCheck("gear_thunder_lizard") === 1,
+        hasIncendosaurPauldrons: getCheck("gear_incendosaur_pauldrons") === 1,
+        hasIncendosaurBoots: getCheck("gear_incendosaur_boots") === 1,
+        hasIncendosaurGloves: getCheck("gear_incendosaur_gloves") === 1,
         hasIncendosaur2p: getCheck("set_incendosaur_2p") === 1,
         hasIncendosaur3p: getCheck("set_incendosaur_3p") === 1,
 
@@ -841,6 +844,23 @@ function runCoreSimulation(cfg) {
         if (cfg.hasThunderLizard) {
             dealDamage("Thunder Lizard", 3, "Nature", "Hit", false, false, 0);
             triggerBoED("ThunderLizard");
+        }
+        
+        if (cfg.hasIncendosaurPauldrons) {
+            dealDamage("Incendosaur Pauldrons", 2, "Fire", "Hit", false, false, 0);
+            triggerBoED("IncendPauldrons");
+        }
+
+        // 4b. Incendosaur Boots (100% Chance auf +2 Dmg)
+        if (cfg.hasIncendosaurBoots) {
+            dealDamage("Incendosaur Boots", 2, "Fire", "Hit", false, false, 0);
+            triggerBoED("IncendBoots");
+        }
+
+        // 4c. Incendosaur Gloves (100% Chance auf +2 Dmg)
+        if (cfg.hasIncendosaurGloves) {
+            dealDamage("Incendosaur Gloves", 2, "Fire", "Hit", false, false, 0);
+            triggerBoED("IncendGloves");
         }
 
         // 4. Incendosaur 2-Set

@@ -118,6 +118,7 @@ var CONFIG_IDS = [
     "gear_blade_eternal_darkness", "gear_ring_electrical_binding",
     "gear_electro_lantern", "gear_markali", "gear_thunder_lizard",
     "gear_blazefury_medallion",
+    "gear_incendosaur_pauldrons", "gear_incendosaur_boots", "gear_incendosaur_gloves", 
     "set_incendosaur_2p", "set_incendosaur_3p",
 
     // Idols (Swapping allowed)
@@ -303,6 +304,46 @@ var GEAR_PRESETS = {
             "Legs": 18736,
             "Feet": 60568,
             "Finger 1": 61332,
+            "Finger 2": 18500,
+            "Trinket 1": 33147,  
+            "Trinket 2": 11815,  // Hand of Justice
+            "Main Hand": 17780,   
+            "Off Hand": 65030,       // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
+            "Idol": 61699        // Idol of Ferocity
+        },
+        enchants: {
+            "Head": 61081,        // Z.B. +8 Agility
+            "Neck": 56008,
+            "Shoulder": 61437,
+            "Back": 11206,        // +3 Agility
+            "Chest": 16253,       // +3 Stats
+            "Wrist": 60969,       // +9 Strength
+            "Hands": 16219,       // +15 Agility
+            "Waist": 61782,
+            "Legs": 11645,        // +8 Agility
+            "Feet": 20023,        // Minor Speed
+            "Finger 1": 56008,
+            "Finger 2": 56008,
+            "Trinket 1": 0,
+            "Trinket 2": 0,
+            "Main Hand": 27837,   // +15 Agility oder +25 Agility
+            "Off Hand": 0,
+            "Idol": 0
+        }
+    },
+    "MC/T1": {
+        gear: {
+            "Head": 47354,       
+            "Neck": 18404,       
+            "Shoulder": 47339,   
+            "Back": 61249,
+            "Chest": 47340,
+            "Wrist": 47341,
+            "Hands": 47342,
+            "Waist": 47343,
+            "Legs": 47345,
+            "Feet": 60568,
+            "Finger 1": 18821,
             "Finger 2": 18500,
             "Trinket 1": 33147,  
             "Trinket 2": 11815,  // Hand of Justice

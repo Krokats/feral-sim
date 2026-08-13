@@ -939,6 +939,9 @@ function calculateGearStats() {
     checkItem("gear_blazefury_medallion", "blazefury medallion");
 
     // Incendosaur Set
+    checkItem("gear_incendosaur_pauldrons", "incendosaur skin pauldrons");
+    checkItem("gear_incendosaur_boots", "incendosaur skin boots");
+    checkItem("gear_incendosaur_gloves", "incendosaur skin gloves");
     checkSet("set_incendosaur_2p", "incendosaur skin", 2);
     checkSet("set_incendosaur_3p", "incendosaur skin", 3);
 
