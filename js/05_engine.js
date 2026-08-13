@@ -432,6 +432,15 @@ function getSimInputs() {
         // NEW: Special Gear Input
         hasGiftOfFerocity: getCheck("gear_gift_of_ferocity") === 1,
 
+        hasBoED: getCheck("gear_blade_eternal_darkness") === 1,
+        hasRingElec: getCheck("gear_ring_electrical_binding") === 1,
+        hasLantern: getCheck("gear_electro_lantern") === 1,
+        hasMarkali: getCheck("gear_markali") === 1,
+        hasBlazefury: getCheck("gear_blazefury_medallion") === 1,
+        hasThunderLizard: getCheck("gear_thunder_lizard") === 1,
+        hasIncendosaur2p: getCheck("set_incendosaur_2p") === 1,
+        hasIncendosaur3p: getCheck("set_incendosaur_3p") === 1,
+
         // Talents
         tal_ferocity: getNum("tal_ferocity"),
         tal_feral_aggression: getNum("tal_feral_aggression"),
@@ -572,7 +581,7 @@ function runCoreSimulation(cfg) {
     };
 
     var cds = {
-        tigersFury: 0, berserk: 0, ff: 0, potion: 0, jujuFlurry: 0,
+        tigersFury: 0, berserk: 0, ff: 0, potion: 0, jujuFlurry: 0, markali: 0,
         // Trinket CDs (Individual)
         slayer: 0,
         spider: 0,
@@ -797,6 +806,63 @@ function runCoreSimulation(cfg) {
     // UPDATED: Use RNG Handler
     function rollDamageRange(min, max) { return rng.dmg(min, max); }
 
+    function handleSpellstrikes(actionName) {
+        // Hilfsfunktion: Prüft und triggert Blade of Eternal Darkness
+        function triggerBoED(sourceName) {
+            if (cfg.hasBoED && rng.proc("BoED_" + sourceName, 10)) {
+                mana = Math.min(cfg.manaPool, mana + 100);
+                dealDamage("Blade of Eternal Darkness", 100, "Shadow", "Proc", false, false, 0);
+                // Info-Feld nutzen, um Mana-Gain darzustellen, ohne Energy (eChange) zu verfälschen
+                logAction("BoED", "+100 Mana (via " + sourceName + ")", "Proc", 0, false, false, 0);
+            }
+        }
+
+        // 1. Ring of Electrical Binding (100% Chance auf +3 Dmg)
+        if (cfg.hasRingElec) {
+            dealDamage("Ring of Elec. Binding", 3, "Nature", "Hit", false, false, 0);
+            triggerBoED("RingElec");
+        }
+
+        // 2. Repaired Electro-Lantern (100% Chance auf +3 Dmg)
+        if (cfg.hasLantern) {
+            dealDamage("Electro-Lantern", 3, "Nature", "Hit", false, false, 0);
+            triggerBoED("Lantern");
+        }
+
+        // 3. Thunder Lizard's Hide (100% Chance auf +3 Dmg)
+        if (cfg.hasThunderLizard) {
+            dealDamage("Thunder Lizard", 3, "Nature", "Hit", false, false, 0);
+            triggerBoED("ThunderLizard");
+        }
+
+        // 4. Incendosaur 2-Set (100% Chance auf +2 Dmg)
+        if (cfg.hasIncendosaur2p) {
+            dealDamage("Incendosaur (2pc)", 2, "Fire", "Hit", false, false, 0);
+            triggerBoED("Incend2p");
+        }
+
+        // 5. Blazefury Medallion (100% Chance auf +2 Dmg)
+        if (cfg.hasBlazefury) {
+            dealDamage("Blazefury Medallion", 2, "Fire", "Hit", false, false, 0);
+            triggerBoED("Blazefury");
+        }
+
+        // 6. Incendosaur 3-Set (5% Chance auf 15-25 Dmg)
+        if (cfg.hasIncendosaur3p && rng.proc("Incend3p", 5)) {
+            var incDmg = rng.dmg(15, 25);
+            dealDamage("Incendosaur (3pc)", incDmg, "Fire", "Proc", false, false, 0);
+            triggerBoED("Incend3p");
+        }
+
+        // 7. Mar'kali (10% Chance auf 3% Max Mana Dmg, 1s ICD)
+        if (cfg.hasMarkali && cds.markali <= t && rng.proc("Markali", 10)) {
+            var markDmg = cfg.manaPool * 0.03;
+            dealDamage("Mar'kali", markDmg, "Arcane", "Proc", false, false, 0);
+            cds.markali = t + 1.0; // 1 Sekunde ICD
+            triggerBoED("Markali");
+        }
+    }
+
 
     // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
@@ -953,6 +1019,9 @@ function runCoreSimulation(cfg) {
                     rawDmg *= (1 - dr);
 
                     dealDamage(isExtra ? "Extra Attack" : "Auto Attack", rawDmg, "Physical", hitType, (hitType === "CRIT"), false);
+
+                    // --- NEU: Spellstrike Logik für White Hits ---
+                    handleSpellstrikes(isExtra ? "Extra Attack" : "Auto Attack");
 
                     if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--; // <--- HIER EINFÜGEN
 
@@ -1519,6 +1588,10 @@ function runCoreSimulation(cfg) {
 
 
                         if (hitSuccess) {
+                            // --- NEU: Spellstrike Logik für Yellow Hits ---
+                            // Rip verursacht beim initialen Anbringen keinen direkten Waffenschaden, 
+                            // löst aber auf Turtle WoW i.d.R. Spellstrikes aus.
+                            handleSpellstrikes(action);
 
                             if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--;
 

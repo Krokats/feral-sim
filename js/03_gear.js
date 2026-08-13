@@ -707,6 +707,7 @@ function calculateGearStats() {
     var setCounts = {};
     var activeTrinketNames = [];
     var activeIdolNames = [];
+    var activeItemNames = [];
 
     // Total Gear Score accumulator
     var totalScore = 0;
@@ -747,6 +748,12 @@ function calculateGearStats() {
                 if (slot === "Idol") {
                     activeIdolNames.push(item.name.toLowerCase()); // Variable muss darüber deklariert werden
                 }
+
+                if (item.name) {
+                    activeItemNames.push(item.name.toLowerCase());
+                }
+
+
             }
         }
     }
@@ -827,6 +834,10 @@ function calculateGearStats() {
     var finalInt = Math.floor((bonus.int + race.int) * (1 + (statMod + hotwMod) / 100));
     var finalAgi = Math.floor((bonus.agi + race.agi) * (1 + (statMod) / 100)); // No HotW for Agi
 
+    // Mana Calculation
+    var baseMana = 2670;
+    var finalMana = baseMana + (finalInt - race.int) * 15;
+
     // 7. FINAL CALCULATIONS - UPDATED FORMULAS
 
     // Predatory Strikes (3/3): +10% AP + Trueshot % AP
@@ -871,6 +882,7 @@ function calculateGearStats() {
     updateInput("stat_wep_skill", race.wepSkill || 300, false);
     updateInput("stat_wep_dmg_min", race.minDmg, false);
     updateInput("stat_wep_dmg_max", race.maxDmg, false);
+    updateInput("mana_pool", finalMana, false);
 
     // Update Planner Preview Box (Expanded)
     var elP_GS = document.getElementById("gp_gs"); if (elP_GS) elP_GS.innerText = totalScore.toFixed(1);
@@ -901,6 +913,34 @@ function calculateGearStats() {
             else el.parentElement.classList.remove("gear-active");
         }
     };
+
+    // Helper to check specific items by name
+    var checkItem = function (id, searchName) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var found = false;
+        activeItemNames.forEach(function (n) {
+            if (n.includes(searchName.toLowerCase())) found = true;
+        });
+        el.checked = found;
+
+        if (el.parentElement) {
+            if (found) el.parentElement.classList.add("gear-active");
+            else el.parentElement.classList.remove("gear-active");
+        }
+    };
+
+    // Spellstrike & BoED
+    checkItem("gear_blade_eternal_darkness", "blade of eternal darkness");
+    checkItem("gear_ring_electrical_binding", "ring of electrical binding");
+    checkItem("gear_electro_lantern", "repaired electro-lantern");
+    checkItem("gear_markali", "mar'kali, the midnight star");
+    checkItem("gear_thunder_lizard", "thunder lizard's hide");
+    checkItem("gear_blazefury_medallion", "blazefury medallion");
+
+    // Incendosaur Set
+    checkSet("set_incendosaur_2p", "incendosaur skin", 2);
+    checkSet("set_incendosaur_3p", "incendosaur skin", 3);
 
     // T0.5 (Feralheart)
     checkSet("set_t05_4p", "Wildheart Raiment", 4);

@@ -115,6 +115,11 @@ var CONFIG_IDS = [
     "set_talon_3p", "set_talon_5p",
     "set_stormshroud_3p", "set_stormshroud_4p",
 
+    "gear_blade_eternal_darkness", "gear_ring_electrical_binding",
+    "gear_electro_lantern", "gear_markali", "gear_thunder_lizard",
+    "gear_blazefury_medallion",
+    "set_incendosaur_2p", "set_incendosaur_3p",
+
     // Idols (Swapping allowed)
     "idol_savagery", "idol_emeral_rot", "idol_ferocity", "idol_laceration",
 
