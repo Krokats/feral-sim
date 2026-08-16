@@ -562,7 +562,7 @@ function runCoreSimulation(cfg) {
 
     // gcdEnd startet mit t, damit Pre-Casts in der negativen Zeit gewirkt werden können.
     // swingTimer bleibt 0.0, damit Auto-Attacks erst bei Pull (0.0) starten!
-    var gcdEnd = t;
+    var gcdEnd = startTime;
     var swingTimer = 0.0;
 
     var isExtra;
@@ -785,7 +785,7 @@ function runCoreSimulation(cfg) {
             if (activeBleeds > 0) owStr = (1 + (0.30 * activeBleeds)).toFixed(1) + "x";
 
             log.push({
-                t: Math.max(0, t),
+                t: t,
                 event: (dmgVal > 0 || isTick) ? (isTick ? "Tick" : "Damage") : (action.includes("Proc") || info.includes("Aura") ? "Buff" : "Cast"),
                 ability: action,
                 result: res || "",
