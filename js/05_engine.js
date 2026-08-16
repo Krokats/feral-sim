@@ -530,6 +530,21 @@ function runCoreSimulation(cfg) {
     // -----------------------------------------
     // 2. COMBAT STATE
     // -----------------------------------------
+
+    // 1. Dynamischen Startzeitpunkt ermitteln (für Pre-Casting)
+    var startTime = 0;
+    if (cfg.custom_rotation && cfg.custom_rotation.steps) {
+        cfg.custom_rotation.steps.forEach(function(step) {
+            if (step.conditions && !step.disabled) {
+                step.conditions.forEach(function(cond) {
+                    if (cond.type === "time_elapsed" && cond.val < 0) {
+                        startTime = Math.min(startTime, cond.val);
+                    }
+                });
+            }
+        });
+    }
+
     var t = -0.01;
     var maxT = cfg.simTime;
     var energy = 100;
@@ -537,9 +552,19 @@ function runCoreSimulation(cfg) {
     var cp = 0;
 
     var events = [];
+
+    // 2. Energy Ticks rückwirkend ausrichten (Basis ist 0.5s nach Pull)
+    // So tickt die Energie z.B. bei t = -3.5, -1.5, 0.5, 2.5 ...
     var nextEnergyTick = 0.5;
-    var gcdEnd = 0.0;
+    while (nextEnergyTick - 2.0 > t) {
+        nextEnergyTick -= 2.0;
+    }
+
+    // gcdEnd startet mit t, damit Pre-Casts in der negativen Zeit gewirkt werden können.
+    // swingTimer bleibt 0.0, damit Auto-Attacks erst bei Pull (0.0) starten!
+    var gcdEnd = t;
     var swingTimer = 0.0;
+
     var isExtra;
     var activeRipCP = 0; // Merkt sich die CP des laufenden Rips
     var lastSpellCast = "None"; // Speichert den zuletzt genutzten Skill für Conditions
@@ -963,7 +988,14 @@ function runCoreSimulation(cfg) {
 
             }
             else if (evt.type === "tf_energy") {
-                if (auras.tigersFury > t - 0.01) energy = Math.min(100, energy + 10);
+                if (auras.tigersFury > t - 0.01) {
+                    var oldEnergy = energy;
+                    energy = Math.min(100, energy + 10);
+                    var gained = energy - oldEnergy;
+                    
+                    // Schreibt den Tick sauber ins Log
+                    logAction("Tiger's Fury", "Energy Tick", "Tick", 0, false, true, gained);
+                }
             }
         }
 
