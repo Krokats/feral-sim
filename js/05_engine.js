@@ -1252,13 +1252,29 @@ function runCoreSimulation(cfg) {
             if (action) break; 
             
             var conditionsMet = true;
+            var intentToPrecast = false; // NEU: Merkt sich, ob der Skill für die Minus-Zeit konfiguriert ist
+
             if (step.conditions) {
                 for (var c = 0; c < step.conditions.length; c++) {
-                    if (!checkCondition(step.conditions[c])) {
+                    var cond = step.conditions[c];
+
+                    // Prüft, ob der User dem Skill absichtlich eine negative Startzeit (z.B. <= -3) gegeben hat
+                    if (cond.type === "time_elapsed" && cond.val < 0) {
+                        intentToPrecast = true;
+                    }
+
+                    if (!checkCondition(cond)) {
                         conditionsMet = false;
                         break;
                     }
                 }
+            }
+
+            // NEU: Der harte Combat-Lock!
+            // Ist die Zeit kleiner als 0.0, blockieren wir JEDEN Skill, der nicht 
+            // explizit eine Pre-Cast-Bedingung in den Settings hat.
+            if (t < 0.0 && !intentToPrecast) {
+                conditionsMet = false;
             }
 
             if (conditionsMet) {
