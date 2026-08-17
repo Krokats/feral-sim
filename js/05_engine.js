@@ -571,53 +571,53 @@ function runCoreSimulation(cfg) {
 
     // Auras & Buffs
     var auras = {
-        rake: 0, rip: 0, ff: 0, pounce: 0,
-        clearcasting: 0,
-        tigersFury: 0, BloodFrenzy: 0,
-        berserk: 0,
-        potionQuickness: 0,
-        mightyRage: 0, // NEU
-        jujuFlurry: 0, // NEU
+        rake: -9999, rip: -9999, ff: -9999, pounce: -9999,
+        clearcasting: -9999,
+        tigersFury: -9999, BloodFrenzy: -9999,
+        berserk: -9999,
+        potionQuickness: -9999,
+        mightyRage: -9999,
+        jujuFlurry: -9999,
 
         // New Buffs
-        cenarionHaste: 0, // T1 8p
-        stormshroudHaste: 0, // NEU: Stormshroud 4p
-        genesisProc: 0,   // T2.5 5p (Empowered Next Cast)
-        talonAP: 0,       // T3.5 3p
-        talonBuff: 0,     // T3.5 5p (25% AP + Energy)
-        laceration: 0,    // Idol of Laceration (Next Shred Refund)
+        cenarionHaste: -9999, 
+        stormshroudHaste: -9999, 
+        genesisProc: -9999,   
+        talonAP: -9999,       
+        talonBuff: -9999,     
+        laceration: -9999,    
 
         // Trinket Buffs
-        swarmguard: 0,
-        slayer: 0,
-        spider: 0,
-        jom: 0, jomStart: 0,
-        earthstrike: 0,
-        emberstone: 0,
-        shieldrender: 0,
-        venom: 0,
-        venom_dot: 0,
-        zhm: 0,
+        swarmguard: -9999,
+        slayer: -9999,
+        spider: -9999,
+        jom: -9999, jomStart: -9999,
+        earthstrike: -9999,
+        emberstone: -9999,
+        shieldrender: -9999,
+        venom: -9999,
+        venom_dot: -9999,
+        zhm: -9999,
     };
 
     var stacks = {
-        cenarion: 0,    // 5 Charges for T1 8p
-        talonFero: 0,   // Primal Ferocity Stacks
-        swarmguard: 0,  // Max 6
-        venom: 0,        // Max 1200
-        zhm: 0,         // Max 20 (x2 Dmg)
+        cenarion: 0,    
+        talonFero: 0,   
+        swarmguard: 0,  
+        venom: 0,       
+        zhm: 0,         
     };
 
     var cds = {
-        tigersFury: 0, berserk: 0, ff: 0, potion: 0, jujuFlurry: 0, markali: 0,
+        tigersFury: -9999, berserk: -9999, ff: -9999, potion: -9999, jujuFlurry: -9999, markali: -9999,
         // Trinket CDs (Individual)
-        slayer: 0,
-        spider: 0,
-        earthstrike: 0,
-        jom: 0,
-        emberstone: 0,
-        zhm: 0,
-        swarmguard: 0
+        slayer: -9999,
+        spider: -9999,
+        earthstrike: -9999,
+        jom: -9999,
+        emberstone: -9999,
+        zhm: -9999,
+        swarmguard: -9999
     };
 
     var log = [];
@@ -1122,7 +1122,7 @@ function runCoreSimulation(cfg) {
                     }
                     if (auras.cenarionHaste > t && stacks.cenarion > 0) {
                         stacks.cenarion--;
-                        if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
+                        if (stacks.cenarion <= 0) auras.cenarionHaste = -9999;
                     }
                     if (cfg.t_shieldrender && rng.proc("Shieldrender", 7)) {
                         auras.shieldrender = t + 3.0;
@@ -1366,7 +1366,7 @@ function runCoreSimulation(cfg) {
             var performAttack = false;
 
             if (action === "Reshift") {
-                mana -= 300; auras.tigersFury = 0;
+                mana -= 300; auras.tigersFury = -9999;
                 var furorEnergy = (cfg.tal_furor * 8);
                 var giftEnergy = cfg.hasGiftOfFerocity ? 20 : 0;
                 var newE = furorEnergy + giftEnergy;
@@ -1404,7 +1404,7 @@ function runCoreSimulation(cfg) {
 
                 if (performAttack) {
                     energy -= castCost;
-                    if (isOoc) { auras.clearcasting = 0; logAction("Omen", "Consumed", "Fade", 0, false, false); }
+                    if (isOoc) { auras.clearcasting = -9999; logAction("Omen", "Consumed", "Fade", 0, false, false); }
 
                     // --- YELLOW ATTACK TABLE & SMOOTHING ---
                     var isBoss = (cfg.enemyLevel == 63);
@@ -1488,7 +1488,7 @@ function runCoreSimulation(cfg) {
                         // Genesis Consumption
                         if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
                             normalDmg *= 1.15;
-                            auras.genesisProc = 0;
+                            auras.genesisProc = -9999;
                             logAction("Genesis", "Consumed", "Proc", 0, false, false);
                         }
 
@@ -1510,7 +1510,7 @@ function runCoreSimulation(cfg) {
                             if (auras.laceration > t) {
                                 var EnergyRefund = (energy >= 85) ? (100 - energy) : 15;
                                 energy = Math.min(100, energy + EnergyRefund);
-                                auras.laceration = 0;
+                                auras.laceration = -9999;
                                 logAction("Laceration", "Refund " + EnergyRefund, "Proc", 0, false, false, EnergyRefund);
                             }
                         }
@@ -1670,7 +1670,7 @@ function runCoreSimulation(cfg) {
                             }
                             if (auras.cenarionHaste > t && stacks.cenarion > 0 && rng.proc("CenarionConsume", 100 * pScale)) {
                                 stacks.cenarion--;
-                                if (stacks.cenarion <= 0) auras.cenarionHaste = 0;
+                                if (stacks.cenarion <= 0) auras.cenarionHaste = -9999;
                             }
                             // Trinkets (Buffs)
                             if (cfg.t_shieldrender && rng.proc("Shieldrender", 7 * pScale)) {
