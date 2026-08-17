@@ -49,14 +49,14 @@ const PRESET_ROTATIONS = {
         name: "Standard Feral",
         desc: "Optimal priority logic including Reshifting, TF after FB and OOC Shreds.",
         steps: [
-        { id: "step_1", skill: "Trinket 1", conditions: [] },
-        { id: "step_2", skill: "Trinket 2", conditions: [] },
-        { id: "step_3", skill: "Potion", conditions: [] },
-        { id: "step_4", skill: "Berserk", conditions: [] },
-        { id: "step_5", skill: "Pounce", conditions: [{ type: "time_elapsed", op: "<=", val: 0 }] },
-        { id: "step_6", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
-        { id: "step_7", skill: "Rake", conditions: [{ type: "debuff_rem", target: "Rake", op: "<=", val: 0 }] },
-        { id: "step_8", skill: "Tiger's Fury", conditions: [{ type: "time_elapsed", op: "<=", val: 1 }] },
+        { id: "step_1", skill: "Tiger's Fury", conditions: [{ type: "time_elapsed", op: "<=", val: -3 }] },
+        { id: "step_2", skill: "Trinket 1", conditions: [] },
+        { id: "step_3", skill: "Trinket 2", conditions: [] },
+        { id: "step_4", skill: "Potion", conditions: [] },
+        { id: "step_5", skill: "Berserk", conditions: [] },
+        { id: "step_6", skill: "Pounce", conditions: [{ type: "time_elapsed", op: "<=", val: 0 }] },
+        { id: "step_7", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
+        { id: "step_8", skill: "Rake", conditions: [{ type: "debuff_rem", target: "Rake", op: "<=", val: 0 }] },
         { id: "step_9", skill: "Rip", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: "<=", val: 0 }] },
         { id: "step_10", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: ">=", val: 0.1 }, { type: "energy", op: ">=", val: 35 }] },
         { id: "step_11", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
@@ -251,12 +251,12 @@ const BOSS_PRESETS = [
 // ============================================================================
 
 var GEAR_PRESETS = {
-    "Pre-Raid + Kara10 BiS": {
+    "Pre-Raid + Kara10 + Ony BiS": {
         gear: {
-            "Head": 61060,       
-            "Neck": 22340,       
+            "Head": 47354,       
+            "Neck": 18404,       
             "Shoulder": 12927,   
-            "Back": 21187,
+            "Back": 61249,
             "Chest": 50427,
             "Wrist": 19687,
             "Hands": 83463,
@@ -336,18 +336,18 @@ var GEAR_PRESETS = {
             "Head": 47354,       
             "Neck": 18404,       
             "Shoulder": 47339,   
-            "Back": 61249,
-            "Chest": 47340,
-            "Wrist": 47341,
+            "Back": 17102,
+            "Chest": 60390,
+            "Wrist": 22668,
             "Hands": 47342,
             "Waist": 47343,
-            "Legs": 47344,
-            "Feet": 47345,
+            "Legs": 61265,
+            "Feet": 65027,
             "Finger 1": 18821,
-            "Finger 2": 18500,
+            "Finger 2": 17063,
             "Trinket 1": 13965,  
-            "Trinket 2": 11815,  // Hand of Justice
-            "Main Hand": 84603,   
+            "Trinket 2": 58211,  // Hand of Justice
+            "Main Hand": 33150,   
             "Off Hand": 0,        // 0 bedeutet: Slot leeren (wichtig bei 2-Hand Waffen)
             "Idol": 61699        
         },
