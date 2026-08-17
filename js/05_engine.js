@@ -530,38 +530,38 @@ function runCoreSimulation(cfg) {
     // -----------------------------------------
     // 2. COMBAT STATE
     // -----------------------------------------
-
+    
     // 1. Dynamischen Startzeitpunkt ermitteln (für Pre-Casting)
     var startTime = 0;
-    if (cfg.custom_rotation && cfg.custom_rotation.steps) {
-        cfg.custom_rotation.steps.forEach(function(step) {
-            if (step.conditions && !step.disabled) {
-                step.conditions.forEach(function(cond) {
-                    if (cond.type === "time_elapsed" && cond.val < 0) {
-                        startTime = Math.min(startTime, cond.val);
-                    }
-                });
-            }
-        });
-    }
+    
+    // FIX: Macht die Abfrage kugelsicher für alte und neue Speicherformate!
+    var rotSteps = (cfg.custom_rotation && cfg.custom_rotation.steps) ? cfg.custom_rotation.steps : (Array.isArray(cfg.custom_rotation) ? cfg.custom_rotation : []);
+    
+    rotSteps.forEach(function(step) {
+        if (step.conditions && !step.disabled) {
+            step.conditions.forEach(function(cond) {
+                if (cond.type === "time_elapsed" && cond.val < 0) {
+                    // parseFloat stellt sicher, dass auch Strings (z.B. "-3") korrekt als Zahl gelesen werden
+                    startTime = Math.min(startTime, parseFloat(cond.val) || 0);
+                }
+            });
+        }
+    });
 
-    var t = -0.01;
+    var t = startTime - 0.01;
     var maxT = cfg.simTime;
     var energy = 100;
     var mana = cfg.manaPool;
     var cp = 0;
 
     var events = [];
-
+    
     // 2. Energy Ticks rückwirkend ausrichten (Basis ist 0.5s nach Pull)
-    // So tickt die Energie z.B. bei t = -3.5, -1.5, 0.5, 2.5 ...
     var nextEnergyTick = 0.5;
     while (nextEnergyTick - 2.0 > t) {
         nextEnergyTick -= 2.0;
     }
 
-    // gcdEnd startet mit t, damit Pre-Casts in der negativen Zeit gewirkt werden können.
-    // swingTimer bleibt 0.0, damit Auto-Attacks erst bei Pull (0.0) starten!
     var gcdEnd = startTime;
     var swingTimer = 0.0;
 
