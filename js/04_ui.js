@@ -849,7 +849,6 @@ function renderBossSelect() {
     }
 }
 
-
 function updateEnemyInfo() {
     var armor = getVal('enemy_armor');
     var debuff = 0;
@@ -1329,6 +1328,7 @@ function updateLogView() {
 function nextLogPage() {
     if (LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
 }
+
 function prevLogPage() {
     if (LOG_PAGE > 1) { LOG_PAGE--; updateLogView(); }
 }

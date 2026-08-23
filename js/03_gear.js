@@ -362,6 +362,7 @@ function openItemSelector(slotName) {
         renderItemList();
     }
 }
+
 function closeItemModal() { var modal = document.getElementById("itemSelectorModal"); if (modal) modal.classList.add("hidden"); CURRENT_SELECTING_SLOT = null; }
 
 function renderItemList(filterText) {
@@ -392,7 +393,7 @@ function renderItemList(filterText) {
         if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id && i.unique) return false;
         if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id && i.unique) return false;
 
-        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Held In Off-Hand");
+        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Held In Off-Hand" || i.slot === "One-hand");
         if (CURRENT_SELECTING_SLOT === "Idol") return (i.slot === "Relic" || i.slot === "Idol"); 
         return i.slot === slotKey;
     });
