@@ -52,22 +52,71 @@
                     <input type="text" id="simName" class="sim-name-input" value="Simulation 1"
                         onchange="updateSimName()">
                     <div class="header-actions">
-
-                        <!-- Dropdown für alle Simulationen -->
-                        <div class="sim-selector-dropdown">
-                            <button class="share-btn sim-selector-btn">Other Simulations ▼</button>
-                            <div class="sim-dropdown-content">
-                                <a href="https://krokats.github.io/feral-sim/" class="active-sim">🐾 Feral Sim</a>
-                                <a href="https://krokats.github.io/boomkin-sim/">🦉 Moonkin Sim</a>
-                                <a href="https://krokats.github.io/bear-sim/">🐻 Bear Sim</a> 
-                                <a href="https://krokats.github.io/resto-sim/" class="disabled-sim">🌿 Resto Sim (Soon)</a> 
-                            </div>
-                        </div>
-
+                        <button class="share-btn" onclick="openOtherSimsModal()">🌍 Other Simulations</button>
                         <button onclick="importFromClipboard()" class="share-btn" style="margin-right: 5px;">📥 Import Config</button>
                         <button onclick="exportSettings()" class="share-btn">🔗 Save Config</button>
                     </div>
                 </header>
+
+                <!-- NEU: Modal für Other Simulations (Groß, ohne Kasten & ohne Titel) -->
+                <div id="otherSimsModal" class="modal-overlay hidden" onclick="if(event.target === this) closeOtherSimsModal()">
+                    <!-- Schließen-X oben rechts schwebend -->
+                    <span onclick="closeOtherSimsModal()" style="position: absolute; top: 20px; right: 30px; font-size: 3rem; color: white; cursor: pointer; z-index: 100; text-shadow: 0 0 10px black;">×</span>
+                    
+                    <!-- Modal-Box ohne Hintergrund und Rahmen -->
+                    <div class="modal-box" style="max-width: 1000px; width: 90%; background: transparent; border: none; box-shadow: none; padding: 0;">
+                        <div class="sim-cards-grid">
+                            <a href="https://krokats.github.io/resto-sim" class="sim-promo-card" style="background-image: url('Resto-Background.jpg');">
+                                <div class="card-label">🌿 Resto Sim</div>
+                            </a>
+                            <a href="https://krokats.github.io/boomkin-sim" class="sim-promo-card" style="background-image: url('Moonkin-Background.jpg');">
+                                <div class="card-label">🦉 Moonkin Sim</div>
+                            </a>
+                            <a href="#" class="sim-promo-card active" style="background-image: url('Feral-Background.jpg');">
+                                <div class="card-label">🐾 Feral Sim</div>
+                            </a>
+                            <a href="https://krokats.github.io/bear-sim" class="sim-promo-card active" style="background-image: url('Bear-Background.jpg');">
+                                <div class="card-label">🐻 Bear Sim</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEU: Modal für Gear Preset Bestätigung -->
+                <div id="gearPresetModal" class="modal-overlay hidden">
+                    <div class="modal-box" style="max-width: 400px; text-align: center;">
+                        <div class="modal-header">
+                            <span class="modal-title">Load Gear Preset</span>
+                            <span class="modal-close" onclick="closeGearPresetModal()">×</span>
+                        </div>
+                        <div style="padding: 20px;">
+                            <p style="margin-bottom: 20px; color: #ddd;">Are you sure you want to replace your current gear with this preset?</p>
+                            <div style="display: flex; gap: 10px; justify-content: center;">
+                                <button class="primary-btn" onclick="confirmLoadBiSPreset()">Yes, replace</button>
+                                <button class="secondary-btn" onclick="closeGearPresetModal()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEU: Modal für Config Import -->
+                <div id="importConfigModal" class="modal-overlay hidden">
+                    <div class="modal-box" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <span class="modal-title">📥 Import Configuration</span>
+                            <span class="modal-close" onclick="closeImportConfigModal()">×</span>
+                        </div>
+                        <div style="padding: 20px;">
+                            <p style="margin-bottom: 10px; color: #ddd; font-size: 0.85rem;">Paste your config string or full simulation URL below:</p>
+                            <textarea id="importConfigInput" placeholder="Paste config string here..." style="width: 100%; height: 100px; background: #1a1a1a; border: 1px solid var(--border-color); border-radius: 4px; color: #fff; padding: 10px; font-family: monospace; font-size: 0.85rem; resize: vertical; box-sizing: border-box; margin-bottom: 15px;"></textarea>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                <button class="primary-btn" onclick="confirmImportConfig()">Import</button>
+                                <button class="secondary-btn" onclick="closeImportConfigModal()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div id="itemSelectorModal" class="modal-overlay hidden" onclick="if(event.target === this) closeItemModal()">
                     <div class="modal-box">
@@ -78,6 +127,14 @@
                         <div class="modal-search">
                             <input type="text" id="itemSearchInput" placeholder="Search item..."
                                 onkeyup="filterItemList()">
+                            
+                            <!-- NEU: Waffen-Filter (wird per JS nur bei Main Hand eingeblendet) -->
+                            <div id="weaponFilter" style="display:none; justify-content:center; margin-top:10px;">
+                                <div class="view-toggles">
+                                    <button class="view-btn active" id="btnFilter1H" onclick="toggleWeaponFilter('1H')">One-hand</button>
+                                    <button class="view-btn active" id="btnFilter2H" onclick="toggleWeaponFilter('2H')">Two-hand</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="modal-list" id="modalItemList"></div>
                     </div>
@@ -236,7 +293,7 @@
                                     
                                     <div class="gp-input-group" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0;">
                                         <label style="margin: 0; white-space: nowrap; font-size: 0.85rem;">ArP</label>
-                                        <input type="number" id="weight_Arp" value="0.5" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
+                                        <input type="number" id="weight_arp" value="0.5" onchange="recalcItemScores()" style="width: 60px; margin: 0; padding: 4px; text-align: center;">
                                     </div>
                                     
                                 </div>
@@ -288,6 +345,46 @@
                         </div>
 
                         <div class="grid-container">
+
+                            <!-- Talent Tree -->
+                            <div class="card full-width collapsed">
+                                <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                                    <h2>🌳 Talent Tree <span id="talentCounterText" style="font-size:0.8rem; font-weight:normal; margin-left:15px; color:#aaa;"></span></h2>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Preset Controls -->
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display:flex; gap:10px; align-items:center;">
+                                            <div class="select-wrapper">
+                                                <select id="talent_preset_select" style="padding:6px; min-width: 150px;"></select>
+                                            </div>
+                                            <button class="btn-mini" onclick="loadTalentPreset()">Load</button>
+                                            <button class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7;" onclick="saveTalentPreset()">Save</button>
+                                            <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="deleteTalentPreset()">Del</button>
+                                        </div>
+                                        <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="clearTalents()">Reset Talents</button>
+                                    </div>
+
+                                    <!-- Talent Grids -->
+                                    <div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom:10px; justify-content: center;">
+                                        <!-- Balance -->
+                                        <div style="min-width: 250px;">
+                                            <h3 id="treeTitleBalance" style="text-align:center; color:#90caf9; margin-bottom:10px; font-size:1rem;">Balance</h3>
+                                            <div id="talentGridBalance" style="display:grid; grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(7, 50px); gap: 10px; background: rgba(0,0,0,0.2); padding:15px; border-radius:8px; border: 1px solid var(--border-color);"></div>
+                                        </div>
+                                        <!-- Feral -->
+                                        <div style="min-width: 250px;">
+                                            <h3 id="treeTitleFeral" style="text-align:center; color:#ffb74d; margin-bottom:10px; font-size:1rem;">Feral</h3>
+                                            <div id="talentGridFeral" style="display:grid; grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(7, 50px); gap: 10px; background: rgba(0,0,0,0.2); padding:15px; border-radius:8px; border: 1px solid var(--border-color);"></div>
+                                        </div>
+                                        <!-- Resto -->
+                                        <div style="min-width: 250px;">
+                                            <h3 id="treeTitleResto" style="text-align:center; color:#a5d6a7; margin-bottom:10px; font-size:1rem;">Restoration</h3>
+                                            <div id="talentGridResto" style="display:grid; grid-template-columns: repeat(4, 50px); grid-template-rows: repeat(7, 50px); gap: 10px; background: rgba(0,0,0,0.2); padding:15px; border-radius:8px; border: 1px solid var(--border-color);"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="card full-width collapsed">
                                 <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -353,7 +450,7 @@
                                             </div>
                                             <div class="card-body">
                                                 <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="120"></div>
-                                                <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="5000"></div>
+                                                <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
                                                 <div class="input-group">
                                                     <label>Simulation Engine</label>
                                                     <div class="select-wrapper">
@@ -424,61 +521,6 @@
                                                 <input type="hidden" id="mana_pool" value="3000">
                                                 <input type="hidden" id="stat_wep_dmg_min" value="55">
                                                 <input type="hidden" id="stat_wep_dmg_max" value="85">
-                                            </div>
-                                        </div>
-
-                                        <div class="card">
-                                            <div class="sub-card-header">
-                                                <h2>🌿 Talents</h2>
-                                            </div>
-                                            <div class="card-body">
-                                                <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Only optional talents listed. Others assumed constant.</p>
-                                                <div class="input-group-small">
-                                                    <label>Ferocity</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="tal_ferocity">
-                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="input-group-small" style="margin-top:10px;">
-                                                    <label>Feral Aggression</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="tal_feral_aggression">
-                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="input-group-small" style="margin-top:10px;">
-                                                    <label>Imp. Shred</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="tal_imp_shred">
-                                                            <option value="0">0</option><option value="1">1</option><option value="2" selected>2</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="input-group-small" style="margin-top:10px;">
-                                                    <label>Nat. Shapeshifter</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="tal_nat_shapeshifter">
-                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                <input type="hidden" id="tal_berserk" value="1">
-                                                <input type="hidden" id="tal_open_wounds" value="3">
-                                                <input type="hidden" id="tal_sharpened_claws" value="3">
-                                                <input type="hidden" id="tal_primal_fury" value="2">
-                                                <input type="hidden" id="tal_blood_frenzy" value="2">
-                                                <input type="hidden" id="tal_predatory_strikes" value="3">
-                                                <input type="hidden" id="tal_ancient_brutality" value="2">
-                                                <input type="hidden" id="tal_hotw" value="5">
-                                                <input type="hidden" id="tal_carnage" value="2">
-                                                <input type="hidden" id="tal_lotp" value="1">
-                                                <input type="hidden" id="tal_furor" value="5">
-                                                <input type="hidden" id="tal_nat_wep" value="3">
-                                                <input type="hidden" id="tal_omen" value="1">
                                             </div>
                                         </div>
 
@@ -747,9 +789,12 @@
                             <div id="combatLogSection" style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
                                 <div class="results-header">
                                     <h2>📜 Combat Log</h2>
-                                    <div class="log-actions">
-                                        <button class="btn-mini" onclick="prevLogPage()"> &lt; </button>
-                                        <span id="logPageLabel" style="font-size:0.8rem; padding:5px;">Page 1</span>
+                                    <div class="log-actions" style="display:flex; align-items:center;">
+                                    <!-- NEU: Search Field -->
+                                    <input type="text" id="logSearchInput" placeholder="Filter log..." onkeyup="filterLogData()" style="padding: 4px; margin-right: 10px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: #fff; width: 120px;">
+                                    
+                                    <button class="btn-mini" onclick="prevLogPage()"> &lt; </button>
+                                    <span id="logPageLabel" style="font-size:0.8rem; padding:5px;">Page 1</span>
                                         <button class="btn-mini" onclick="nextLogPage()"> &gt; </button>
                                         <button onclick="downloadCSV()" class="btn-mini">💾 CSV</button>
                                     </div>
@@ -838,5 +883,6 @@
     <script src="js/04_ui.js"></script>
     <script src="js/05_engine.js"></script>
     <script src="js/06_main.js"></script>
+    <script src="js/talent_tree.js"></script>
 </body>
 </html>

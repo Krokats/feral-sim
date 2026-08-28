@@ -1803,3 +1803,109 @@ input:checked + .slider::before { transform: translateX(16px); background-color:
 .sim-selector-dropdown:hover .sim-dropdown-content {
     display: block;
 }
+
+* TALENT TREE GRID */
+.talent-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 50px);
+    grid-template-rows: repeat(7, 50px);
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    position: relative;
+}
+
+.talent-slot {
+    width: 46px;
+    height: 46px;
+    border: 2px solid #555;
+    border-radius: 6px;
+    position: relative;
+    cursor: pointer;
+    background-size: cover;
+    background-color: #111;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.talent-slot.active {
+    border-color: #1eff00;
+}
+
+.talent-slot.maxed {
+    border-color: #ffb74d;
+    box-shadow: 0 0 8px rgba(255, 183, 77, 0.5);
+}
+
+.talent-slot.disabled {
+    filter: grayscale(100%);
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.talent-slot:hover:not(.disabled) {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+.talent-points {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    background: #000;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border: 1px solid #ffb74d;
+    border-radius: 3px;
+    z-index: 2;
+}
+/* Other Simulations Modal - Neues 2x2 Grid (Groß) */
+.sim-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px; /* Größerer Abstand zwischen den Bildern */
+}
+
+.sim-promo-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* Text unten anordnen */
+    align-items: center;
+    height: 300px; /* Karten deutlich größer gemacht */
+    border-radius: 12px;
+    text-decoration: none;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid transparent;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.sim-promo-card:hover {
+    transform: scale(1.03); /* Leichter Zoom beim Hover */
+    border-color: var(--rage-red);
+    box-shadow: 0 15px 40px rgba(185, 14, 8, 0.5);
+}
+
+.sim-promo-card.active {
+    border-color: var(--rage-red);
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* Der Text unten im Bild (falls du ihn komplett weg haben willst, setze hier display: none;) */
+.sim-promo-card .card-label {
+    width: 100%;
+    padding: 15px;
+    background: rgba(0,0,0,0.7); /* Halbtransparenter Balken nur hinter dem Text */
+    color: white;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    text-shadow: 1px 1px 3px black;
+}

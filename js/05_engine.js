@@ -68,6 +68,17 @@ function runSimulation() {
                 // 3. Finalize
                 var avg = aggregateResults(allResults);
 
+                // --- NEU: LOGS NACHBERECHNEN ---
+                // Wir kennen jetzt die Config und Seeds des min, max und avg Runs.
+                // Wir lassen sie exakt 1x durchlaufen, diesmal MIT Logging eingeschaltet (true).
+                if(avg.avgRun) avg.avgRun = runCoreSimulation(Object.assign({}, config, { seed: avg.avgRun.seed }), true);
+                if(avg.minRun) avg.minRun = runCoreSimulation(Object.assign({}, config, { seed: avg.minRun.seed }), true);
+                if(avg.maxRun) avg.maxRun = runCoreSimulation(Object.assign({}, config, { seed: avg.maxRun.seed }), true);
+                
+                // Log auf Root-Ebene für Kompatibilität setzen
+                avg.log = avg.avgRun.log; 
+                // ---------------------------------
+
                 if (SIM_LIST[ACTIVE_SIM_INDEX]) {
                     SIM_LIST[ACTIVE_SIM_INDEX].results = avg;
                 }
@@ -102,7 +113,7 @@ function runStatWeights() {
     baseConfig.varyDuration = true;
 
     // Validation
-    baseConfig.iterations = 5000; //fixed it
+    baseConfig.iterations = 1000; //fixed it
     var iter = baseConfig.iterations;
     if (!iter || iter < 10) {
         iter = 50;
@@ -351,8 +362,7 @@ function finalizeWeights(dpsResults) {
 
     var container = document.getElementById("weightResults");
     if (container) {
-        container.classList.remove("hidden");
-        container.innerHTML = `
+        var htmlContent = `
             <div class="results-header" style="border-bottom:none; margin-bottom:10px; margin-top:0;">
                 <h2 style="font-size:1.1rem; margin:0;">⚖️ Stat Weights (1AP = 1EP)</h2>
             </div>
@@ -364,6 +374,14 @@ function finalizeWeights(dpsResults) {
                 ${renderStatBox("1% Haste", w_haste, "#90caf9")}
             </div>
         `;
+        
+        container.classList.remove("hidden");
+        container.innerHTML = htmlContent;
+
+        // NEU: Speichere das gerenderte HTML in der aktiven Simulation
+        if (SIM_LIST[ACTIVE_SIM_INDEX]) {
+            SIM_LIST[ACTIVE_SIM_INDEX].statWeightsHTML = htmlContent;
+        }
     }
 }
 
@@ -380,6 +398,15 @@ function getSimInputs() {
         iterations: getNum("simCount") || 1000,
         sim_mode: getSel("sim_mode") || "stochastic",
         seed: getNum("sim_seed"), 
+
+        // --- NEU: Stat Weights hier hinzufügen ---
+        weight_ap: getNum("weight_ap"),
+        weight_str: getNum("weight_str"),
+        weight_agi: getNum("weight_agi"),
+        weight_hit: getNum("weight_hit"),
+        weight_crit: getNum("weight_crit"),
+        weight_haste: getNum("weight_haste"),
+        weight_arp: getNum("weight_arp"),
 
         // Player Config
         race: getSel("char_race") || "Tauren",
@@ -445,15 +472,23 @@ function getSimInputs() {
         hasIncendosaur3p: getCheck("set_incendosaur_3p") === 1,
 
         // Talents
-        tal_ferocity: getNum("tal_ferocity"),
-        tal_feral_aggression: getNum("tal_feral_aggression"),
-        tal_imp_shred: getNum("tal_imp_shred"),
-        tal_nat_shapeshifter: getNum("tal_nat_shapeshifter"),
-        tal_berserk: getNum("tal_berserk"),
-        // Constants
-        tal_open_wounds: 3, tal_sharpened_claws: 3, tal_primal_fury: 2, tal_blood_frenzy: 2,
-        tal_predatory_strikes: 3, tal_ancient_brutality: 2, tal_hotw: 5, tal_carnage: 2,
-        tal_lotp: 1, tal_furor: 5, tal_nat_wep: 3, tal_omen: 1,
+        tal_ferocity: TALENT_CONFIG.ferocity || 0,
+        tal_feral_aggression: TALENT_CONFIG.feralAggression || 0,
+        tal_imp_shred: TALENT_CONFIG.impShred || 0,
+        tal_nat_shapeshifter: TALENT_CONFIG.naturalShapeshifter || 0,
+        tal_berserk: TALENT_CONFIG.berserk || 0,
+        tal_open_wounds: TALENT_CONFIG.openWounds || 0,
+        tal_sharpened_claws: TALENT_CONFIG.sharpenedClaws || 0,
+        tal_primal_fury: TALENT_CONFIG.primalFury || 0,
+        tal_blood_frenzy: TALENT_CONFIG.bloodFrenzy || 0,
+        tal_predatory_strikes: TALENT_CONFIG.predatoryStrikes || 0,
+        tal_ancient_brutality: TALENT_CONFIG.ancientBrutality || 0,
+        tal_hotw: TALENT_CONFIG.heartOfTheWild || 0,
+        tal_carnage: TALENT_CONFIG.carnage || 0,
+        tal_lotp: TALENT_CONFIG.leaderOfThePack || 0,
+        tal_furor: TALENT_CONFIG.furor || 0,
+        tal_nat_wep: TALENT_CONFIG.naturalWeapons || 0,
+        tal_omen: TALENT_CONFIG.omenOfClarity || 0,
 
         // --- NEW GEAR FLAGS (SETS, IDOLS, TRINKETS) ---
         hasT05_4p: getCheck("set_t05_4p") === 1,
@@ -497,7 +532,7 @@ function getSimInputs() {
 // CORE ENGINE
 // ============================================================================
 
-function runCoreSimulation(cfg) {
+function runCoreSimulation(cfg, enableLogging = false) {
 
     // -----------------------------------------
     // 1. STATS & INITIALIZATION
@@ -626,8 +661,17 @@ function runCoreSimulation(cfg) {
     var counts = {}, missCounts = {}, dodgeCounts = {}, parryCounts = {}, critCounts = {}, glanceCounts = {};
 
     function addEvent(time, type, data) {
-        events.push({ t: time, type: type, data: data || {} });
-        events.sort((a, b) => a.t - b.t);
+        var evt = { t: time, type: type, data: data || {} };
+        var low = 0, high = events.length;
+        
+        // Binäre Suche für die richtige Einfügeposition
+        while (low < high) {
+            var mid = (low + high) >>> 1;
+            if (events[mid].t < time) low = mid + 1;
+            else high = mid;
+        }
+        // Einfügen ohne das gesamte Array neu zu sortieren
+        events.splice(low, 0, evt);
     }
 
     function removeEvent(type, name) {
@@ -737,6 +781,7 @@ function runCoreSimulation(cfg) {
     }
 
     function logAction(action, info, res, dmgVal, isCrit, isTick, eChange) {
+        if (!enableLogging) return;
         if (log.length < 3500) {
             var hMod = getHasteMod();
             var spd = base.speed / hMod;
@@ -838,86 +883,108 @@ function runCoreSimulation(cfg) {
     var isHandlingSpellstrikes = false;
 
     function handleSpellstrikes(actionName) {
-        // ANTI-RECURSION LOCK: Wenn wir gerade schon Proccs berechnen, brich ab!
-        // Das verhindert zu 100%, dass Spell-Hits weitere Spell-Hits auslösen.
         if (isHandlingSpellstrikes) return; 
-        
-        isHandlingSpellstrikes = true; // Sperre aktivieren
+        isHandlingSpellstrikes = true;
 
-        // Hilfsfunktion: Prüft und triggert Blade of Eternal Darkness
         function triggerBoED(sourceName) {
             if (cfg.hasBoED && rng.proc("BoED_" + sourceName, 10)) {
                 mana = Math.min(cfg.manaPool, mana + 100);
                 dealDamage("Blade of Eternal Darkness", 100, "Shadow", "Proc", false, false, 0);
+                if (!counts["Blade of Eternal Darkness"]) counts["Blade of Eternal Darkness"] = 0;
+                counts["Blade of Eternal Darkness"]++;
                 logAction("BoED", "+100 Mana (via " + sourceName + ")", "Proc", 0, false, false, 0);
             }
         }
 
-        // 1. Ring of Electrical Binding
         if (cfg.hasRingElec) {
             dealDamage("Ring of Elec. Binding", 3, "Nature", "Hit", false, false, 0);
+            if (!counts["Ring of Elec. Binding"]) counts["Ring of Elec. Binding"] = 0;
+            counts["Ring of Elec. Binding"]++;
             triggerBoED("RingElec");
         }
 
-        // 2. Repaired Electro-Lantern
         if (cfg.hasLantern) {
             dealDamage("Electro-Lantern", 3, "Nature", "Hit", false, false, 0);
+            if (!counts["Electro-Lantern"]) counts["Electro-Lantern"] = 0;
+            counts["Electro-Lantern"]++;
             triggerBoED("Lantern");
         }
 
-        // 3. Thunder Lizard's Hide
         if (cfg.hasThunderLizard) {
             dealDamage("Thunder Lizard", 3, "Nature", "Hit", false, false, 0);
+            if (!counts["Thunder Lizard"]) counts["Thunder Lizard"] = 0;
+            counts["Thunder Lizard"]++;
             triggerBoED("ThunderLizard");
         }
         
         if (cfg.hasIncendosaurPauldrons) {
             dealDamage("Incendosaur Pauldrons", 2, "Fire", "Hit", false, false, 0);
+            if (!counts["Incendosaur Pauldrons"]) counts["Incendosaur Pauldrons"] = 0;
+            counts["Incendosaur Pauldrons"]++;
             triggerBoED("IncendPauldrons");
         }
 
-        // 4b. Incendosaur Boots (100% Chance auf +2 Dmg)
         if (cfg.hasIncendosaurBoots) {
             dealDamage("Incendosaur Boots", 2, "Fire", "Hit", false, false, 0);
+            if (!counts["Incendosaur Boots"]) counts["Incendosaur Boots"] = 0;
+            counts["Incendosaur Boots"]++;
             triggerBoED("IncendBoots");
         }
 
-        // 4c. Incendosaur Gloves (100% Chance auf +2 Dmg)
         if (cfg.hasIncendosaurGloves) {
             dealDamage("Incendosaur Gloves", 2, "Fire", "Hit", false, false, 0);
+            if (!counts["Incendosaur Gloves"]) counts["Incendosaur Gloves"] = 0;
+            counts["Incendosaur Gloves"]++;
             triggerBoED("IncendGloves");
         }
 
-        // 4. Incendosaur 2-Set
         if (cfg.hasIncendosaur2p) {
             dealDamage("Incendosaur (2pc)", 2, "Fire", "Hit", false, false, 0);
+            if (!counts["Incendosaur (2pc)"]) counts["Incendosaur (2pc)"] = 0;
+            counts["Incendosaur (2pc)"]++;
             triggerBoED("Incend2p");
         }
 
-        // 5. Blazefury Medallion
         if (cfg.hasBlazefury) {
             dealDamage("Blazefury Medallion", 2, "Fire", "Hit", false, false, 0);
+            if (!counts["Blazefury Medallion"]) counts["Blazefury Medallion"] = 0;
+            counts["Blazefury Medallion"]++;
             triggerBoED("Blazefury");
         }
 
-        // 6. Incendosaur 3-Set (5% Chance)
         if (cfg.hasIncendosaur3p && rng.proc("Incend3p", 5)) {
             var incDmg = rng.dmg(15, 25);
             dealDamage("Incendosaur (3pc)", incDmg, "Fire", "Proc", false, false, 0);
+            if (!counts["Incendosaur (3pc)"]) counts["Incendosaur (3pc)"] = 0;
+            counts["Incendosaur (3pc)"]++;
             triggerBoED("Incend3p");
         }
 
-        // 7. Mar'kali (10% Chance, 1s ICD)
         if (cfg.hasMarkali && cds.markali <= t && rng.proc("Markali", 10)) {
             var markDmg = cfg.manaPool * 0.03;
             dealDamage("Mar'kali", markDmg, "Arcane", "Proc", false, false, 0);
+            if (!counts["Mar'kali"]) counts["Mar'kali"] = 0;
+            counts["Mar'kali"]++;
             cds.markali = t + 1.0; 
             triggerBoED("Markali");
         }
 
-        isHandlingSpellstrikes = false; // Sperre wieder aufheben
+        isHandlingSpellstrikes = false;
     }
 
+    // Pre-Parse Rotation Conditions for Performance
+    var rotationList = (cfg.custom_rotation && cfg.custom_rotation.steps) ? cfg.custom_rotation.steps : (Array.isArray(cfg.custom_rotation) ? cfg.custom_rotation : []);
+
+    rotationList.forEach(step => {
+        if (step.conditions) {
+            step.conditions.forEach(cond => {
+                // Speichere den gesäuberten String als neue Eigenschaft '_cleanTarget'
+                if (cond.target) {
+                    cond._cleanTarget = cond.target.replace(" ", ""); 
+                }
+            });
+        }
+    });
 
     // -----------------------------------------
     // 3. MAIN SIMULATION LOOP
@@ -957,19 +1024,6 @@ function runCoreSimulation(cfg) {
                         var dmgVal = evt.data.dmg;
                         dealDamage(evt.data.label, dmgVal, "Bleed", "Tick", false, true, EnergeyFromAB);
 
-
-
-
-
-                        // Genesis (T2.5) 5p: Proc on Tick
-                        // Rake (6%), Rip (10%)
-                        /*if (cfg.set_genesis_5p) {
-                            var chance = (name === "rake") ? 0.06 : 0.10;
-                            if (Math.random() < chance) {
-                                auras.genesisProc = t + 30.0; // Empower Next Cast
-                                logAction("Genesis", "Proc (Next Cast Empowered)", "Proc", 0, false, false);
-                            }
-                        }*/
                         // Genesis (T2.5) 5p: Proc on Tick
                         if (cfg.set_genesis_5p) {
                             var chance = (name === "rake") ? 6.0 : 10.0;
@@ -1060,14 +1114,17 @@ function runCoreSimulation(cfg) {
                 var table = { miss: missC, dodge: dodgeC, parry: parryC, block: blockC, glance: glanceC, crit: critC };
                 var hitType = rng.attackTable("Auto", table);
 
+                // Den korrekten Namen ("Auto Attack" oder "Extra Attack") für das Zählen nutzen
+                var sourceName = isExtra ? "Extra Attack" : "Auto Attack";
+
                 // Counters (Events)
-                if (hitType === "MISS") { if (!missCounts.Auto) missCounts.Auto = 0; missCounts.Auto++; }
-                else if (hitType === "DODGE") { if (!dodgeCounts.Auto) dodgeCounts.Auto = 0; dodgeCounts.Auto++; }
-                else if (hitType === "PARRY") { if (!parryCounts.Auto) parryCounts.Auto = 0; parryCounts.Auto++; }
-                else if (hitType === "GLANCE") { if (!glanceCounts.Auto) glanceCounts.Auto = 0; glanceCounts.Auto++; }
+                if (hitType === "MISS") { if (!missCounts[sourceName]) missCounts[sourceName] = 0; missCounts[sourceName]++; }
+                else if (hitType === "DODGE") { if (!dodgeCounts[sourceName]) dodgeCounts[sourceName] = 0; dodgeCounts[sourceName]++; }
+                else if (hitType === "PARRY") { if (!parryCounts[sourceName]) parryCounts[sourceName] = 0; parryCounts[sourceName]++; }
+                else if (hitType === "GLANCE") { if (!glanceCounts[sourceName]) glanceCounts[sourceName] = 0; glanceCounts[sourceName]++; }
                 else if (hitType === "BLOCK") { if (!missCounts.Block) missCounts.Block = 0; missCounts.Block++; }
-                else if (hitType === "CRIT") { if (!critCounts.Auto) critCounts.Auto = 0; critCounts.Auto++; }
-                if (!counts.Auto) counts.Auto = 0; counts.Auto++;
+                else if (hitType === "CRIT") { if (!critCounts[sourceName]) critCounts[sourceName] = 0; critCounts[sourceName]++; }
+                if (!counts[sourceName]) counts[sourceName] = 0; counts[sourceName]++;
 
                 var blockValue = isBoss ? 38 : 0;
                 var glancePenalty = isBoss ? 0.35 : 0.05;
@@ -1205,7 +1262,7 @@ function runCoreSimulation(cfg) {
             else if (cond.type === "time_elapsed") val = t;
             else if (cond.type === "time_remaining") val = maxT - t;
             else if (cond.type === "debuff_rem") {
-                var target = cond.target.replace(" ", "");
+                var target = cond._cleanTarget || cond.target;
                 if (target === "FaerieFire") val = cfg.debuff_ff ? 999 : Math.max(0, auras.ff - t);
                 else if (target === "Rip") val = Math.max(0, auras.rip - t);
                 else if (target === "Rake") val = Math.max(0, auras.rake - t);
@@ -1213,7 +1270,7 @@ function runCoreSimulation(cfg) {
                 else val = 0;
             }
             else if (cond.type === "buff_rem") {
-                var target = cond.target;
+                var target = cond._cleanTarget || cond.target;
                 if (target === "Tiger's Fury") val = Math.max(0, auras.tigersFury - t);
                 else if (target === "Clearcasting") val = Math.max(0, auras.clearcasting - t);
                 else if (target === "Blood Frenzy") val = Math.max(0, auras.BloodFrenzy - t);
@@ -1465,7 +1522,7 @@ function runCoreSimulation(cfg) {
                         energy += refund;
                         if (res === "MISS") missCounts[action] = (missCounts[action] || 0) + 1;
                         else if (res === "DODGE") dodgeCounts[action] = (dodgeCounts[action] || 0) + 1;
-                        else if (res === "PARRY") { if (!missCounts.Parry) missCounts.Parry = 0; missCounts.Parry++; }
+                        else if (res === "PARRY") parryCounts[action] = (parryCounts[action] || 0) + 1; // Korrigiert!
                         logAction(action, "Refund", res, 0, false, false, -castCost + refund);
 
                         // Abbruch für Schaden

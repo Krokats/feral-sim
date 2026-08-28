@@ -131,19 +131,6 @@ function renderRotationHelp() {
     targetHeader.appendChild(helpIcon);
 }
 
-/*
-function saveCurrentState() {
-    if(SIM_LIST[ACTIVE_SIM_INDEX]) {
-        // Only save if we are in Single View (to avoid overwriting with empty data in Overview)
-        var isOverview = !document.getElementById('comparisonView').classList.contains('hidden');
-        if (!isOverview) {
-            SIM_LIST[ACTIVE_SIM_INDEX].config = getCurrentConfigFromUI();
-            var nameInput = document.getElementById('simName');
-            if(nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
-        }
-    }
-}*/
-
 function addSim(isInit) {
     // Create new Sim Object
     var id = Date.now();
@@ -717,6 +704,9 @@ function setupUIListeners() {
 
     // Init Rotation Builder
     if(typeof initRotationBuilder === 'function') initRotationBuilder();
+    // Init Talent Tree
+    if(typeof renderTalentPresetDropdown === 'function') renderTalentPresetDropdown();
+    if(typeof renderTalentTree === 'function') renderTalentTree();
 
 }
 
@@ -1039,17 +1029,17 @@ function updateSimulationResults(sim) {
     // UPDATE BUTTONS with VALUES
     var btnMin = document.getElementById("btnViewMin");
     if (btnMin && avgR.minDps) {
-        btnMin.innerHTML = `<span class="res-btn-label">Min. DPS</span><span class="res-btn-val">${Math.floor(avgR.minDps)}</span>`;
+        btnMin.innerHTML = `<span class="res-btn-label">Min. DPS (</span><span class="res-btn-val">${Math.floor(avgR.minDps)})</span>`;
     }
 
     var btnAvg = document.getElementById("btnViewAvg");
     if (btnAvg && avgR.dps) {
-        btnAvg.innerHTML = `<span class="res-btn-label">Avg. DPS</span><span class="res-btn-val">${Math.floor(avgR.dps)}</span>`;
+        btnAvg.innerHTML = `<span class="res-btn-label">Avg. DPS (</span><span class="res-btn-val">${Math.floor(avgR.dps)})</span>`;
     }
 
     var btnMax = document.getElementById("btnViewMax");
     if (btnMax && avgR.maxDps) {
-        btnMax.innerHTML = `<span class="res-btn-label">Max. DPS</span><span class="res-btn-val">${Math.floor(avgR.maxDps)}</span>`;
+        btnMax.innerHTML = `<span class="res-btn-label">Max. DPS (</span><span class="res-btn-val">${Math.floor(avgR.maxDps)})</span>`;
     }
 
     setText("resTotalDmg", (r.totalDmg / 1000).toFixed(1) + "k");
@@ -1094,6 +1084,20 @@ function updateSimulationResults(sim) {
     // Dist Bar & Table (Specific Run Data)
     renderDistBar(r);
     renderResultTable(r);
+
+    // NEU: Stat Weights Container aktualisieren
+    var weightContainer = document.getElementById("weightResults");
+    if (weightContainer) {
+        if (sim.statWeightsHTML) {
+            // Wenn die Simulation Stat Weights hat, zeige sie an
+            weightContainer.innerHTML = sim.statWeightsHTML;
+            weightContainer.classList.remove("hidden");
+        } else {
+            // Wenn nicht, leere den Container und verstecke ihn
+            weightContainer.innerHTML = "";
+            weightContainer.classList.add("hidden");
+        }
+    }
 
     var logSec = document.getElementById("combatLogSection");
     if (logSec) {
@@ -1167,8 +1171,8 @@ function renderResultTable(r) {
         var pct = ((s.v / total) * 100).toFixed(1);
         var count = r.counts[s.n] || 0;
 
-        // Crit %
-        var hits = count - (r.missCounts[s.n] || 0) - (r.dodgeCounts[s.n] || 0);
+        // Crit % (Parries ebenfalls abziehen, falls sie von vorne angreifen)
+        var hits = count - (r.missCounts[s.n] || 0) - (r.dodgeCounts[s.n] || 0) - (r.parryCounts ? (r.parryCounts[s.n] || 0) : 0);
         var critPct = hits > 0 ? ((r.critCounts[s.n] || 0) / hits * 100).toFixed(1) : "0.0";
         var glancePct = (s.n === "Auto Attack" && count > 0) ? ((r.glanceCounts[s.n] || 0) / count * 100).toFixed(1) : "-";
 
@@ -1192,12 +1196,18 @@ function renderResultTable(r) {
 // ============================================================================
 
 var LOG_DATA = [];
+var FILTERED_LOG_DATA = []; // NEU
 var LOG_PAGE = 1;
 const LOG_PER_PAGE = 50;
 
 function renderLogTable(log) {
     LOG_DATA = log || [];
+    FILTERED_LOG_DATA = [...LOG_DATA]; // NEU
     LOG_PAGE = 1;
+
+    // NEU: Reset des Suchfelds bei neuer Sim
+    var logSearch = document.getElementById("logSearchInput");
+    if(logSearch) logSearch.value = "";
 
     var allKeys = new Set();
     LOG_DATA.forEach(e => {
@@ -1212,6 +1222,23 @@ function renderLogTable(log) {
     });
     LOG_BUFF_KEYS = Array.from(allKeys).sort();
 
+    updateLogView();
+}
+
+function filterLogData() {
+    var searchInput = document.getElementById("logSearchInput");
+    if (searchInput && searchInput.value.trim() !== "") {
+        var term = searchInput.value.toLowerCase();
+        FILTERED_LOG_DATA = LOG_DATA.filter(e => {
+            return (e.event && e.event.toLowerCase().includes(term)) ||
+                   (e.ability && e.ability.toLowerCase().includes(term)) ||
+                   (e.result && e.result.toLowerCase().includes(term)) ||
+                   (e.info && e.info.toLowerCase().includes(term));
+        });
+    } else {
+        FILTERED_LOG_DATA = [...LOG_DATA];
+    }
+    LOG_PAGE = 1;
     updateLogView();
 }
 
@@ -1260,7 +1287,9 @@ function updateLogView() {
 
     var start = (LOG_PAGE - 1) * LOG_PER_PAGE;
     var end = start + LOG_PER_PAGE;
-    var slice = LOG_DATA.slice(start, end);
+    
+    // ÄNDERUNG: Slice von FILTERED_LOG_DATA anstatt LOG_DATA
+    var slice = FILTERED_LOG_DATA.slice(start, end);
 
     slice.forEach(e => {
         var tr = document.createElement("tr");
@@ -1322,11 +1351,12 @@ function updateLogView() {
         tb.appendChild(tr);
     });
 
-    setText("logPageLabel", LOG_PAGE + " / " + Math.ceil(LOG_DATA.length / LOG_PER_PAGE));
+    setText("logPageLabel", LOG_PAGE + " / " + Math.max(1, Math.ceil(FILTERED_LOG_DATA.length / LOG_PER_PAGE)));
 }
 
 function nextLogPage() {
-    if (LOG_PAGE * LOG_PER_PAGE < LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
+    // ÄNDERUNG: Auf FILTERED_LOG_DATA prüfen
+    if (LOG_PAGE * LOG_PER_PAGE < FILTERED_LOG_DATA.length) { LOG_PAGE++; updateLogView(); }
 }
 
 function prevLogPage() {
@@ -1334,7 +1364,7 @@ function prevLogPage() {
 }
 
 function downloadCSV() {
-    if (!LOG_DATA || LOG_DATA.length === 0) return;
+    if (!FILTERED_LOG_DATA || FILTERED_LOG_DATA.length === 0) return;
 
     // Check Config for Column Visibility (Same logic as updateLogView)
     var cfg = (SIM_DATA && SIM_DATA.config) ? SIM_DATA.config : {};
@@ -1371,7 +1401,7 @@ function downloadCSV() {
     var csv = csvHeaders.join(",") + "\n";
 
     // 2. Build Rows
-    LOG_DATA.forEach(r => {
+    FILTERED_LOG_DATA.forEach(r => {
         var row = [
             r.t.toFixed(3), r.event, r.ability, r.result,
             r.dmgNorm, r.dmgCrit, r.dmgTick, r.dmgSpec
@@ -1444,6 +1474,11 @@ function getCurrentConfigFromUI() {
         cfg.custom_rotation = JSON.parse(JSON.stringify(CUSTOM_ROTATION));
     }
 
+    // Talente speichern
+    if (typeof TALENT_CONFIG !== 'undefined') {
+        cfg.talents = JSON.parse(JSON.stringify(TALENT_CONFIG));
+    }
+
     return cfg;
 }
 
@@ -1471,6 +1506,16 @@ function applyConfigToUI(cfg) {
         if (cfg.enchantSelection) ENCHANT_SELECTION = JSON.parse(JSON.stringify(cfg.enchantSelection));
         else ENCHANT_SELECTION = {};
 
+        // Restore Talente
+        if (cfg.talents) {
+            TALENT_CONFIG = JSON.parse(JSON.stringify(cfg.talents));
+        } else {
+            // Fallback auf Standard, falls es ein alter gespeicherter Link ohne Talente ist
+            if (typeof TALENT_PRESETS !== 'undefined' && TALENT_PRESETS["Feral DPS (11/35/5)"]) {
+                TALENT_CONFIG = JSON.parse(JSON.stringify(TALENT_PRESETS["Feral DPS (11/35/5)"]));
+            }
+        }
+
         // Restore Custom Rotation oder Fallback auf Standard
         if (cfg.custom_rotation && cfg.custom_rotation.length > 0) {
             CUSTOM_ROTATION = JSON.parse(JSON.stringify(cfg.custom_rotation));
@@ -1491,6 +1536,8 @@ function applyConfigToUI(cfg) {
         if (typeof updatePlayerStats === 'function') updatePlayerStats();
         if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
         if (typeof calculateGearStats === 'function') calculateGearStats();
+        if (typeof renderTalentTree === 'function') renderTalentTree();
+        if (typeof recalcItemScores === 'function') recalcItemScores();
 
     } catch (e) {
         console.error("Error applying config:", e);
@@ -1515,9 +1562,6 @@ function saveCurrentState() {
         if (nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
     }
 }
-
-
-
 
 function packConfig(cfg) {
     // 1. Map simple values
@@ -1553,9 +1597,10 @@ function packConfig(cfg) {
             s: cfg.custom_rotation.steps || []
         };
     }
+    var talPack = cfg.talents || {};
 
     return {
-        data: [values, gearIds, enchantIds, rotaPack],
+        data: [values, gearIds, enchantIds, rotaPack, talPack],
         itemCount: itemCount
     };
 }
@@ -1604,6 +1649,10 @@ function unpackConfig(packed) {
         }
     }
 
+    if (packed.length > 4 && packed[4]) {
+        cfg.talents = packed[4];
+    }
+
     return cfg;
 }
 
@@ -1633,9 +1682,41 @@ function exportSettings() {
     });
 }
 
+// ============================================================================
+// IMPORT CONFIG MODAL LOGIC (NEW)
+// ============================================================================
+
+// 1. Öffnet das Import-Modal anstelle des Browser-Prompts
 function importFromClipboard() {
-    var input = prompt("Paste the config string (or full URL) here:");
-    if (!input) return;
+    var modal = document.getElementById('importConfigModal');
+    var textarea = document.getElementById('importConfigInput');
+    if (modal && textarea) {
+        textarea.value = ""; // Textarea leeren
+        modal.classList.remove('hidden');
+        textarea.focus();
+    }
+}
+
+function closeImportConfigModal() {
+    var modal = document.getElementById('importConfigModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+
+function confirmImportConfig() {
+    var textarea = document.getElementById('importConfigInput');
+    if (!textarea) return;
+    var input = textarea.value.trim();
+    
+    if (!input) {
+        showToast("Please paste a valid config string.");
+        return;
+    }
+
+    if (ITEM_DB.length === 0) {
+        alert("Database not loaded yet. Please wait a moment.");
+        return;
+    }
 
     var b64 = input;
     // Handle full URLs by splitting at the parameter
@@ -1677,6 +1758,7 @@ function importFromClipboard() {
         console.error(e);
         alert("Invalid Config String or URL!");
     }
+    closeImportConfigModal();
 }
 
 // Helpers called from HTML directly
@@ -1739,29 +1821,33 @@ function toggleSection(containerId, state) {
     if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
 }
 
-
 function updateDamageScaling() {
     const tb = document.getElementById("scalingTableBody");
     if (!tb) return;
 
-    // Aktuelle Werte abgreifen
-    const ap = getVal("stat_ap");
-    const str = getVal("stat_str");
-    const agi = getVal("stat_agi");
+    // Aktuelle Werte abgreifen (aus den DOM Inputs)
+    const elAp = document.getElementById("stat_ap");
+    const ap = elAp ? (parseFloat(elAp.value) || 0) : 0;
 
-    // Talente (simulieren der Engine-Logik)
-    const tNatWep = 1.10; // Natural Weapons 3/3
-    const tPredStrikes = 1.20; // Predatory Strikes 3/3
-    const tImpShred = getVal("tal_imp_shred") * 0.05;
-    const tFeralAggr = getVal("tal_feral_aggression") * 0.03;
-    const tOpenWounds = getVal("tal_open_wounds"); // Falls implementiert
+    // Helper: Lade Punkte aus dem globalen Talentobjekt
+    const getTal = (id) => (typeof TALENT_CONFIG !== 'undefined' ? (TALENT_CONFIG[id] || 0) : 0);
+
+    const ptsNatWep = getTal("naturalWeapons");
+    const tNatWep = ptsNatWep === 3 ? 1.10 : (1 + ptsNatWep * 0.0333); // 10% max
+
+    const ptsPred = getTal("predatoryStrikes");
+    const tPredStrikes = ptsPred === 3 ? 1.20 : (1 + ptsPred * 0.07); // 20% max
+
+    const tImpShred = getTal("impShred") * 0.05;
+    const tFeralAggr = getTal("feralAggression") * 0.03;
+    const tOpenWounds = getTal("openWounds");
 
     // Basis-Schaden (Tauren/NE Schnitt)
     const baseMin = 72;
     const baseMax = 97;
     const avgBase = (baseMin + baseMax) / 2;
     const apBonus = (ap - 295) / 14;
-    const normalDmg = (avgBase + apBonus); // FIX: NatWep erst später anwenden, damit Flat Dmg auch skaliert
+    const normalDmg = (avgBase + apBonus);
 
     const abilities = [
         {
@@ -2178,6 +2264,12 @@ function renderRotationToolbox() {
     tb.innerHTML = "";
     
     ROTATION_SKILLS.forEach(skill => {
+        // --- NEU: Berserk ausblenden, wenn nicht geskillt ---
+        if (skill.id === "Berserk") {
+            var hasBerserk = (typeof TALENT_CONFIG !== 'undefined' && (TALENT_CONFIG.berserk || 0) > 0);
+            if (!hasBerserk) return; // Skill komplett überspringen
+        }
+
         var el = document.createElement("div");
         el.className = "rb-skill";
         el.draggable = true;
@@ -2213,9 +2305,13 @@ function renderRotationList() {
     CUSTOM_ROTATION.steps.forEach((step, idx) => {
         var skillDef = ROTATION_SKILLS.find(s => s.id === step.skill) || { name: step.skill, icon: "inv_misc_questionmark" };
         
+        // --- NEU: Prüfen, ob das Talent für diesen Skill fehlt ---
+        var missingTalent = (step.skill === "Berserk" && (typeof TALENT_CONFIG !== 'undefined' && (TALENT_CONFIG.berserk || 0) === 0));
+        var effectivelyDisabled = step.disabled || missingTalent;
+
         var stepEl = document.createElement("div");
         stepEl.className = "rb-step";
-        if (step.disabled) stepEl.classList.add("is-disabled");
+        if (effectivelyDisabled) stepEl.classList.add("is-disabled");
         stepEl.draggable = true;
         
         stepEl.addEventListener("dragstart", function(e) {
@@ -2251,15 +2347,19 @@ function renderRotationList() {
         }
         var countHtml = exactCount > 0 ? `<span class="rb-step-count" title="Uses in representative run">${exactCount}x</span>` : '';
 
+        // --- NEU: Visuelle Warnung, wenn Talent fehlt ---
+        var titleStyle = missingTalent ? "color:#f44336; text-decoration:line-through;" : "";
+        var titleWarning = missingTalent ? " <span style='font-size:0.7rem; color:#f44336;'>(Missing Talent)</span>" : "";
+
         var html = `
             <div class="rb-step-header">
-                <div class="rb-step-title">
+                <div class="rb-step-title" style="${titleStyle}">
                     <img src="https://wow.zamimg.com/images/wow/icons/large/${skillDef.icon}.jpg" class="rb-skill-icon" alt="">
-                    ${idx + 1}. ${skillDef.name}
+                    ${idx + 1}. ${skillDef.name}${titleWarning}
                 </div>
                 <div style="display:flex; align-items:center;">
                     ${countHtml}
-                    <button class="rb-toggle-btn" onclick="toggleStepDisabled(${idx})" title="Enable/Disable Step">${step.disabled ? '🚫' : '✅'}</button>
+                    <button class="rb-toggle-btn" onclick="toggleStepDisabled(${idx})" title="Enable/Disable Step">${effectivelyDisabled ? '🚫' : '✅'}</button>
                     <button class="rb-delete-btn" onclick="removeRotationStep(${idx})">✖</button>
                 </div>
             </div>
@@ -2491,4 +2591,14 @@ function toggleStepDisabled(idx) {
     CUSTOM_ROTATION.steps[idx].disabled = !CUSTOM_ROTATION.steps[idx].disabled;
     renderRotationList();
     saveCurrentState(); 
+}
+
+function openOtherSimsModal() {
+    var modal = document.getElementById('otherSimsModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeOtherSimsModal() {
+    var modal = document.getElementById('otherSimsModal');
+    if (modal) modal.classList.add('hidden');
 }

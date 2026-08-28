@@ -77,6 +77,9 @@ var CONFIG_IDS = [
     "simTime", "simCount", "sim_mode", "sim_seed","statWeightIt",
     "active_rotation_template",
 
+    // Stat Weights
+    "weight_ap", "weight_str", "weight_agi", "weight_hit", "weight_crit", "weight_haste", "weight_arp",
+
     // Player Stats
     "stat_str", "stat_agi", "stat_ap",
     "stat_hit", "stat_crit", "stat_haste", "stat_arp",
@@ -151,11 +154,11 @@ var CONFIG_IDS = [
     // Removed Warchief as requested
 
     // Talents
-    "tal_ferocity", "tal_feral_aggression", "tal_open_wounds",
-    "tal_sharpened_claws", "tal_primal_fury", "tal_blood_frenzy",
-    "tal_imp_shred", "tal_predatory_strikes", "tal_ancient_brutality",
-    "tal_berserk", "tal_hotw", "tal_carnage", "tal_lotp",
-    "tal_furor", "tal_nat_wep", "tal_nat_shapeshifter", "tal_omen"
+    //"tal_ferocity", "tal_feral_aggression", "tal_open_wounds",
+    //"tal_sharpened_claws", "tal_primal_fury", "tal_blood_frenzy",
+    //"tal_imp_shred", "tal_predatory_strikes", "tal_ancient_brutality",
+    //"tal_berserk", "tal_hotw", "tal_carnage", "tal_lotp",
+    //"tal_furor", "tal_nat_wep", "tal_nat_shapeshifter", "tal_omen"
 ];
 
 var SLOT_LAYOUT = {

@@ -355,10 +355,18 @@ function openItemSelector(slotName) {
     var modal = document.getElementById("itemSelectorModal");
     var title = document.getElementById("modalTitle");
     var input = document.getElementById("itemSearchInput");
+    var weaponFilter = document.getElementById("weaponFilter"); // NEU
+
     if (modal && title && input) {
         title.innerText = "Select " + slotName;
         modal.classList.remove("hidden");
         input.value = ""; input.focus();
+        
+        // NEU: Filter nur bei Main Hand anzeigen
+        if (weaponFilter) {
+            weaponFilter.style.display = (slotName === "Main Hand") ? "flex" : "none";
+        }
+        
         renderItemList();
     }
 }
@@ -382,7 +390,20 @@ function renderItemList(filterText) {
     var relevantItems = ITEM_DB.filter(function (i) {
         if (CURRENT_SELECTING_SLOT === "Main Hand") {
             var s = i.slot.toLowerCase().replace(/[\s-]/g, "");
-            if (s !== "mainhand" && s !== "twohand" && s !== "onehand") return false; //"Main Hand", "Two-hand", "One-hand"
+            
+            // NEU: Status über die active-Klasse der Buttons abgreifen
+            var btn1h = document.getElementById("btnFilter1H");
+            var btn2h = document.getElementById("btnFilter2H");
+            var filter1h = btn1h ? btn1h.classList.contains("active") : true;
+            var filter2h = btn2h ? btn2h.classList.contains("active") : true;
+
+            var is1H = (s === "mainhand" || s === "onehand");
+            var is2H = (s === "twohand" || s === "staff" || s === "polearm");
+
+            // Ausschließen basierend auf aktiven Buttons
+            if (!filter1h && is1H) return false;
+            if (!filter2h && is2H) return false;
+            if (!is1H && !is2H) return false; // Alles andere blockieren (Kopf, Brust etc.)
 
             return i.weaponType;
         }
@@ -451,6 +472,15 @@ function renderItemList(filterText) {
         list.appendChild(row);
     });
 }
+
+function toggleWeaponFilter(type) {
+    var btn = document.getElementById("btnFilter" + type);
+    if (btn) {
+        btn.classList.toggle("active"); // Wechselt zwischen an/aus
+        filterItemList(); // Liste direkt neu filtern
+    }
+}
+
 function filterItemList() { var txt = document.getElementById("itemSearchInput").value; renderItemList(txt); }
 
 function selectItem(itemId) {
@@ -825,15 +855,20 @@ function calculateGearStats() {
 
     // Warchief Removed
 
+    // --- HELPER FÜR TALENTE ---
+    var getTal = function(id) { return (typeof TALENT_CONFIG !== 'undefined' ? (TALENT_CONFIG[id] || 0) : 0); };
+
     // 6. APPLY STAT MULTIPLIERS
     var statMod = 0;
     if (getVal("buff_kings")) statMod += 10;
-    var hotwMod = 20; // 5/5 Heart of the Wild always active for Feral Druids, 20% more Str/Int
+    
+    // Heart of the Wild (4% pro Punkt, max 20%)
+    var hotwMod = getTal("heartOfTheWild") * 4; 
 
     // Total Attributes
     var finalStr = Math.floor((bonus.str + race.str) * (1 + (statMod + hotwMod) / 100));
     var finalInt = Math.floor((bonus.int + race.int) * (1 + (statMod + hotwMod) / 100));
-    var finalAgi = Math.floor((bonus.agi + race.agi) * (1 + (statMod) / 100)); // No HotW for Agi
+    var finalAgi = Math.floor((bonus.agi + race.agi) * (1 + (statMod) / 100)); // Kein HotW auf Agi
 
     // Mana Calculation
     var baseMana = 2670;
@@ -841,26 +876,27 @@ function calculateGearStats() {
 
     // 7. FINAL CALCULATIONS - UPDATED FORMULAS
 
-    // Predatory Strikes (3/3): +10% AP + Trueshot % AP
-    apMod += 10;
-    finalAP = Math.floor(finalAP * (1 + apMod / 100));
+    // Predatory Strikes: 3% (1 Pkt), 6% (2 Pkt), 10% (3 Pkt) AP 
+    var ptsPred = getTal("predatoryStrikes");
+    var predApMod = (ptsPred === 3) ? 10 : (ptsPred * 3);
+    apMod += predApMod;
 
     // AP = RaceAP(Base) + ((AddedStr)*2) + ((AddedAgi)*1) + BonusAP
-    // AddedStats = Final - Base
     var finalAP = Math.floor((race.ap + ((finalStr - race.str) * 2) + (finalAgi - race.agi) + bonus.ap) * (1 + apMod / 100));
-
-
 
     // Crit = RaceCrit(Base) + (AddedAgi / 20) + BonusCrit
     var critFromAgi = (finalAgi - race.agi) / 20.0;
     var finalCrit = race.crit + critFromAgi + bonus.crit;
 
     // Talent/Buff Crits
-    if (getVal("buff_lotp")) finalCrit += 3.0;
-    finalCrit += 6.0; // Sharpened Claws
+    if (getVal("buff_lotp") || getTal("leaderOfThePack") > 0) finalCrit += 3.0;
+    
+    // Sharpened Claws (2% pro Punkt, max 6%)
+    finalCrit += (getTal("sharpenedClaws") * 2.0); 
 
     // Hit
-    var finalHit = bonus.hit + 3.0; // Natural Weapons
+    // Natural Weapons bringt 1% Hit pro Punkt (max 3%)
+    var finalHit = bonus.hit + getTal("naturalWeapons");
 
     // 8. UPDATE UI
 
@@ -1081,13 +1117,34 @@ function populateBiSDropdown() {
     }
 }
 
-function loadBiSPreset() {
+function openGearPresetModal() {
+    var modal = document.getElementById('gearPresetModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error("Modal mit der ID 'gearPresetModal' wurde nicht gefunden!");
+    }
+}
+
+function closeGearPresetModal() {
+    var modal = document.getElementById('gearPresetModal');
+    if (modal) modal.classList.add('hidden');
+}
+// 1. Wird beim Klick auf "Load" aufgerufen
+window.loadBiSPreset = function() {
+    var sel = document.getElementById("bis_preset_select");
+    if (!sel || !sel.value) { 
+        showToast("Please select a preset from the dropdown first."); 
+        return; 
+    }
+    openGearPresetModal();
+};
+
+// 2. Wird beim Klick auf "Yes, replace" im Modal aufgerufen
+window.confirmLoadBiSPreset = function() {
     var sel = document.getElementById("bis_preset_select");
     if (!sel) return;
     var val = sel.value;
-    if (!val) { showToast("Please select a preset first."); return; }
-    
-    if (!confirm("Load preset? This will overwrite your currently equipped gear and enchants.")) return;
 
     var preset = null;
     if (val.startsWith("def_")) {
@@ -1095,34 +1152,39 @@ function loadBiSPreset() {
         preset = GEAR_PRESETS[k];
     } else if (val.startsWith("cus_")) {
         var k = val.substring(4);
-        var custom = JSON.parse(localStorage.getItem("feral_sim_custom_gear") || "{}");
+        var custom = JSON.parse(localStorage.getItem("boomkin_sim_custom_gear") || "{}");
         preset = custom[k];
     }
 
-    if (!preset) return;
+    if (!preset) {
+        closeGearPresetModal();
+        return;
+    }
 
     GEAR_SELECTION = {};
     ENCHANT_SELECTION = {};
 
     if (preset.gear) {
         for (var slot in preset.gear) {
-            if (preset.gear[slot] !== 0) GEAR_SELECTION[slot] = preset.gear[slot];
+            if (preset.gear[slot] !== 0 && preset.gear[slot] !== "") {
+                GEAR_SELECTION[slot] = preset.gear[slot];
+            }
         }
     }
     if (preset.enchants) {
         for (var slot in preset.enchants) {
-            if (preset.enchants[slot] !== 0) ENCHANT_SELECTION[slot] = preset.enchants[slot];
+            if (preset.enchants[slot] !== 0 && preset.enchants[slot] !== "") {
+                ENCHANT_SELECTION[slot] = preset.enchants[slot];
+            }
         }
     }
 
-    initGearPlannerUI();
+    if (typeof initGearPlannerUI === 'function') initGearPlannerUI();
     saveCurrentState();
     
-    if (typeof updatePlayerStats === 'function') updatePlayerStats();
-    if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
-    
+    closeGearPresetModal();
     showToast("Gear Preset loaded!");
-}
+};
 
 function saveCustomGearPreset() {
     if (Object.keys(GEAR_SELECTION).length === 0) { showToast("No gear equipped to save."); return; }
