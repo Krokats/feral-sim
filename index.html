@@ -241,7 +241,15 @@
                             <div class="char-left" id="charLeftCol"></div>
 
                             <div class="char-middle">
-
+                                <div style="margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; position: relative;">
+                                    <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Allowed Item Sources:</label>
+                                    <div class="select-wrapper" style="flex-grow: 1; margin: 5px;">
+                                        <button class="btn-mini" onclick="toggleSourceMenu(event)" id="sourceMenuBtn" style="margin: 0; padding: 6px 22px;">⚙️ Filter Sources </button>
+                                        <ul class="source-menu" id="sourceMenuRoot" style="display:none;">
+                                            <!-- Wird dynamisch von JS befüllt -->
+                                        </ul>
+                                    </div>
+                                </div>
                                 <div style="margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box;">
                                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                                         <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Gear Preset:</label>
