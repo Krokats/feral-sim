@@ -65,17 +65,6 @@ async function loadDatabase() {
 
         // Database is already filtered for relevant items
         ITEM_DB = items.filter(i => {
-            //i.itemLevel = i.level || i.itemLevel || 0;
-            // Filter Junk
-            //if ((i.quality || 0) < 2) return false; --> new database junk already filtered out
-            // Allow Relic/Idol for DB consistency, but UI controls visibility
-            //if (i.itemLevel < 30 && i.slot !== "Relic" && i.slot !== "Idol") return false; --> new database already filtered out
-
-            // CLASS FILTER: 512 = Druid
-            //if (i.allowableClasses && i.allowableClasses !== -1 && (i.allowableClasses & 512) === 0) return false; --> new database already filtered out
-
-            // ARMOR FILTER: Only Cloth(1), Leather(2) or None(0)
-            //if (i.armorType && i.armorType > 2) return false;
             return true;
         });
 
@@ -83,7 +72,7 @@ async function loadDatabase() {
         ITEM_ID_MAP = {};
         ITEM_DB.forEach(i => { ITEM_ID_MAP[i.id] = i; });
         ENCHANT_DB = enchants;
-
+    if (typeof initSourceTree === "function") initSourceTree();
         initGearPlannerUI();
         var statusEl = document.getElementById("dbStatus");
         if (statusEl) {
@@ -306,6 +295,20 @@ function showTooltip(e, item) {
             }
         }
     }
+    // ---> NEU: Source Info anzeigen <---
+    if (item.sources && item.sources.length > 0) {
+        html += '<div class="tt-spacer"></div>';
+        html += '<div class="tt-white" style="color: #00ccff;">Sources:</div>';
+        
+        item.sources.forEach(function(src) {
+            var srcText = "";
+            if (src.category) srcText += src.category;
+            if (src.subCategory) srcText += (srcText ? " > " : "") + src.subCategory;
+            if (src.detail) srcText += (srcText ? " > " : "") + src.detail;
+            
+            html += '<div class="tt-white" style="margin-left:10px; color: #88ccff;">' + srcText + '</div>';
+        });
+    }
 
     tt.innerHTML = html;
     moveTooltip(e);
@@ -413,10 +416,12 @@ function renderItemList(filterText) {
     if (slotKey === "Idol") slotKey = "Relic";
 
     var relevantItems = ITEM_DB.filter(function (i) {
+        // --- 1. SLOT LOGIK (Speziell für Feral) ---
+        let slotMatches = false;
         if (CURRENT_SELECTING_SLOT === "Main Hand") {
             var s = i.slot.toLowerCase().replace(/[\s-]/g, "");
             
-            // NEU: Status über die active-Klasse der Buttons abgreifen
+            // Status über die active-Klasse der Buttons abgreifen
             var btn1h = document.getElementById("btnFilter1H");
             var btn2h = document.getElementById("btnFilter2H");
             var filter1h = btn1h ? btn1h.classList.contains("active") : true;
@@ -426,22 +431,46 @@ function renderItemList(filterText) {
             var is2H = (s === "twohand" || s === "staff" || s === "polearm");
 
             // Ausschließen basierend auf aktiven Buttons
-            if (!filter1h && is1H) return false;
-            if (!filter2h && is2H) return false;
-            if (!is1H && !is2H) return false; // Alles andere blockieren (Kopf, Brust etc.)
-
-            return i.weaponType;
+            if ((filter1h && is1H) || (filter2h && is2H)) {
+                slotMatches = !!i.weaponType;
+            }
+        } else if (CURRENT_SELECTING_SLOT === "Finger 1") {
+            slotMatches = (i.slot === slotKey && !(GEAR_SELECTION["Finger 2"] == i.id && i.unique));
+        } else if (CURRENT_SELECTING_SLOT === "Finger 2") {
+            slotMatches = (i.slot === slotKey && !(GEAR_SELECTION["Finger 1"] == i.id && i.unique));
+        } else if (CURRENT_SELECTING_SLOT === "Trinket 1") {
+            slotMatches = (i.slot === slotKey && !(GEAR_SELECTION["Trinket 2"] == i.id && i.unique));
+        } else if (CURRENT_SELECTING_SLOT === "Trinket 2") {
+            slotMatches = (i.slot === slotKey && !(GEAR_SELECTION["Trinket 1"] == i.id && i.unique));
+        } else if (CURRENT_SELECTING_SLOT === "Off Hand") {
+            slotMatches = (i.slot === "Held In Off-Hand");
+        } else if (CURRENT_SELECTING_SLOT === "Idol") {
+            slotMatches = (i.slot === "Relic" || i.slot === "Idol"); 
+        } else {
+            slotMatches = (i.slot === slotKey);
         }
 
-        // Erlaube das doppelte Ausrüsten, es sei denn, das Item ist als 'unique' markiert
-        if (CURRENT_SELECTING_SLOT === "Finger 1" && GEAR_SELECTION["Finger 2"] == i.id && i.unique) return false;
-        if (CURRENT_SELECTING_SLOT === "Finger 2" && GEAR_SELECTION["Finger 1"] == i.id && i.unique) return false;
-        if (CURRENT_SELECTING_SLOT === "Trinket 1" && GEAR_SELECTION["Trinket 2"] == i.id && i.unique) return false;
-        if (CURRENT_SELECTING_SLOT === "Trinket 2" && GEAR_SELECTION["Trinket 1"] == i.id && i.unique) return false;
+        if (!slotMatches) return false;
 
-        if (CURRENT_SELECTING_SLOT === "Off Hand") return (i.slot === "Held In Off-Hand");
-        if (CURRENT_SELECTING_SLOT === "Idol") return (i.slot === "Relic" || i.slot === "Idol"); 
-        return i.slot === slotKey;
+        // --- 2. SOURCE FILTER LOGIK ---
+        let isSourceEnabled = false;
+        if (!i.sources || i.sources.length === 0) {
+            isSourceEnabled = WORLD_DROPS_ENABLED;
+        } else {
+            // Checkt, ob mindestens EINE Quelle des Items im Filter aktiv ist
+            isSourceEnabled = i.sources.some(function(src) {
+                let cat = src.category || "Unknown";
+                let sub = src.subCategory || "Unknown";
+                let det = src.detail || "";
+                
+                if (SOURCE_TREE[cat] && SOURCE_TREE[cat][sub] && SOURCE_TREE[cat][sub][det] !== undefined) {
+                    return SOURCE_TREE[cat][sub][det] === true;
+                }
+                return true;
+            });
+        }
+
+        return isSourceEnabled;
     });
 
     relevantItems.forEach(function (i) { i.simScore = calculateItemScore(i, CURRENT_SELECTING_SLOT); });
@@ -1392,9 +1421,8 @@ function syncCheckboxesUI() {
     });
 }
 
-// --- NEUE HELPER FUNKTIONEN FÜR INDETERMINATE STATUS ---
+// --- HELPER FUNKTIONEN FÜR INDETERMINATE STATUS ---
 
-// Returnt ein Objekt: { checked: boolean, indeterminate: boolean }
 function getCategoryCheckState(cat) {
     let totalSubs = 0;
     let checkedSubs = 0;
@@ -1438,8 +1466,6 @@ function getSubCategoryCheckState(cat, sub) {
     }
 }
 
-// Wir ersetzen auch die alten isCategoryChecked / isSubCategoryChecked, 
-// damit handleSourceChange sauber arbeitet.
 function isCategoryChecked(cat) {
     return getCategoryCheckState(cat).checked;
 }
@@ -1453,6 +1479,7 @@ function setCategory(cat, val) {
 function setSubCategory(cat, sub, val) {
     for (let det in SOURCE_TREE[cat][sub]) SOURCE_TREE[cat][sub][det] = val;
 }
+
 function updateItemListsIfOpen() {
     var modal = document.getElementById("itemSelectorModal");
     if (modal && !modal.classList.contains("hidden")) {
