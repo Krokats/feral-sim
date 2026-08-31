@@ -67,7 +67,7 @@ const PRESET_ROTATIONS = {
         { id: "step_15", skill: "Claw", conditions: [] }
     ]
 },
-"standard bleed immune": {
+    "standard bleed immune": {
         name: "Standard Feral for Bleed-Immune targets (placeholder!)",
         desc: "Optimal priority logic including Reshifting, TF after FB and OOC Shreds.",
         steps: [
@@ -78,18 +78,18 @@ const PRESET_ROTATIONS = {
         { id: "step_5", skill: "Berserk", conditions: [] },
         { id: "step_6", skill: "Ravage", conditions: [{ type: "time_elapsed", op: "<=", val: 0 }] },
         { id: "step_7", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
-        { id: "step_10", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: ">=", val: 0.1 }, { type: "energy", op: ">=", val: 35 }] },
-        { id: "step_11", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
-        { id: "step_12", skill: "Tiger's Fury", conditions: [{ type: "energy", op: "<=", val: 30 }] },
-        { id: "step_13", skill: "Reshift", conditions: [{ type: "energy", op: "<=", val: 10 }, { type: "buff_rem", target: "Tiger's Fury", op: "<=", val: 1.5 }] },
-        { id: "step_14", skill: "Shred", conditions: [{ type: "buff_rem", target: "Clearcasting", op: ">=", val: 0.1 }] },
-        { id: "step_15", skill: "Claw", conditions: [] }
+        { id: "step_8", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "energy", op: ">=", val: 35 }] },
+        { id: "step_9", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
+        { id: "step_10", skill: "Tiger's Fury", conditions: [{ type: "energy", op: "<=", val: 30 }] },
+        { id: "step_11", skill: "Reshift", conditions: [{ type: "energy", op: "<=", val: 10 }, { type: "buff_rem", target: "Tiger's Fury", op: "<=", val: 1.5 }] },
+        { id: "step_12", skill: "Shred", conditions: [{ type: "buff_rem", target: "Clearcasting", op: ">=", val: 0.1 }] },
+        { id: "step_13", skill: "Claw", conditions: [] }
     ]
 }
 };
 
 // Lädt das Standard-Preset als Standard-Rotation beim Start
-var CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard"]));
+var CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard bleed"]));
 
 // Configuration IDs mapped to UI elements
 var CONFIG_IDS = [
