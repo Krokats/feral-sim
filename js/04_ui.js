@@ -1909,6 +1909,12 @@ function updateDamageScaling() {
             formula: `9 * (47 + 4*31 + 0.04*(AP-295)) * (1 + 0.15*OpenWounds)`,
             calc: `9 * (171 + ${(0.04 * (ap - 295)).toFixed(1)}) * ${(1 + 0.15 * tOpenWounds).toFixed(2)}`,
             final: 9 * (47 + (5 - 1) * 31 + (4 / 100 * (ap - 295))) * (1 + 0.15 * tOpenWounds)
+        },
+        {
+        name: "Ravage",
+            formula: `(3.5 * NormalDmg + 343) * NaturalWeapons`,
+            calc: `(3.5 * ${normalDmg.toFixed(1)} + 343) * ${tNatWep}`,
+            final: (3.5 * normalDmg + 343) * tNatWep
         }
     ];
 
@@ -2307,7 +2313,16 @@ function renderRotationList() {
         
         // --- NEU: Prüfen, ob das Talent für diesen Skill fehlt ---
         var missingTalent = (step.skill === "Berserk" && (typeof TALENT_CONFIG !== 'undefined' && (TALENT_CONFIG.berserk || 0) === 0));
-        var effectivelyDisabled = step.disabled || missingTalent;
+        var pos = getVal("rota_position");
+        var wrongPosition = (["Shred", "Pounce", "Ravage"].includes(step.skill) && pos !== "back");
+        var effectivelyDisabled = step.disabled || missingTalent || wrongPosition;
+
+        // --- NEU: Visuelle Warnung, wenn Talent oder Position fehlt ---
+        var titleWarning = "";
+        if (missingTalent) titleWarning = " <span style='font-size:0.7rem; color:#f44336;'>(Missing Talent)</span>";
+        else if (wrongPosition) titleWarning = " <span style='font-size:0.7rem; color:#ff9800;'>(Requires Behind)</span>";
+
+        var titleStyle = (missingTalent || wrongPosition) ? "color:#f44336; text-decoration:line-through;" : "";
 
         var stepEl = document.createElement("div");
         stepEl.className = "rb-step";

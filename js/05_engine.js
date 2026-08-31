@@ -795,7 +795,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
             var dmgNorm = 0, dmgCrit = 0, dmgTick = 0, dmgSpec = 0;
             if (dmgVal > 0) {
                 if (isTick) dmgTick = dmgVal;
-                else if (["Auto Attack", "Extra Attack", "Shred", "Claw", "Rake", "Rip", "Ferocious Bite"].includes(action)) {
+                else if (["Auto Attack", "Extra Attack", "Shred", "Claw", "Rake", "Rip", "Ferocious Bite", "Ravage"].includes(action)) {
                     if (isCrit) { dmgNorm = dmgVal / 2; dmgCrit = dmgVal / 2; } else dmgNorm = dmgVal;
                 } else dmgSpec = dmgVal;
             }
@@ -1235,6 +1235,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
         var costRip = 30;
         var costBite = 35;
         var costTF = 30;
+        var costRavage = 60;
 
         // Cost Modifiers
         if (cfg.set_cenarion_5p) costTF -= 5;
@@ -1243,7 +1244,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
 
         var isOoc = oocState; // Use snapshot
         if (isOoc) {
-            costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0;
+            costClaw = 0; costRake = 0; costShred = 0; costRip = 0; costBite = 0; costRavage =0;
         }
 
         // -----------------------------------------
@@ -1301,8 +1302,14 @@ function runCoreSimulation(cfg, enableLogging = false) {
         // Evaluate Priority List (Top to Bottom)
         for (var idx = 0; idx < rotationList.length; idx++) {
             var step = rotationList[idx];
-            if (step.disabled) continue; // NEU: Ignoriert diesen Schritt komplett
+            if (step.disabled) continue; 
             var skill = step.skill;
+            
+            // --- NEU: Positions-Check in der Engine ---
+            if (["Shred", "Pounce", "Ravage"].includes(skill) && cfg.rota_position !== "back") {
+                continue; // Engine blockiert den Skill, falls Position "Front" ist
+            }
+            
             var isOffGCD = ["Tiger's Fury", "Berserk", "Trinket 1", "Trinket 2", "Potion"].includes(skill);
 
             // Strikte Prio: Wenn schon eine Action für diesen Frame gefunden wurde, bricht er ab.
@@ -1415,6 +1422,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                     else if (skill === "Claw") cost = costClaw;
                     else if (skill === "Rake") cost = costRake;
                     else if (skill === "Pounce") cost = 50;
+                    else if (skill === "Ravage") cost = costRavage;
 
                     if (skill === "Reshift" || skill === "Faerie Fire") {
                         action = skill;
@@ -1473,6 +1481,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                 if (action === "Shred") castCost = costShred;
                 if (action === "Rip") castCost = costRip;
                 if (action === "Ferocious Bite") castCost = costBite;
+                if (action === "Ravage") castCost = costRavage;
             }
 
                 if (performAttack) {
@@ -1492,14 +1501,14 @@ function runCoreSimulation(cfg, enableLogging = false) {
                     var critChance = cfg.inputCrit - (isBoss ? 4.8 : 0);
 
                     // Genesis 5p Crit Bonus
-                    if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
+                    if (auras.genesisProc > t && ["Shred", "Rake", "Claw", "Ravage"].includes(action)) {
                         critChance += 15;
                     }
 
                     // Variables for Outcome
                     var res = "HIT";
                     var dmgMult = 1.0;
-                    var cpGen = (["Claw", "Rake", "Shred"].includes(action)) ? 1 : 0;
+                    var cpGen = (["Claw", "Rake", "Shred", "Ravage"].includes(action)) ? 1 : 0;
                     var procChanceMod = 1.0; // Modifies proc rates based on hit chance
 
 
@@ -1559,7 +1568,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                         if (auras.zhm > t && stacks.zhm > 0) normalDmg += (stacks.zhm * 2);
 
                         // Genesis Consumption
-                        if (auras.genesisProc > t && ["Shred", "Rake", "Claw"].includes(action)) {
+                        if (auras.genesisProc > t && ["Shred", "Rake", "Claw", "Ravage"].includes(action)) {
                             normalDmg *= 1.15;
                             auras.genesisProc = -9999;
                             logAction("Genesis", "Consumed", "Proc", 0, false, false);
@@ -1586,6 +1595,9 @@ function runCoreSimulation(cfg, enableLogging = false) {
                                 auras.laceration = -9999;
                                 logAction("Laceration", "Refund " + EnergyRefund, "Proc", 0, false, false, EnergyRefund);
                             }
+                        }
+                        else if (action === "Ravage") {
+                            abilityDmg = 3.5 * normalDmg + 343;
                         }
                         else if (action === "Rake") {
                             abilityDmg = 61 + (0.115 * curAP);
@@ -1731,7 +1743,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                             if (auras.zhm > t && stacks.zhm > 0) stacks.zhm--;
 
                             // 1. Buffs (Buckets mit pScale)
-                            if (cfg.set_talon_3p && ["Claw", "Rake", "Shred"].includes(action)) {
+                            if (cfg.set_talon_3p && ["Claw", "Rake", "Shred", "Ravage"].includes(action)) {
                                 if (rng.proc("Talon3p", 5 * pScale)) {
                                     auras.talonAP = t + 10.0;
                                     logAction("Talon 3p", "+100 AP", "Proc", 0, false, false);

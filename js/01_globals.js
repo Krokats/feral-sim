@@ -20,6 +20,7 @@ var ENCHANT_SELECTION = {};
 
 const ROTATION_SKILLS = [
     { id: "Pounce", name: "Pounce (Opener)", icon: "ability_druid_supriseattack" },
+    { id: "Ravage", name: "Ravage (Opener)", icon: "ability_druid_ravage" },
     { id: "Faerie Fire", name: "Faerie Fire", icon: "spell_nature_faeriefire" },
     { id: "Tiger's Fury", name: "Tiger's Fury", icon: "ability_mount_jungletiger" },
     { id: "Berserk", name: "Berserk", icon: "ability_druid_berserk" },
@@ -41,11 +42,11 @@ const CONDITION_TYPES = {
     "time_remaining": { label: "Time Remaining (s)", type: "number", ops: [">=", "<="] },
     "debuff_rem": { label: "Target Debuff Rem. (s)", type: "select", options: ["Rip", "Rake", "Faerie Fire", "Pounce"], ops: [">=", "<=", "=="] },
     "buff_rem": { label: "Player Buff Rem. (s)", type: "select", options: ["Tiger's Fury", "Clearcasting", "Blood Frenzy", "Slayer", "Spider", "Earthstrike", "Jom", "ZHM"], ops: [">=", "<=", "=="] },
-    "last_spell": { label: "Last Spell Cast", type: "select", options: ["Ferocious Bite", "Rip", "Shred", "Claw", "Reshift", "Pounce", "None"], ops: ["==", "!="] }
+    "last_spell": { label: "Last Spell Cast", type: "select", options: ["Ferocious Bite", "Rip", "Shred", "Claw", "Reshift", "Pounce", "Ravage", "None"], ops: ["==", "!="] }
 };
 
 const PRESET_ROTATIONS = {
-    "standard": {
+    "standard bleed": {
         name: "Standard Feral",
         desc: "Optimal priority logic including Reshifting, TF after FB and OOC Shreds.",
         steps: [
@@ -58,6 +59,25 @@ const PRESET_ROTATIONS = {
         { id: "step_7", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
         { id: "step_8", skill: "Rake", conditions: [{ type: "debuff_rem", target: "Rake", op: "<=", val: 0 }] },
         { id: "step_9", skill: "Rip", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: "<=", val: 0 }] },
+        { id: "step_10", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: ">=", val: 0.1 }, { type: "energy", op: ">=", val: 35 }] },
+        { id: "step_11", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
+        { id: "step_12", skill: "Tiger's Fury", conditions: [{ type: "energy", op: "<=", val: 30 }] },
+        { id: "step_13", skill: "Reshift", conditions: [{ type: "energy", op: "<=", val: 10 }, { type: "buff_rem", target: "Tiger's Fury", op: "<=", val: 1.5 }] },
+        { id: "step_14", skill: "Shred", conditions: [{ type: "buff_rem", target: "Clearcasting", op: ">=", val: 0.1 }] },
+        { id: "step_15", skill: "Claw", conditions: [] }
+    ]
+},
+"standard bleed immune": {
+        name: "Standard Feral for Bleed-Immune targets (placeholder!)",
+        desc: "Optimal priority logic including Reshifting, TF after FB and OOC Shreds.",
+        steps: [
+        { id: "step_1", skill: "Tiger's Fury", conditions: [{ type: "time_elapsed", op: "<=", val: -3 }] },
+        { id: "step_2", skill: "Trinket 1", conditions: [] },
+        { id: "step_3", skill: "Trinket 2", conditions: [] },
+        { id: "step_4", skill: "Potion", conditions: [] },
+        { id: "step_5", skill: "Berserk", conditions: [] },
+        { id: "step_6", skill: "Ravage", conditions: [{ type: "time_elapsed", op: "<=", val: 0 }] },
+        { id: "step_7", skill: "Faerie Fire", conditions: [{ type: "debuff_rem", target: "Faerie Fire", op: "<=", val: 0 }] },
         { id: "step_10", skill: "Ferocious Bite", conditions: [{ type: "cp", op: ">=", val: 5 }, { type: "debuff_rem", target: "Rip", op: ">=", val: 0.1 }, { type: "energy", op: ">=", val: 35 }] },
         { id: "step_11", skill: "Tiger's Fury", conditions: [{ type: "last_spell", target: "Ferocious Bite", op: "==" }] },
         { id: "step_12", skill: "Tiger's Fury", conditions: [{ type: "energy", op: "<=", val: 30 }] },
