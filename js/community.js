@@ -23,6 +23,22 @@ let CURRENT_COMMUNITY_TAB = 'sim';
 supabaseClient.auth.onAuthStateChange((event, session) => {
     CURRENT_USER = session?.user ?? null;
     updateAuthUI();
+
+    // NEU: Wenn der Login erfolgreich war und wir aus Discord zurückkommen
+    if (event === 'SIGNED_IN') {
+        // Prüfen, ob der Token noch in der Adresszeile hängt
+        if (window.location.hash.includes('access_token')) {
+            
+            // 1. Die URL aufräumen (entfernt den riesigen Text, ohne die Seite neu zu laden)
+            window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+            
+            // 2. Das Community Modal direkt wieder öffnen
+            openCommunityModal(CURRENT_COMMUNITY_TAB);
+            
+            // 3. Erfolgsmeldung zeigen
+            showToast("Successfully logged in!");
+        }
+    }
 });
 
 // Initiale Prüfung beim Laden der Seite
