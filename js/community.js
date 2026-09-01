@@ -72,9 +72,15 @@ function updateAuthUI() {
 }
 
 async function loginWithDiscord() {
+    const currentUrl = window.location.origin + window.location.pathname;
+
     const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'discord',
+        options: {
+            redirectTo: currentUrl // Zwingt Supabase, den Unterordner beizubehalten!
+        }
     });
+    
     if (error) {
         console.error("Login failed:", error);
         alert("Login failed: " + error.message);
