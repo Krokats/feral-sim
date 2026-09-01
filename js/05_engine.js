@@ -55,6 +55,7 @@ function runSimulation() {
                 }
 
                 var res = runCoreSimulation(currentConfig);
+                res.config = currentConfig; 
                 allResults.push(res);
             }
 
@@ -71,9 +72,9 @@ function runSimulation() {
                 // --- NEU: LOGS NACHBERECHNEN ---
                 // Wir kennen jetzt die Config und Seeds des min, max und avg Runs.
                 // Wir lassen sie exakt 1x durchlaufen, diesmal MIT Logging eingeschaltet (true).
-                if(avg.avgRun) avg.avgRun = runCoreSimulation(Object.assign({}, config, { seed: avg.avgRun.seed }), true);
-                if(avg.minRun) avg.minRun = runCoreSimulation(Object.assign({}, config, { seed: avg.minRun.seed }), true);
-                if(avg.maxRun) avg.maxRun = runCoreSimulation(Object.assign({}, config, { seed: avg.maxRun.seed }), true);
+                if(avg.avgRun) avg.avgRun = runCoreSimulation(avg.avgRun.config, true);
+                if(avg.minRun) avg.minRun = runCoreSimulation(avg.minRun.config, true);
+                if(avg.maxRun) avg.maxRun = runCoreSimulation(avg.maxRun.config, true);
                 
                 // Log auf Root-Ebene für Kompatibilität setzen
                 avg.log = avg.avgRun.log; 
