@@ -16,6 +16,34 @@ let CURRENT_USER = null;
 let CURRENT_COMMUNITY_TAB = 'sim';
 
 // ============================================================================
+// CUSTOM MODAL LOGIC (Ersatz für window.alert & window.confirm)
+// ============================================================================
+let confirmCallback = null;
+
+function showCustomAlert(title, message) {
+    document.getElementById('alertModalTitle').innerText = title;
+    document.getElementById('alertModalMessage').innerText = message;
+    document.getElementById('customAlertModal').classList.remove('hidden');
+}
+
+function closeCustomAlert() {
+    document.getElementById('customAlertModal').classList.add('hidden');
+}
+
+function showCustomConfirm(title, message, callback) {
+    document.getElementById('confirmModalTitle').innerText = title;
+    document.getElementById('confirmModalMessage').innerText = message;
+    confirmCallback = callback;
+    document.getElementById('customConfirmModal').classList.remove('hidden');
+}
+
+function closeCustomConfirm(confirmed) {
+    document.getElementById('customConfirmModal').classList.add('hidden');
+    if (confirmed && confirmCallback) confirmCallback();
+    confirmCallback = null;
+}
+
+// ============================================================================
 // 2. AUTHENTICATION (DISCORD)
 // ============================================================================
 
@@ -51,21 +79,37 @@ function updateAuthUI() {
     const userDisplay = document.getElementById('discordUserDisplay');
     const loginBtn = document.getElementById('discordLoginBtn');
     const authWarning = document.getElementById('publishAuthWarning');
+    const avatarImg = document.getElementById('discordAvatarImg');
+    const avatarPlaceholder = document.getElementById('discordAvatarPlaceholder');
 
     if (CURRENT_USER) {
-        // Discord Username versteckt sich in den Metadaten
         const discordName = CURRENT_USER.user_metadata?.custom_claims?.global_name || CURRENT_USER.user_metadata?.full_name || 'Discord User';
-        if(userDisplay) userDisplay.innerText = `Logged in as: ${discordName}`;
+        const avatarUrl = CURRENT_USER.user_metadata?.avatar_url;
+
+        if(userDisplay) userDisplay.innerHTML = `<div style="font-weight: bold; font-size: 1.1rem; color: #fff;">${discordName}</div><div style="font-size: 0.75rem; color: #a5d6a7;">Logged in successfully.</div>`;
+        
+        if (avatarUrl) {
+            if(avatarImg) { avatarImg.src = avatarUrl; avatarImg.style.display = 'block'; }
+            if(avatarPlaceholder) avatarPlaceholder.style.display = 'none';
+        }
+
         if(loginBtn) {
             loginBtn.innerText = "Logout";
             loginBtn.onclick = logoutDiscord;
+            loginBtn.style.backgroundColor = "#333";
+            loginBtn.style.borderColor = "#555";
         }
         if(authWarning) authWarning.style.display = "none";
     } else {
-        if(userDisplay) userDisplay.innerText = "Not logged in.";
+        if(userDisplay) userDisplay.innerHTML = `<div style="font-weight: bold; font-size: 1.1rem; color: #ddd;">Not logged in</div><div style="font-size: 0.75rem; color: #888;">Log in to vote, publish, and manage your builds.</div>`;
+        if(avatarImg) avatarImg.style.display = 'none';
+        if(avatarPlaceholder) avatarPlaceholder.style.display = 'flex';
+        
         if(loginBtn) {
             loginBtn.innerText = "Login with Discord";
             loginBtn.onclick = loginWithDiscord;
+            loginBtn.style.backgroundColor = "#5865F2";
+            loginBtn.style.borderColor = "#5865F2";
         }
         if(authWarning) authWarning.style.display = "block";
     }
@@ -83,7 +127,8 @@ async function loginWithDiscord() {
     
     if (error) {
         console.error("Login failed:", error);
-        alert("Login failed: " + error.message);
+        //alert("Login failed: " + error.message);
+        showCustomAlert("Login failed", error.message)
     }
 }
 
@@ -101,7 +146,8 @@ async function logoutDiscord() {
 
 function openPublishModal(type) {
     if (!CURRENT_USER) {
-        alert("You must log in with Discord first to publish a build! Open the Community Builds Modal to log in.");
+        //alert("You must log in with Discord first to publish a build! Open the Community Builds Modal to log in.");
+        showCustomAlert("Not logged in", "You must log in with Discord first to publish a build! Open the Community Builds Modal to log in.")
         return;
     }
 
@@ -126,8 +172,10 @@ async function publishBuild() {
     const title = document.getElementById('publishTitle').value.trim();
     const comment = document.getElementById('publishComment').value.trim();
 
-    if (!title) { alert("Please provide a title!"); return; }
-    if (comment.length > 250) { alert("Comment is too long (Max 250 chars)."); return; }
+    //if (!title) { alert("Please provide a title!"); return; }
+    if (!title) {showCustomAlert("Missin Title", "Please provide a title!"); return;}
+    //if (comment.length > 250) { alert("Comment is too long (Max 250 chars)."); return; }
+    if (comment.length > 250) {showCustomAlert("Comment too long", "Comment is too long (Max 250 chars)."); return;}
 
     let dataToSave = null;
 
@@ -140,7 +188,7 @@ async function publishBuild() {
         dataToSave = TALENT_CONFIG;
     } else if (type === 'rotation') {
         if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || CUSTOM_ROTATION.steps.length === 0) {
-            alert("Rotation is empty!"); return;
+            showCustomAlert("Error","Rotation is empty!"); return;
         }
         dataToSave = CUSTOM_ROTATION;
     } else if (type === 'sim') {
@@ -148,7 +196,8 @@ async function publishBuild() {
         dataToSave = SIM_LIST[ACTIVE_SIM_INDEX].config;
     }
 
-    if (!dataToSave) { alert("Error grabbing data."); return; }
+    if (!dataToSave) { showCustomAlert("Error","Error grabbing data."); return; }
+    
 
     const discordName = CURRENT_USER.user_metadata?.custom_claims?.global_name || CURRENT_USER.user_metadata?.full_name || 'Discord User';
 
@@ -172,7 +221,7 @@ async function publishBuild() {
 
     if (error) {
         console.error("Error publishing:", error);
-        alert("Could not publish build: " + error.message);
+        showCustomAlert("Error","Could not publish build: " + error.message);
     } else {
         showToast("Build published successfully!");
         closePublishModal();
@@ -236,7 +285,7 @@ function renderCommunityBuilds(builds) {
     tbody.innerHTML = "";
 
     if (builds.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No builds found for this category yet. Be the first!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 20px;">No builds found for this category yet. Be the first!</td></tr>';
         return;
     }
 
@@ -249,24 +298,36 @@ function renderCommunityBuilds(builds) {
         const upClass = hasUpvoted ? "upvoted" : "";
         const downClass = hasDownvoted ? "downvoted" : "";
 
+        // Separate Auswertung der Votes
+        const upVotesCount = build.upvoted_by ? build.upvoted_by.length : 0;
+        const downVotesCount = build.downvoted_by ? build.downvoted_by.length : 0;
+
+        // Gehört der Build dem aktuellen Nutzer?
+        const isAuthor = CURRENT_USER && CURRENT_USER.id === build.author_id;
+
         // Wir codieren das JSON-Objekt sicher als String ins HTML-Attribut
         const dataString = encodeURIComponent(JSON.stringify(build.data));
 
         tr.innerHTML = `
-            <td class="text-left">
+            <td class="text-left" style="vertical-align: middle;">
                 <div class="community-build-title">${build.title}</div>
                 <div class="community-build-comment">${build.comment || "No comment."}</div>
             </td>
-            <td class="text-left" style="color:#aaa;">${build.author_name}</td>
-            <td class="text-center">
+            <td class="text-left" style="vertical-align: middle; color:#aaa;">${build.author_name}</td>
+            <td class="text-center" style="vertical-align: middle;">
                 <div class="vote-container">
-                    <button class="vote-btn ${upClass}" onclick="voteBuild('${build.id}', 'up')" title="Upvote">▲</button>
-                    <span style="font-weight:bold; color:${build.score >= 0 ? '#4caf50' : '#f44336'};">${build.score || 0}</span>
-                    <button class="vote-btn ${downClass}" onclick="voteBuild('${build.id}', 'down')" title="Downvote">▼</button>
+                    <button class="vote-btn ${upClass}" onclick="voteBuild('${build.id}', 'up')" title="Upvote">👍</button>
+                    <span style="font-weight:bold; color:#a5d6a7; min-width: 15px;">${upVotesCount}</span>
+                    <span style="color:#555; margin: 0 4px;">|</span>
+                    <span style="font-weight:bold; color:#ef5350; min-width: 15px;">${downVotesCount}</span>
+                    <button class="vote-btn ${downClass}" onclick="voteBuild('${build.id}', 'down')" title="Downvote">👎</button>
                 </div>
             </td>
-            <td class="text-right">
-                <button class="btn-mini primary-btn" onclick="loadCommunityBuild('${build.type}', this)" data-build='${dataString}'>📥 Load</button>
+            <td class="text-right" style="vertical-align: middle;">
+                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                    <button class="btn-mini primary-btn" onclick="loadCommunityBuild('${build.type}', this)" data-build='${dataString}'>📥 Load</button>
+                    ${isAuthor ? `<button class="btn-mini" style="color:#ef5350; border-color:#ef5350;" onclick="deleteCommunityBuild('${build.id}')">🗑️ Del</button>` : ''}
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
@@ -279,7 +340,7 @@ function renderCommunityBuilds(builds) {
 
 async function voteBuild(buildId, action) {
     if (!CURRENT_USER) {
-        alert("You must be logged in with Discord to vote!");
+        showCustomAlert("Error","You must be logged in with Discord to vote!");
         return;
     }
 
@@ -323,7 +384,7 @@ async function voteBuild(buildId, action) {
 
     } catch (error) {
         console.error("Error voting:", error);
-        alert("Voting failed: " + error.message);
+        showCustomAlert("Error","Voting failed: " + error.message);
     }
 }
 
@@ -331,41 +392,66 @@ async function voteBuild(buildId, action) {
 // 6. LOADING BUILDS INTO SIMULATION
 // ============================================================================
 
+// ============================================================================
+// 6. LOADING / DELETING BUILDS (Mit Custom Modals)
+// ============================================================================
+
 function loadCommunityBuild(type, buttonElement) {
-    if (!confirm("Load this build? This will overwrite your current settings for this category.")) return;
+    showCustomConfirm("Load Build", "Are you sure you want to load this build? This will overwrite your current settings for this category.", () => {
+        const dataString = buttonElement.getAttribute('data-build');
+        if (!dataString) return;
 
-    const dataString = buttonElement.getAttribute('data-build');
-    if (!dataString) return;
+        try {
+            const data = JSON.parse(decodeURIComponent(dataString));
 
-    try {
-        // Dekodieren des in renderCommunityBuilds erstellten Strings
-        const data = JSON.parse(decodeURIComponent(dataString));
+            if (type === 'gear') {
+                GEAR_SELECTION = data.gear || {};
+                ENCHANT_SELECTION = data.enchants || {};
+                if(typeof initGearPlannerUI === 'function') initGearPlannerUI();
+                if(typeof calculateGearStats === 'function') calculateGearStats();
+            
+            } else if (type === 'talents') {
+                TALENT_CONFIG = data;
+                if(typeof renderTalentTree === 'function') renderTalentTree();
+            
+            } else if (type === 'rotation') {
+                CUSTOM_ROTATION = data;
+                if(typeof renderRotationList === 'function') renderRotationList();
+            
+            } else if (type === 'sim') {
+                addSim(false);
+                applyConfigToUI(data);
+            }
 
-        if (type === 'gear') {
-            GEAR_SELECTION = data.gear || {};
-            ENCHANT_SELECTION = data.enchants || {};
-            if(typeof initGearPlannerUI === 'function') initGearPlannerUI();
-            if(typeof calculateGearStats === 'function') calculateGearStats();
-        
-        } else if (type === 'talents') {
-            TALENT_CONFIG = data;
-            if(typeof renderTalentTree === 'function') renderTalentTree();
-        
-        } else if (type === 'rotation') {
-            CUSTOM_ROTATION = data;
-            if(typeof renderRotationList === 'function') renderRotationList();
-        
-        } else if (type === 'sim') {
-            addSim(false);
-            applyConfigToUI(data);
+            saveCurrentState();
+            closeCommunityModal();
+            showToast("Community Build successfully loaded!");
+
+        } catch (error) {
+            console.error("Error parsing build data:", error);
+            showCustomAlert("Error", "Failed to load build data.");
         }
+    });
+}
 
-        saveCurrentState();
-        closeCommunityModal();
-        showToast("Community Build successfully loaded!");
+function deleteCommunityBuild(buildId) {
+    showCustomConfirm("Delete Build", "Are you sure you want to permanently delete this build? This action cannot be undone.", async () => {
+        if(typeof showProgress === 'function') showProgress("Deleting build...");
+        
+        const { error } = await supabaseClient
+            .from('community_builds')
+            .delete()
+            .eq('id', buildId);
+            
+        if(typeof hideProgress === 'function') hideProgress();
 
-    } catch (error) {
-        console.error("Error parsing build data:", error);
-        alert("Failed to load build data.");
-    }
+        if (error) {
+            console.error("Error deleting:", error);
+            showCustomAlert("Deletion Failed", "Could not delete build: " + error.message);
+        } else {
+            showToast("Build deleted successfully!");
+            // Liste neu laden, um den gelöschten Eintrag zu entfernen
+            fetchCommunityBuilds(CURRENT_COMMUNITY_TAB);
+        }
+    });
 }

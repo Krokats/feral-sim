@@ -1517,16 +1517,20 @@ function applyConfigToUI(cfg) {
         }
 
         // Restore Custom Rotation oder Fallback auf Standard
-        if (cfg.custom_rotation && cfg.custom_rotation.length > 0) {
+        if (cfg.custom_rotation && typeof cfg.custom_rotation === 'object') {
+            // Egal ob es alte Array-Daten oder das neue Objekt-Format ist, wir laden es
             CUSTOM_ROTATION = JSON.parse(JSON.stringify(cfg.custom_rotation));
+            // Fallback, falls steps fehlen
+            if (!CUSTOM_ROTATION.steps) CUSTOM_ROTATION.steps = [];
         } else {
             // Wenn keine Custom Rotation im Speicher ist (z.B. bei alten Links), lade Standard
-            if (typeof PRESET_ROTATIONS !== 'undefined' && PRESET_ROTATIONS["standard"]) {
-                CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard"]));
+            if (typeof PRESET_ROTATIONS !== 'undefined' && PRESET_ROTATIONS["standard bleed"]) {
+                CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS["standard bleed"]));
             } else {
-                CUSTOM_ROTATION = [];
+                CUSTOM_ROTATION = { name: "", desc: "", steps: [] };
             }
         }
+        
         if (typeof renderRotationList === 'function') renderRotationList();
 
         // 3. Refresh UI Components
