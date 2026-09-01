@@ -574,7 +574,7 @@
                                                 <h2>⚙️ General</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="120"></div>
+                                                <div class="input-group"><label>Fight Duration (s)</label><input type="number" id="simTime" value="40"></div>
                                                 <div class="input-group"><label>Iterations</label><input type="number" id="simCount" value="1000"></div>
                                                 <div class="input-group">
                                                     <label>Simulation Engine</label>
@@ -654,25 +654,25 @@
                                                 <h2>💀 Enemy</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">Heroic Training Dummy</option></select></div></div>
+                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">Most Bosses (4211)</option></select></div></div>
                                                 
                                                 <div class="input-group"><label>Target Level</label><div class="select-wrapper"><select id="enemy_level"><option value="63" selected>Level 63 (Boss)</option><option value="60">Level 60</option></select></div></div>
                                                 <div class="input-group"><label>Enemy Type</label><div class="select-wrapper"><select id="enemy_type"><option value="undead">Undead</option><option value="humanoid" selected>Humanoid / Other</option></select></div></div>
-                                                <div class="input-group"><label>Base Armor</label><input type="number" id="enemy_armor" value="3731"></div>
+                                                <div class="input-group"><label>Base Armor</label><input type="number" id="enemy_armor" value="4221"></div>
                                                 
                                                 <div class="toggle-wrapper" style="margin-bottom:15px;">
                                                     <label class="toggle"><input type="checkbox" id="enemy_can_bleed" checked><span class="slider"></span><span class="label-text">Can Bleed</span></label>
                                                 </div>
                                                 <div class="toggle-wrapper" style="margin-bottom:15px;">
-                                                    <label class="toggle"><input type="checkbox" id="enemy_can_block" checked><span class="slider"></span><span class="label-text">Can Block</span></label>
+                                                    <label class="toggle"><input type="checkbox" id="enemy_can_block"><span class="slider"></span><span class="label-text">Can Block</span></label>
                                                 </div>
                                                 
                                                 <div class="gear-section-title">Debuffs (Armor)</div>
-                                                <div class="input-group"><label>Major Armor Reduct</label><div class="select-wrapper"><select id="debuff_major_armor"><option value="" selected>None</option><option value="sunder">Sunder Armor x5 (-2250)</option><option value="iea">Imp. Exposed Armor (-2550)</option></select></div></div>
+                                                <div class="input-group"><label>Major Armor Reduct</label><div class="select-wrapper"><select id="debuff_major_armor"><option value="" selected>Sunder Armor x5 (-2250)</option><option value="sunder">Sunder Armor x5 (-2250)</option><option value="iea">Imp. Exposed Armor (-2550)</option></select></div></div>
                                                 <div class="checkbox-grid">
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_eskhandar"><span class="checkmark"></span> Spirit of Eskhandar (-1200)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_ff"><span class="checkmark"></span> Faerie Fire (-505)</label>
-                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_cor"><span class="checkmark"></span> Curse of Recklessness (-640)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_ff" checked><span class="checkmark"></span> Faerie Fire (-505)</label>
+                                                    <label class="custom-checkbox"><input type="checkbox" id="debuff_cor" checked><span class="checkmark"></span> Curse of Recklessness (-640)</label>
                                                 </div>
 
                                                 <div class="enemy-info-box" style="margin-top:15px;">

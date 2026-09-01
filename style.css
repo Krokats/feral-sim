@@ -1914,6 +1914,75 @@ input:checked + .slider::before { transform: translateX(16px); background-color:
 
 
 /* =========================================
+   GLOBAL SOURCE FILTER DROPDOWN 
+   ========================================= */
+.source-dropdown-wrapper {
+    position: relative;
+}
+
+.source-menu {
+    position: absolute;
+    top: 100%;
+    right: 0; /* Öffnet sich bündig zum Button nach links weg */
+    background: #1a1a1a;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 4px;
+    list-style: none;
+    padding: 5px 0;
+    margin: 4px 0 0 0;
+    z-index: 9999;
+    min-width: 220px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+}
+
+.source-menu li {
+    position: relative;
+    padding: 8px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #ddd;
+    font-size: 0.85rem;
+}
+
+.source-menu li:hover {
+    background: rgba(255, 125, 10, 0.2);
+}
+
+/* Pfeil für Elemente mit Untermenü */
+.source-menu .has-submenu::after {
+    content: '▶';
+    position: absolute;
+    right: 10px;
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.source-menu .submenu {
+    display: none;
+    position: absolute;
+    top: -1px;
+    left: 100%; /* Submenü klappt nach rechts auf */
+    background: #1a1a1a;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 4px;
+    list-style: none;
+    padding: 5px 0;
+    margin: 0;
+    min-width: 200px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+}
+
+.source-menu li:hover > .submenu {
+    display: block;
+}
+
+.source-checkbox {
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+/* =========================================
    COMMUNITY MODAL SPECIFIC STYLING
    ========================================= */
 

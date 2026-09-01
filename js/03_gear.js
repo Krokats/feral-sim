@@ -1319,18 +1319,28 @@ function buildSourceMenuDOM() {
         subMenu.className = "submenu";
 
         Object.keys(SOURCE_TREE[cat]).sort().forEach(sub => {
-            let subNode = createMenuItem(sub, isSubCategoryChecked(cat, sub), "sub", cat, sub, null, true);
+            let detKeys = Object.keys(SOURCE_TREE[cat][sub]);
+            
+            // PRÜFUNG: Gibt es echte Details oder nur den leeren Standard-String ""?
+            let hasRealDetails = !(detKeys.length === 1 && detKeys[0] === "");
 
-            let detMenu = document.createElement("ul");
-            detMenu.className = "submenu";
+            // Ist hasRealDetails = false, wird kein 'has-submenu' Pfeil im CSS generiert!
+            let subNode = createMenuItem(sub, isSubCategoryChecked(cat, sub), "sub", cat, sub, null, hasRealDetails);
 
-            Object.keys(SOURCE_TREE[cat][sub]).sort().forEach(det => {
-                let label = det === "" ? "General / None" : det;
-                let detNode = createMenuItem(label, SOURCE_TREE[cat][sub][det], "det", cat, sub, det, false);
-                detMenu.appendChild(detNode);
-            });
+            // Nur ein 3. Level (Detail-Menü) aufbauen, wenn es wirklich Unterpunkte gibt
+            if (hasRealDetails) {
+                let detMenu = document.createElement("ul");
+                detMenu.className = "submenu";
 
-            subNode.appendChild(detMenu);
+                detKeys.sort().forEach(det => {
+                    let label = det === "" ? "General / None" : det;
+                    let detNode = createMenuItem(label, SOURCE_TREE[cat][sub][det], "det", cat, sub, det, false);
+                    detMenu.appendChild(detNode);
+                });
+
+                subNode.appendChild(detMenu);
+            }
+
             subMenu.appendChild(subNode);
         });
 
