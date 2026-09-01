@@ -52,11 +52,84 @@
                     <input type="text" id="simName" class="sim-name-input" value="Simulation 1"
                         onchange="updateSimName()">
                     <div class="header-actions">
-                        <button class="share-btn" onclick="openOtherSimsModal()">🌍 Other Simulations</button>
-                        <button onclick="importFromClipboard()" class="share-btn" style="margin-right: 5px;">📥 Import Config</button>
-                        <button onclick="exportSettings()" class="share-btn">🔗 Save Config</button>
+                        <button class="share-btn" onclick="openCommunityModal('sim')" style="margin-right: 5px;">🌍 Community Builds</button>
+                        <button class="share-btn" onclick="openOtherSimsModal()">Other Simulations</button>
+                        <!-- <button onclick="importFromClipboard()" class="share-btn" style="margin-right: 5px;">📥 Import Config</button>
+                        <button onclick="exportSettings()" class="share-btn">🔗 Save Config</button> -->
                     </div>
                 </header>
+
+                <!-- COMMUNITY BUILDS MODAL -->
+                <div id="communityModal" class="modal-overlay hidden" onclick="if(event.target === this) closeCommunityModal()">
+                    <div class="modal-box" style="max-width: 900px; width: 95%;">
+                        <div class="modal-header">
+                            <span class="modal-title">🌍 Community Builds</span>
+                            <span class="modal-close" onclick="closeCommunityModal()">×</span>
+                        </div>
+                        
+                        <div class="community-auth-bar" id="communityAuthBar" style="flex-wrap: wrap;">
+                            <span id="discordUserDisplay">Not logged in.</span>
+                            <button class="primary-btn btn-mini" id="discordLoginBtn" onclick="loginWithDiscord()">Login with Discord</button>
+                            <div style="flex-basis: 100%; font-size: 0.75rem; color: #888; margin-top: 8px; text-align: center;">
+                                Discord asks for your email, but we only store your Username for voting. Emails are kept private and never shown.
+                            </div>
+                        </div>
+
+                        <div class="view-toggles" style="justify-content: center; margin: 15px 0;">
+                            <button class="view-btn active" id="tab_sim" onclick="switchCommunityTab('sim')">Full Sims</button>
+                            <button class="view-btn" id="tab_gear" onclick="switchCommunityTab('gear')">Gear</button>
+                            <button class="view-btn" id="tab_talents" onclick="switchCommunityTab('talents')">Talents</button>
+                            <button class="view-btn" id="tab_rotation" onclick="switchCommunityTab('rotation')">Rotations</button>
+                        </div>
+
+                        <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                            <table class="result-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Build Name & Comment</th>
+                                        <th class="text-left">Author</th>
+                                        <th class="text-center">Votes</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="communityTableBody">
+                                    <tr><td colspan="4" class="text-center">Loading builds...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PUBLISH BUILD MODAL -->
+                <div id="publishModal" class="modal-overlay hidden" onclick="if(event.target === this) closePublishModal()">
+                    <div class="modal-box" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <span class="modal-title">⬆️ Publish to Community</span>
+                            <span class="modal-close" onclick="closePublishModal()">×</span>
+                        </div>
+                        <div class="modal-body" style="padding: 20px;">
+                            <div id="publishAuthWarning" style="color: #f44336; margin-bottom: 10px; display: none;">
+                                You must be logged in via Discord to publish!
+                            </div>
+                            <div style="flex-basis: 100%; font-size: 0.75rem; color: #888; margin-top: 8px; text-align: center;">
+                                Discord asks for your email, but we only store your Username for voting. Emails are kept private and never shown.
+                            </div>
+                            <input type="hidden" id="publishType" value="gear">
+                            <div class="input-group">
+                                <label>Build Title</label>
+                                <input type="text" id="publishTitle" placeholder="e.g. Phase 2 Pre-BiS" maxlength="50">
+                            </div>
+                            <div class="input-group">
+                                <label>Comment (Max 250 chars)</label>
+                                <textarea id="publishComment" placeholder="Explain your build..." maxlength="250" style="width:100%; height:80px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; padding: 8px; border-radius: 4px;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+                                <button class="primary-btn" onclick="publishBuild()">Publish</button>
+                                <button class="secondary-btn" onclick="closePublishModal()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- NEU: Modal für Other Simulations (Groß, ohne Kasten & ohne Titel) -->
                 <div id="otherSimsModal" class="modal-overlay hidden" onclick="if(event.target === this) closeOtherSimsModal()">
@@ -259,10 +332,15 @@
                                             </select>
                                         </div>
                                         <button class="btn-mini" style="margin: 0; padding: 6px 15px; white-space: nowrap;" onclick="loadBiSPreset()">Load</button>
+                                        <!-- NEUER BUTTON -->
+                                        <button class="btn-mini primary-btn" style="margin: 0; padding: 6px 15px; white-space: nowrap;" onclick="openCommunityModal('gear')">🌍 Community</button>
                                     </div>
+                                    <!-- Direkt darunter den Publish Button einfügen -->
                                     <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
                                         <button class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7; padding: 4px 10px; margin: 0;" onclick="saveCustomGearPreset()">Save</button>
                                         <button class="btn-mini" style="color:#f44336; border-color:#f44336; padding: 4px 10px; margin: 0;" onclick="deleteCustomGearPreset()">Del</button>
+                                        <!-- NEUER BUTTON -->
+                                        <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6; padding: 4px 10px; margin: 0;" onclick="openPublishModal('gear')">⬆️ Publish</button>
                                     </div>
                                 </div>
 
@@ -367,8 +445,10 @@
                                                 <select id="talent_preset_select" style="padding:6px; min-width: 150px;"></select>
                                             </div>
                                             <button class="btn-mini" onclick="loadTalentPreset()">Load</button>
+                                            <button class="btn-mini primary-btn" onclick="openCommunityModal('talents')">🌍 Community</button>
                                             <button class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7;" onclick="saveTalentPreset()">Save</button>
                                             <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="deleteTalentPreset()">Del</button>
+                                            <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6;" onclick="openPublishModal('talents')">⬆️ Publish</button>
                                         </div>
                                         <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="clearTalents()">Reset Talents</button>
                                     </div>
@@ -672,8 +752,10 @@
                                                     </div>
                                                 </div>
                                                 <button class="btn-mini" onclick="loadSelectedPreset()">Load Preset</button>
+                                                <button class="btn-mini primary-btn" onclick="openCommunityModal('rotation')">🌍 Community</button>
                                                 <button class="btn-mini" onclick="saveCustomPreset()" style="color:#a5d6a7; border-color:#a5d6a7;">Save</button>
                                                 <button class="btn-mini" onclick="deleteCustomPreset()" style="color:#f44336; border-color:#f44336;">Del</button>
+                                                <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6;" onclick="openPublishModal('rotation')">⬆️ Publish</button>
                                             </div>
                                             <button class="btn-mini" onclick="clearRotation()" style="color:#f44336; border-color:#f44336; padding:8px 12px;">🗑️ Clear Rotation</button>
                                         </div>
@@ -892,5 +974,12 @@
     <script src="js/05_engine.js"></script>
     <script src="js/06_main.js"></script>
     <script src="js/talent_tree.js"></script>
+    
+    
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Community Logik -->
+    <script src="js/community.js"></script>
 </body>
 </html>

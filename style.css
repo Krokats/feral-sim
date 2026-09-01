@@ -1979,3 +1979,55 @@ input:checked + .slider::before { transform: translateX(16px); background-color:
     margin-right: 10px;
     cursor: pointer;
 }
+
+/* Community Modal specific styling */
+.community-auth-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(88, 101, 242, 0.1);
+    border: 1px solid #5865F2; /* Discord Color */
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+#discordUserDisplay {
+    color: #5865F2;
+    font-weight: 600;
+}
+
+.vote-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.vote-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.vote-btn:hover {
+    color: #fff;
+}
+
+.vote-btn.upvoted { color: #4caf50; }
+.vote-btn.downvoted { color: #f44336; }
+
+.community-build-title {
+    color: var(--druid-orange);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.community-build-comment {
+    font-size: 0.8rem;
+    color: #aaa;
+    white-space: pre-wrap;
+}
