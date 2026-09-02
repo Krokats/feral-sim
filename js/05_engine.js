@@ -1076,14 +1076,14 @@ function runCoreSimulation(cfg, enableLogging = false) {
 
         if (t >= swingTimer - 0.001) {
 
-            var performSwing = function (isExtra, probabilityScale) {
+            var performSwing = function (isExtra, extraAP, probabilityScale) {
                 var pScale = (typeof probabilityScale !== 'undefined') ? probabilityScale : 1.0;
 
                 // Damage Roll
                 var baseDmgRoll = rollDamageRange(base.minDmg, base.maxDmg);
                 var currentAP = getCurrentAP();
 
-                if (isExtra) currentAP += 315;
+                if (extraAP) currentAP += extraAP;
 
                 var apBonus = (currentAP - base.baseAp) / 14.0;
                 var rawDmg = baseDmgRoll + apBonus;
@@ -1188,7 +1188,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                     }
                     if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
                         logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
-                        performSwing(true);
+                        performSwing(true, 0);
                     }
                     if (cfg.t_maelstrom && rng.proc("Maelstrom", 3)) {
                         var MaelstromDmg = rollDamageRange(200, 301);
@@ -1214,14 +1214,14 @@ function runCoreSimulation(cfg, enableLogging = false) {
                     if (cfg.buff_wf_totem && !isExtra && cds.windfury <= t && rng.proc("WF", 20)) {
                         cds.windfury = t + 2.0; // Setzt den internen 2.0s Cooldown
                         logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
-                        performSwing(true);
+                        performSwing(true, 315);
                     }
 
                 }
 
             };
 
-            performSwing(false);
+            performSwing(false,0);
 
             var currentSpeed = base.speed;
             var hasteMod = getHasteMod();
@@ -1818,7 +1818,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                             // Trinket Instants
                             if (cfg.t_hoj && !isExtra && rng.proc("HoJ", 2)) {
                                 logAction("HoJ", "Extra Attack", "Proc", 0, false, false);
-                                performSwing(true);
+                                performSwing(true, 0);
 
                                 var currentSpeed = base.speed;
                                 var hasteMod = getHasteMod();
@@ -1837,7 +1837,7 @@ function runCoreSimulation(cfg, enableLogging = false) {
                             if (cfg.buff_wf_totem && cds.windfury <= t && rng.proc("WF", 20)) {
                                 cds.windfury = t + 2.0; // Setzt den internen 2.0s Cooldown
                                 logAction("Windfury", "Extra Attack", "Proc", 0, false, false);
-                                performSwing(true);
+                                performSwing(true, 315);
                                 
                                 // Windfury Proc setzt den regulären Auto-Attack Swing Timer zurück!
                                 var currentSpeed = base.speed;
