@@ -1211,8 +1211,8 @@ function runCoreSimulation(cfg, enableLogging = false) {
                         stacks.swarmguard++;
                         logAction("Proc", "Swarmguard", "Stack " + stacks.swarmguard, "Proc", 0, false, false);
                     }
-                    if (cfg.buff_wf_totem && !isExtra && cds.windfury <= t && rng.proc("WF", 25)) {
-                        cds.windfury = t + 0.5; // Setzt den internen 0.5s Cooldown
+                    if (cfg.buff_wf_totem && !isExtra && cds.windfury <= t && rng.proc("WF", 20)) {
+                        cds.windfury = t + 2.0; // Setzt den internen 2.0s Cooldown
                         logAction("Proc", "Windfury", "Extra Attack", "Proc", 0, false, false);
                         performSwing(true);
                     }
@@ -1834,8 +1834,8 @@ function runCoreSimulation(cfg, enableLogging = false) {
                                 dealDamage("Heating Coil", CoilDamage, "Fire", "Proc", false, false);
                                 if (rng.proc("CoilCrit", critChance)) dealDamage("Heating Coil", CoilDamage, "Fire", "Proc Crit", true, false);
                             }
-                            if (cfg.buff_wf_totem && cds.windfury <= t && rng.proc("WF", 25)) {
-                                cds.windfury = t + 0.5; // Setzt den internen 0.5s Cooldown
+                            if (cfg.buff_wf_totem && cds.windfury <= t && rng.proc("WF", 20)) {
+                                cds.windfury = t + 2.0; // Setzt den internen 2.0s Cooldown
                                 logAction("Windfury", "Extra Attack", "Proc", 0, false, false);
                                 performSwing(true);
                                 
