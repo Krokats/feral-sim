@@ -353,6 +353,21 @@
                             <div class="char-middle">
                                 <div style="margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; position: relative;">
                                     <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Allowed Item Sources:</label>
+                                    <!-- NEU: Dropdown für die Phase-Presets -->
+                                    <div class="select-wrapper" style="flex-grow: 1; margin: 0;">
+                                        <select id="phase_preset_select" onchange="applyPhasePreset(this.value)" style="width: 100%; margin: 0; padding: 6px;">
+                                            <option value="all">All Phases (No Restrictions)</option>
+                                            <option value="0">Phase 0 (LKH, Onyxia, MC)</option>
+                                            <option value="1">Phase 1 (Zul'Gurub)</option>
+                                            <option value="2">Phase 2 (Blackwing Lair)</option>
+                                            <option value="3">Phase 3 (Emerald Sanctum)</option>
+                                            <option value="4">Phase 4 (Ahn'Qiraj)</option>
+                                            <option value="5">Phase 5 (Timbermaw Hold)</option>
+                                            <option value="6">Phase 6 (Naxxramas)</option>
+                                            <option value="7">Phase 7 (Upper Karazhan Halls)</option>
+                                        </select>
+                                    </div>
+
                                     <div class="select-wrapper" style="flex-grow: 1; margin: 5px;">
                                         <button class="btn-mini" onclick="toggleSourceMenu(event)" id="sourceMenuBtn" style="margin: 0; padding: 6px 22px;">⚙️ Filter Sources </button>
                                         <ul class="source-menu" id="sourceMenuRoot" style="display:none;">

@@ -1431,6 +1431,73 @@ function syncCheckboxesUI() {
     });
 }
 
+// ============================================================================
+// PHASE PRESET LOGIC
+// ============================================================================
+
+// Definiert genau, welche SubCategory-Strings in welcher Phase released werden
+const PHASE_CONTENT = [
+    ["Lower Karazhan Halls", "Onyxia's Lair", "Molten Core"], // Phase 0
+    ["Zul'Gurub"],                                            // Phase 1
+    ["Blackwing Lair"],                                       // Phase 2
+    ["Emerald Sanctum"],                                      // Phase 3
+    ["Temple of Ahn'Qiraj", "Ruins of Ahn'Qiraj"],            // Phase 4
+    ["Timbermaw Hold"],                                       // Phase 5
+    ["Naxxramas"],                                            // Phase 6
+    ["Upper Karazhan Halls"]                                  // Phase 7
+];
+
+function applyPhasePreset(selectedPhase) {
+    // 1. Hard-Reset: Alles (inkl. World Drops, Berufe, Dungeons) standardmäßig aktivieren
+    WORLD_DROPS_ENABLED = true;
+    for (let cat in SOURCE_TREE) {
+        for (let sub in SOURCE_TREE[cat]) {
+            for (let det in SOURCE_TREE[cat][sub]) {
+                SOURCE_TREE[cat][sub][det] = true;
+            }
+        }
+    }
+
+    // 2. Einschränkungen anwenden (falls eine spezifische Phase gewählt wurde)
+    if (selectedPhase !== "all") {
+        let maxPhase = parseInt(selectedPhase);
+        
+        // Wir durchlaufen alle Phasen, die HÖHER als die gewählte sind.
+        // Deren Zonen werden auf false (deaktiviert) gesetzt.
+        for (let i = maxPhase + 1; i < PHASE_CONTENT.length; i++) {
+            let restrictedZones = PHASE_CONTENT[i];
+            
+            // Suche die Zonen im globalen SOURCE_TREE und deaktiviere sie
+            for (let cat in SOURCE_TREE) {
+                for (let sub in SOURCE_TREE[cat]) {
+                    // Überprüfen, ob die aktuelle Unterkategorie in der Liste der verbotenen Zonen steht
+                    if (restrictedZones.includes(sub)) {
+                        for (let det in SOURCE_TREE[cat][sub]) {
+                            SOURCE_TREE[cat][sub][det] = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. UI Checkboxen im Custom Filter-Menü synchronisieren 
+    // (So sieht der User genau, was das Preset gemacht hat)
+    syncCheckboxesUI();
+    
+    // 4. Offene Item-Listen (falls das Item-Modal gerade offen ist) direkt neu filtern
+    updateItemListsIfOpen();
+    
+    // 5. User Feedback
+    if (typeof showToast === "function") {
+        if (selectedPhase === "all") {
+            showToast("All phases enabled.");
+        } else {
+            showToast("Item sources restricted to Phase " + selectedPhase + " and below.");
+        }
+    }
+}
+
 // --- HELPER FUNKTIONEN FÜR INDETERMINATE STATUS ---
 
 function getCategoryCheckState(cat) {
