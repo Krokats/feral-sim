@@ -1244,7 +1244,7 @@ input:checked + .slider::before { transform: translateX(16px); background-color:
 
 /* COMBAT LOG STYLES */
 .log-container {
-    max-height: 500px;
+    max-height: 1000px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
