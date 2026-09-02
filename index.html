@@ -81,11 +81,14 @@
                             </div>
                         </div>
 
-                        <div class="view-toggles" style="justify-content: center; margin: 15px 0;">
-                            <button class="view-btn active" id="tab_sim" onclick="switchCommunityTab('sim')">Full Sims</button>
-                            <button class="view-btn" id="tab_gear" onclick="switchCommunityTab('gear')">Gear</button>
-                            <button class="view-btn" id="tab_talents" onclick="switchCommunityTab('talents')">Talents</button>
-                            <button class="view-btn" id="tab_rotation" onclick="switchCommunityTab('rotation')">Rotations</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0; flex-wrap: wrap; gap: 10px;">
+                            <div class="view-toggles" style="margin: 0;">
+                                <button class="view-btn active" id="tab_sim" onclick="switchCommunityTab('sim')">Full Sims</button>
+                                <button class="view-btn" id="tab_gear" onclick="switchCommunityTab('gear')">Gear</button>
+                                <button class="view-btn" id="tab_talents" onclick="switchCommunityTab('talents')">Talents</button>
+                                <button class="view-btn" id="tab_rotation" onclick="switchCommunityTab('rotation')">Rotations</button>
+                            </div>
+                            <button class="primary-btn" style="background-color: #4caf50; border-color: #4caf50; padding: 6px 15px;" onclick="openPublishModal(CURRENT_COMMUNITY_TAB)">⬆️ Save your Build</button>
                         </div>
 
                         <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
@@ -95,11 +98,10 @@
                                         <th class="text-left">Build Name & Comment</th>
                                         <th class="text-left">Author</th>
                                         <th class="text-center">Votes</th>
-                                        <th class="text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="communityTableBody">
-                                    <tr><td colspan="4" class="text-center">Loading builds...</td></tr>
+                                    <tr><td colspan="3" class="text-center">Loading builds...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -188,23 +190,6 @@
                             <a href="https://krokats.github.io/bear-sim" class="sim-promo-card active" style="background-image: url('Bear-Background.jpg');">
                                 <div class="card-label">🐻 Bear Sim</div>
                             </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- NEU: Modal für Gear Preset Bestätigung -->
-                <div id="gearPresetModal" class="modal-overlay hidden">
-                    <div class="modal-box" style="max-width: 400px; text-align: center;">
-                        <div class="modal-header">
-                            <span class="modal-title">Load Gear Preset</span>
-                            <span class="modal-close" onclick="closeGearPresetModal()">×</span>
-                        </div>
-                        <div style="padding: 20px;">
-                            <p style="margin-bottom: 20px; color: #ddd;">Are you sure you want to replace your current gear with this preset?</p>
-                            <div style="display: flex; gap: 10px; justify-content: center;">
-                                <button class="primary-btn" onclick="confirmLoadBiSPreset()">Yes, replace</button>
-                                <button class="secondary-btn" onclick="closeGearPresetModal()">Cancel</button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -351,8 +336,13 @@
                             <div class="char-left" id="charLeftCol"></div>
 
                             <div class="char-middle">
+
+                                <button class="btn-mini primary-btn" style="margin: 7px; padding: 8px 20px; white-space: nowrap; font-weight: bold;" onclick="openCommunityModal('gear')">🌍 Presets & Community</button>
+                               
+                                
                                 <div style="margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; position: relative;">
                                     <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Allowed Item Sources:</label>
+                                    
                                     <!-- NEU: Dropdown für die Phase-Presets -->
                                     <div class="select-wrapper" style="flex-grow: 1; margin: 0;">
                                         <select id="phase_preset_select" onchange="applyPhasePreset(this.value)" style="width: 100%; margin: 0; padding: 6px;">
@@ -375,27 +365,7 @@
                                         </ul>
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; box-sizing: border-box;">
-                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                        <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Gear Preset:</label>
-                                        <div class="select-wrapper" style="flex-grow: 1; margin: 0;">
-                                            <select id="bis_preset_select" style="width: 100%; margin: 0; padding: 6px;">
-                                                <option value="">-- Select Preset --</option>
-                                            </select>
-                                        </div>
-                                        <button class="btn-mini" style="margin: 0; padding: 6px 15px; white-space: nowrap;" onclick="loadBiSPreset()">Load</button>
-                                        <!-- NEUER BUTTON -->
-                                        <button class="btn-mini primary-btn" style="margin: 0; padding: 6px 15px; white-space: nowrap;" onclick="openCommunityModal('gear')">🌍 Community</button>
-                                    </div>
-                                    <!-- Direkt darunter den Publish Button einfügen -->
-                                    <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
-                                        <!--<button class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7; padding: 4px 10px; margin: 0;" onclick="saveCustomGearPreset()">Save</button>
-                                        <button class="btn-mini" style="color:#f44336; border-color:#f44336; padding: 4px 10px; margin: 0;" onclick="deleteCustomGearPreset()">Del</button> -->
-                                        <!-- NEUER BUTTON -->
-                                        <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6; padding: 4px 10px; margin: 0;" onclick="openPublishModal('gear')">⬆️ Publish</button>
-                                    </div>
-                                </div>
-
+                                
                                 <h2 style="margin-bottom:10px; font-size:1rem; text-align: center;">Stat Weights</h2>
                                 <div class="gp-stats-config" style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                                     
@@ -492,17 +462,8 @@
                                 <div class="card-body">
                                     <!-- Preset Controls -->
                                     <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center; flex-wrap: wrap; gap: 10px;">
-                                        <div style="display:flex; gap:10px; align-items:center;">
-                                            <div class="select-wrapper">
-                                                <select id="talent_preset_select" style="padding:6px; min-width: 150px;"></select>
-                                            </div>
-                                            <button class="btn-mini" onclick="loadTalentPreset()">Load</button>
-                                            <button class="btn-mini primary-btn" onclick="openCommunityModal('talents')">🌍 Community</button>
-                                            <!--<button class="btn-mini" style="color:#a5d6a7; border-color:#a5d6a7;" onclick="saveTalentPreset()">Save</button>
-                                            <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="deleteTalentPreset()">Del</button>-->
-                                            <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6;" onclick="openPublishModal('talents')">⬆️ Publish</button>
-                                        </div>
-                                        <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="clearTalents()">Reset Talents</button>
+                                        <button class="btn-mini primary-btn" style="padding: 8px 20px; font-weight: bold;" onclick="openCommunityModal('talents')">🌍 Presets & Community</button>
+                                        <button class="btn-mini" style="color:#f44336; border-color:#f44336;" onclick="clearTalents()">🗑️ Reset Talents</button>
                                     </div>
 
                                     <!-- Talent Grids -->
@@ -669,7 +630,14 @@
                                                 <h2>💀 Enemy</h2>
                                             </div>
                                             <div class="card-body">
-                                                <div class="input-group"><label>Select Boss (Sets Armor)</label><div class="select-wrapper"><select id="enemy_boss_select"><option value="">Most Bosses (4211)</option></select></div></div>
+                                                <div class="input-group">
+                                                    <label>Select Boss (Sets Armor)</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="enemy_boss_select">
+                                                            <option value="">Most Bosses (4211)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 
                                                 <div class="input-group"><label>Target Level</label><div class="select-wrapper"><select id="enemy_level"><option value="63" selected>Level 63 (Boss)</option><option value="60">Level 60</option></select></div></div>
                                                 <div class="input-group"><label>Enemy Type</label><div class="select-wrapper"><select id="enemy_type"><option value="undead">Undead</option><option value="humanoid" selected>Humanoid / Other</option></select></div></div>
@@ -683,7 +651,16 @@
                                                 </div>
                                                 
                                                 <div class="gear-section-title">Debuffs (Armor)</div>
-                                                <div class="input-group"><label>Major Armor Reduct</label><div class="select-wrapper"><select id="debuff_major_armor"><option value="" selected>Sunder Armor x5 (-2250)</option><option value="sunder">Sunder Armor x5 (-2250)</option><option value="iea">Imp. Exposed Armor (-2550)</option></select></div></div>
+                                                <div class="input-group">
+                                                    <label>Major Armor Reduct</label>
+                                                    <div class="select-wrapper">
+                                                        <select id="debuff_major_armor">
+                                                            <option value="">None</option>
+                                                            <option value="sunder" selected>Sunder Armor x5 (-2250)</option>
+                                                            <option value="iea">Imp. Exposed Armor (-2550)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 <div class="checkbox-grid">
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_eskhandar"><span class="checkmark"></span> Spirit of Eskhandar (-1200)</label>
                                                     <label class="custom-checkbox"><input type="checkbox" id="debuff_ff" checked><span class="checkmark"></span> Faerie Fire (-505)</label>
@@ -795,20 +772,8 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="rotation-builder-container">
-                                        <div class="rb-header" style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
-                                            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                                                <div class="input-group" style="margin:0; width:200px;">
-                                                    <label>Presets</label>
-                                                    <div class="select-wrapper">
-                                                        <select id="rotation_preset_select"></select>
-                                                    </div>
-                                                </div>
-                                                <button class="btn-mini" onclick="loadSelectedPreset()">Load Preset</button>
-                                                <button class="btn-mini primary-btn" onclick="openCommunityModal('rotation')">🌍 Community</button>
-                                                <!--<button class="btn-mini" onclick="saveCustomPreset()" style="color:#a5d6a7; border-color:#a5d6a7;">Save</button>
-                                                <button class="btn-mini" onclick="deleteCustomPreset()" style="color:#f44336; border-color:#f44336;">Del</button>-->
-                                                <button class="btn-mini" style="color:#64b5f6; border-color:#64b5f6;" onclick="openPublishModal('rotation')">⬆️ Publish</button>
-                                            </div>
+                                        <div class="rb-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
+                                            <button class="btn-mini primary-btn" style="padding: 8px 20px; font-weight: bold;" onclick="openCommunityModal('rotation')">🌍 Presets & Community</button>
                                             <button class="btn-mini" onclick="clearRotation()" style="color:#f44336; border-color:#f44336; padding:8px 12px;">🗑️ Clear Rotation</button>
                                         </div>
                                         

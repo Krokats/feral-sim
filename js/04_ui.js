@@ -701,11 +701,7 @@ function setupUIListeners() {
 
     // Init Rotation Help
     renderRotationHelp();
-
-    // Init Rotation Builder
     if(typeof initRotationBuilder === 'function') initRotationBuilder();
-    // Init Talent Tree
-    if(typeof renderTalentPresetDropdown === 'function') renderTalentPresetDropdown();
     if(typeof renderTalentTree === 'function') renderTalentTree();
 
 }
@@ -2233,7 +2229,6 @@ var draggedSkillId = null;
 var draggedStepIndex = null;
 
 function initRotationBuilder() {
-    populatePresetDropdown();
     renderRotationToolbox();
     renderRotationList();
 
@@ -2517,84 +2512,6 @@ function addCondition(sIdx) {
 function removeCondition(sIdx, cIdx) {
     CUSTOM_ROTATION.steps[sIdx].conditions.splice(cIdx, 1);
     renderRotationList();
-}
-
-function populatePresetDropdown() {
-    var sel = document.getElementById("rotation_preset_select");
-    if (!sel) return;
-    sel.innerHTML = '<option value="">-- Select Preset --</option>';
-    
-    var grpDef = document.createElement("optgroup");
-    grpDef.label = "Default Presets";
-    Object.keys(PRESET_ROTATIONS).forEach(k => {
-        var opt = document.createElement("option"); opt.value = "def_" + k; opt.innerText = PRESET_ROTATIONS[k].name || k;
-        grpDef.appendChild(opt);
-    });
-    sel.appendChild(grpDef);
-
-    var customStr = localStorage.getItem("feral_sim_custom_rotations");
-    if (customStr) {
-        try {
-            var custom = JSON.parse(customStr);
-            var grpCus = document.createElement("optgroup");
-            grpCus.label = "My Saved Presets";
-            Object.keys(custom).forEach(k => {
-                var opt = document.createElement("option"); opt.value = "cus_" + k; opt.innerText = custom[k].name || k;
-                grpCus.appendChild(opt);
-            });
-            if (grpCus.children.length > 0) sel.appendChild(grpCus);
-        } catch(e){}
-    }
-}
-
-function loadSelectedPreset() {
-    var val = document.getElementById("rotation_preset_select").value;
-    if (!val) { alert("Please select a preset from the dropdown first."); return; }
-    if (CUSTOM_ROTATION && CUSTOM_ROTATION.steps && CUSTOM_ROTATION.steps.length > 0) {
-        if(!confirm("Overwrite your current rotation?")) return;
-    }
-    
-    if (val.startsWith("def_")) {
-        var k = val.substring(4);
-        CUSTOM_ROTATION = JSON.parse(JSON.stringify(PRESET_ROTATIONS[k]));
-    } else if (val.startsWith("cus_")) {
-        var k = val.substring(4);
-        var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
-        if (custom[k]) CUSTOM_ROTATION = JSON.parse(JSON.stringify(custom[k]));
-    }
-    renderRotationList();
-    showToast("Preset loaded!");
-}
-
-function saveCustomPreset() {
-    if (!CUSTOM_ROTATION || !CUSTOM_ROTATION.steps || CUSTOM_ROTATION.steps.length === 0) { alert("Rotation is empty."); return; }
-    var name = CUSTOM_ROTATION.name || "Custom Rota";
-    var safeName = prompt("Enter a save name for your local storage:", name);
-    if (!safeName) return;
-    
-    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
-    CUSTOM_ROTATION.name = safeName; // Updates the input field
-    custom[safeName] = JSON.parse(JSON.stringify(CUSTOM_ROTATION));
-    localStorage.setItem("feral_sim_custom_rotations", JSON.stringify(custom));
-    
-    populatePresetDropdown();
-    document.getElementById("rotation_preset_select").value = "cus_" + safeName;
-    renderRotationList(); // Update UI
-    showToast("Preset saved locally!");
-}
-
-function deleteCustomPreset() {
-    var val = document.getElementById("rotation_preset_select").value;
-    if (!val || !val.startsWith("cus_")) { alert("Please select one of 'My Saved Presets' to delete."); return; }
-    if (!confirm("Are you sure you want to delete this preset?")) return;
-    
-    var k = val.substring(4);
-    var custom = JSON.parse(localStorage.getItem("feral_sim_custom_rotations") || "{}");
-    delete custom[k];
-    localStorage.setItem("feral_sim_custom_rotations", JSON.stringify(custom));
-    
-    populatePresetDropdown();
-    showToast("Preset deleted!");
 }
 
 function clearRotation() {

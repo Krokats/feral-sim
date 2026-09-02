@@ -262,8 +262,55 @@ async function fetchCommunityBuilds(type) {
     const tbody = document.getElementById('communityTableBody');
     if(!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Loading builds from database...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Loading builds...</td></tr>';
 
+    // --- NEU: Standard-Presets lokal sammeln ---
+    let systemBuilds = [];
+    
+    if (type === 'gear' && typeof GEAR_PRESETS !== 'undefined') {
+        Object.keys(GEAR_PRESETS).forEach(key => {
+            systemBuilds.push({
+                id: 'sys_' + key,
+                type: type,
+                title: key,
+                comment: "Default Gear Setup",
+                author_name: "System",
+                author_id: "system",
+                data: GEAR_PRESETS[key],
+                isSystem: true // Markierung für das UI
+            });
+        });
+    } else if (type === 'talents' && typeof TALENT_PRESETS !== 'undefined') {
+        Object.keys(TALENT_PRESETS).forEach(key => {
+            systemBuilds.push({
+                id: 'sys_' + key,
+                type: type,
+                title: key,
+                comment: "Default Talent Build",
+                author_name: "System",
+                author_id: "system",
+                data: TALENT_PRESETS[key],
+                isSystem: true
+            });
+        });
+    } else if (type === 'rotation' && typeof PRESET_ROTATIONS !== 'undefined') {
+        Object.keys(PRESET_ROTATIONS).forEach(key => {
+            let rot = PRESET_ROTATIONS[key];
+            systemBuilds.push({
+                id: 'sys_' + key,
+                type: type,
+                title: rot.name || key,
+                comment: rot.desc || "Default Rotation Logic",
+                author_name: "System",
+                author_id: "system",
+                data: rot,
+                isSystem: true
+            });
+        });
+    }
+    // ---------------------------------------------
+
+    // Supabase DB abfragen
     const { data: builds, error } = await supabaseClient
         .from('community_builds')
         .select('*')
@@ -272,11 +319,18 @@ async function fetchCommunityBuilds(type) {
 
     if (error) {
         console.error("Error fetching builds:", error);
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="color:red;">Error loading builds: ${error.message}</td></tr>`;
+        // Falls die DB einen Fehler wirft, rendern wir zumindest die System-Builds
+        if (systemBuilds.length > 0) {
+            renderCommunityBuilds(systemBuilds);
+        } else {
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center" style="color:red;">Error loading builds: ${error.message}</td></tr>`;
+        }
         return;
     }
 
-    renderCommunityBuilds(builds);
+    // Kombinieren: User-Builds immer ganz oben, danach die System-Builds
+    const combinedBuilds = builds.concat(systemBuilds);
+    renderCommunityBuilds(combinedBuilds);
 }
 
 function renderCommunityBuilds(builds) {
@@ -285,36 +339,30 @@ function renderCommunityBuilds(builds) {
     tbody.innerHTML = "";
 
     if (builds.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 20px;">No builds found for this category yet. Be the first!</td></tr>';
-        return;
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding: 20px;">No builds found for this category yet. Be the first!</td></tr>';
+    return;
     }
 
     builds.forEach(build => {
         const tr = document.createElement('tr');
         
-        const hasUpvoted = CURRENT_USER && build.upvoted_by && build.upvoted_by.includes(CURRENT_USER.id);
-        const hasDownvoted = CURRENT_USER && build.downvoted_by && build.downvoted_by.includes(CURRENT_USER.id);
+        const isSystem = build.isSystem === true;
+        let voteHtml = "";
         
-        const upClass = hasUpvoted ? "upvoted" : "";
-        const downClass = hasDownvoted ? "downvoted" : "";
+        // --- NEU: System-Builds haben keine Voting-Buttons ---
+        if (isSystem) {
+            voteHtml = `<span style="color:#555;">-</span>`;
+        } else {
+            const hasUpvoted = CURRENT_USER && build.upvoted_by && build.upvoted_by.includes(CURRENT_USER.id);
+            const hasDownvoted = CURRENT_USER && build.downvoted_by && build.downvoted_by.includes(CURRENT_USER.id);
+            
+            const upClass = hasUpvoted ? "upvoted" : "";
+            const downClass = hasDownvoted ? "downvoted" : "";
 
-        // Separate Auswertung der Votes
-        const upVotesCount = build.upvoted_by ? build.upvoted_by.length : 0;
-        const downVotesCount = build.downvoted_by ? build.downvoted_by.length : 0;
+            const upVotesCount = build.upvoted_by ? build.upvoted_by.length : 0;
+            const downVotesCount = build.downvoted_by ? build.downvoted_by.length : 0;
 
-        // Gehört der Build dem aktuellen Nutzer?
-        const isAuthor = CURRENT_USER && CURRENT_USER.id === build.author_id;
-
-        // Wir codieren das JSON-Objekt sicher als String ins HTML-Attribut
-        const dataString = encodeURIComponent(JSON.stringify(build.data));
-
-        tr.innerHTML = `
-            <td class="text-left" style="vertical-align: middle;">
-                <div class="community-build-title">${build.title}</div>
-                <div class="community-build-comment">${build.comment || "No comment."}</div>
-            </td>
-            <td class="text-left" style="vertical-align: middle; color:#aaa;">${build.author_name}</td>
-            <td class="text-center" style="vertical-align: middle;">
+            voteHtml = `
                 <div class="vote-container">
                     <button class="vote-btn ${upClass}" onclick="voteBuild('${build.id}', 'up')" title="Upvote">👍</button>
                     <span style="font-weight:bold; color:#a5d6a7; min-width: 15px;">${upVotesCount}</span>
@@ -322,12 +370,36 @@ function renderCommunityBuilds(builds) {
                     <span style="font-weight:bold; color:#ef5350; min-width: 15px;">${downVotesCount}</span>
                     <button class="vote-btn ${downClass}" onclick="voteBuild('${build.id}', 'down')" title="Downvote">👎</button>
                 </div>
-            </td>
-            <td class="text-right" style="vertical-align: middle;">
-                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                    <button class="btn-mini primary-btn" onclick="loadCommunityBuild('${build.type}', this)" data-build='${dataString}'>📥 Load</button>
-                    ${isAuthor ? `<button class="btn-mini" style="color:#ef5350; border-color:#ef5350;" onclick="deleteCommunityBuild('${build.id}')">🗑️ Del</button>` : ''}
+            `;
+        }
+
+        // Gehört der Build dem aktuellen Nutzer? (System-Builds gehören niemandem)
+        const isAuthor = !isSystem && CURRENT_USER && CURRENT_USER.id === build.author_id;
+
+        // JSON-Objekt sicher als String codieren
+        const dataString = encodeURIComponent(JSON.stringify(build.data));
+
+        tr.innerHTML = `
+            <td class="text-left" style="vertical-align: middle;">
+                <div class="community-build-title" 
+                     style="cursor: pointer; display: inline-block; color: var(--druid-orange, #ff9800); font-weight: bold;" 
+                     onmouseover="this.style.textDecoration='underline'" 
+                     onmouseout="this.style.textDecoration='none'"
+                     onclick="loadCommunityBuild('${build.type}', this)" 
+                     data-build='${dataString}'
+                     title="Click to load this build">
+                    ${build.title}
                 </div>
+                <div class="community-build-comment">${build.comment || "No comment."}</div>
+            </td>
+            <td class="text-left" style="vertical-align: middle;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="color:${isSystem ? '#fff' : '#aaa'};">${build.author_name}</span>
+                    ${isAuthor ? `<button class="btn-mini" style="color:#ef5350; border-color:#ef5350; padding: 2px 6px; font-size: 0.75rem;" onclick="deleteCommunityBuild('${build.id}')" title="Delete your build">🗑️ Del</button>` : ''}
+                </div>
+            </td>
+            <td class="text-center" style="vertical-align: middle;">
+                ${voteHtml}
             </td>
         `;
         tbody.appendChild(tr);
@@ -387,10 +459,6 @@ async function voteBuild(buildId, action) {
         showCustomAlert("Error","Voting failed: " + error.message);
     }
 }
-
-// ============================================================================
-// 6. LOADING BUILDS INTO SIMULATION
-// ============================================================================
 
 // ============================================================================
 // 6. LOADING / DELETING BUILDS (Mit Custom Modals)
