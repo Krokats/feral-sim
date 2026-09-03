@@ -1538,6 +1538,9 @@ function applyConfigToUI(cfg) {
         if (typeof calculateGearStats === 'function') calculateGearStats();
         if (typeof renderTalentTree === 'function') renderTalentTree();
         if (typeof recalcItemScores === 'function') recalcItemScores();
+        
+        // NEU: Visuelle Constraints für geladene Rotationseinstellungen aktualisieren
+        if (typeof updateRotationConstraints === 'function') updateRotationConstraints();
 
     } catch (e) {
         console.error("Error applying config:", e);
@@ -1552,12 +1555,20 @@ function saveCurrentState() {
     if (IS_LOADING) return;
 
     // SECURITY CHECK 2: Do not save if we are in Overview/Comparison Mode
-    // (Because inputs might be hidden or reused, leading to data loss)
     var compView = document.getElementById('comparisonView');
     if (compView && !compView.classList.contains('hidden')) return;
 
     if (SIM_LIST[ACTIVE_SIM_INDEX]) {
         SIM_LIST[ACTIVE_SIM_INDEX].config = getCurrentConfigFromUI();
+        
+        // NEU: Root-Eigenschaften des Simulation-Objekts synchronisieren
+        if (typeof GEAR_SELECTION !== 'undefined') {
+            SIM_LIST[ACTIVE_SIM_INDEX].gear = JSON.parse(JSON.stringify(GEAR_SELECTION));
+        }
+        if (typeof ENCHANT_SELECTION !== 'undefined') {
+            SIM_LIST[ACTIVE_SIM_INDEX].enchants = JSON.parse(JSON.stringify(ENCHANT_SELECTION));
+        }
+
         var nameInput = document.getElementById('simName');
         if (nameInput) SIM_LIST[ACTIVE_SIM_INDEX].name = nameInput.value;
     }

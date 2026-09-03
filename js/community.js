@@ -489,6 +489,17 @@ function loadCommunityBuild(type, buttonElement) {
             } else if (type === 'sim') {
                 addSim(false);
                 applyConfigToUI(data);
+
+                // NEU: Übernahme des Titels der Community-Simulation
+                const buildTitle = buttonElement.innerText.trim();
+                if (SIM_LIST[ACTIVE_SIM_INDEX]) {
+                    SIM_LIST[ACTIVE_SIM_INDEX].name = buildTitle;
+                    const nameInput = document.getElementById("simName");
+                    if (nameInput) nameInput.value = buildTitle;
+                    
+                    // Aktualisiere die Seitenleiste
+                    if (typeof renderSidebar === 'function') renderSidebar();
+                }
             }
 
             saveCurrentState();
