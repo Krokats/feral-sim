@@ -224,6 +224,7 @@ async function publishBuild() {
         showCustomAlert("Error","Could not publish build: " + error.message);
     } else {
         showToast("Build published successfully!");
+        switchCommunityTab(type);
         closePublishModal();
     }
 }
@@ -377,7 +378,7 @@ function renderCommunityBuilds(builds) {
         const isAuthor = !isSystem && CURRENT_USER && CURRENT_USER.id === build.author_id;
 
         // JSON-Objekt sicher als String codieren
-        const dataString = encodeURIComponent(JSON.stringify(build.data));
+        const dataString = encodeURIComponent(JSON.stringify(build.data)).replace(/'/g, "%27");
 
         tr.innerHTML = `
             <td class="text-left" style="vertical-align: middle;">
@@ -386,7 +387,7 @@ function renderCommunityBuilds(builds) {
                      onmouseover="this.style.textDecoration='underline'" 
                      onmouseout="this.style.textDecoration='none'"
                      onclick="loadCommunityBuild('${build.type}', this)" 
-                     data-build='${dataString}'
+                     data-build="${dataString}"
                      title="Click to load this build">
                     ${build.title}
                 </div>
