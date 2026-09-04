@@ -194,24 +194,6 @@
                     </div>
                 </div>
 
-                <!-- NEU: Modal für Config Import -->
-                <div id="importConfigModal" class="modal-overlay hidden">
-                    <div class="modal-box" style="max-width: 500px;">
-                        <div class="modal-header">
-                            <span class="modal-title">📥 Import Configuration</span>
-                            <span class="modal-close" onclick="closeImportConfigModal()">×</span>
-                        </div>
-                        <div style="padding: 20px;">
-                            <p style="margin-bottom: 10px; color: #ddd; font-size: 0.85rem;">Paste your config string or full simulation URL below:</p>
-                            <textarea id="importConfigInput" placeholder="Paste config string here..." style="width: 100%; height: 100px; background: #1a1a1a; border: 1px solid var(--border-color); border-radius: 4px; color: #fff; padding: 10px; font-family: monospace; font-size: 0.85rem; resize: vertical; box-sizing: border-box; margin-bottom: 15px;"></textarea>
-                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                                <button class="primary-btn" onclick="confirmImportConfig()">Import</button>
-                                <button class="secondary-btn" onclick="closeImportConfigModal()">Cancel</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
 
                 <div id="itemSelectorModal" class="modal-overlay hidden" onclick="if(event.target === this) closeItemModal()">
                     <div class="modal-box">

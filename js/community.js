@@ -20,6 +20,16 @@ let CURRENT_COMMUNITY_TAB = 'sim';
 // ============================================================================
 let confirmCallback = null;
 
+function escapeHTML(str) {
+    if (!str) return "";
+    return str.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function showCustomAlert(title, message) {
     document.getElementById('alertModalTitle').innerText = title;
     document.getElementById('alertModalMessage').innerText = message;
@@ -374,11 +384,13 @@ function renderCommunityBuilds(builds) {
             `;
         }
 
-        // Gehört der Build dem aktuellen Nutzer? (System-Builds gehören niemandem)
         const isAuthor = !isSystem && CURRENT_USER && CURRENT_USER.id === build.author_id;
-
-        // JSON-Objekt sicher als String codieren
         const dataString = encodeURIComponent(JSON.stringify(build.data)).replace(/'/g, "%27");
+
+        // XSS Schutz: Nutzereingaben vor dem Rendern "säubern"
+        const safeTitle = escapeHTML(build.title);
+        const safeComment = escapeHTML(build.comment || "No comment.");
+        const safeAuthorName = escapeHTML(build.author_name);
 
         tr.innerHTML = `
             <td class="text-left" style="vertical-align: middle;">
@@ -386,16 +398,15 @@ function renderCommunityBuilds(builds) {
                      style="cursor: pointer; display: inline-block; color: var(--druid-orange, #ff9800); font-weight: bold;" 
                      onmouseover="this.style.textDecoration='underline'" 
                      onmouseout="this.style.textDecoration='none'"
-                     onclick="loadCommunityBuild('${build.type}', this)" 
-                     data-build="${dataString}"
-                     title="Click to load this build">
-                    ${build.title}
+                     onclick="loadCommunityBuild('${escapeHTML(build.type)}', this)" 
+                     data-build="${dataString}" title="Click to load this build">
+                    ${safeTitle}
                 </div>
-                <div class="community-build-comment">${build.comment || "No comment."}</div>
+                <div class="community-build-comment">${safeComment}</div>
             </td>
             <td class="text-left" style="vertical-align: middle;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="color:${isSystem ? '#fff' : '#aaa'};">${build.author_name}</span>
+                    <span style="color:${isSystem ? '#fff' : '#aaa'};">${safeAuthorName}</span>
                     ${isAuthor ? `<button class="btn-mini" style="color:#ef5350; border-color:#ef5350; padding: 2px 6px; font-size: 0.75rem;" onclick="deleteCommunityBuild('${build.id}')" title="Delete your build">🗑️ Del</button>` : ''}
                 </div>
             </td>
@@ -412,52 +423,24 @@ function renderCommunityBuilds(builds) {
 // ============================================================================
 
 async function voteBuild(buildId, action) {
-    if (!CURRENT_USER) {
-        showCustomAlert("Error","You must be logged in with Discord to vote!");
-        return;
+    if (!CURRENT_USER) { 
+        showCustomAlert("Error", "You must be logged in with Discord to vote!"); 
+        return; 
     }
 
     try {
-        // Aktuellen Stand abrufen
-        const { data, error: fetchError } = await supabaseClient
-            .from('community_builds')
-            .select('upvoted_by, downvoted_by')
-            .eq('id', buildId)
-            .single();
-            
-        if (fetchError) throw fetchError;
+        // Wir rufen die sichere Server-Funktion auf, die wir per SQL erstellt haben
+        const { data, error } = await supabaseClient
+            .rpc('vote_build', { p_build_id: buildId, p_action: action });
 
-        let upvotedBy = data.upvoted_by || [];
-        let downvotedBy = data.downvoted_by || [];
-        const uid = CURRENT_USER.id;
-
-        // User aus beiden Listen entfernen (Reset)
-        upvotedBy = upvotedBy.filter(id => id !== uid);
-        downvotedBy = downvotedBy.filter(id => id !== uid);
-
-        // Neuen Vote anwenden
-        if (action === 'up') {
-            if (!(data.upvoted_by || []).includes(uid)) upvotedBy.push(uid);
-        } else if (action === 'down') {
-            if (!(data.downvoted_by || []).includes(uid)) downvotedBy.push(uid);
-        }
-
-        const newScore = upvotedBy.length - downvotedBy.length;
-
-        // DB Update
-        const { error: updateError } = await supabaseClient
-            .from('community_builds')
-            .update({ upvoted_by: upvotedBy, downvoted_by: downvotedBy, score: newScore })
-            .eq('id', buildId);
-
-        if (updateError) throw updateError;
-
-        // UI erneuern
+        if (error) throw error;
+        
+        // Nach erfolgreichem Vote die Liste neu laden
         fetchCommunityBuilds(CURRENT_COMMUNITY_TAB);
-
+        
     } catch (error) {
         console.error("Error voting:", error);
-        showCustomAlert("Error","Voting failed: " + error.message);
+        showCustomAlert("Error", "Voting failed: " + error.message);
     }
 }
 
