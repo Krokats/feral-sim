@@ -2555,12 +2555,12 @@ function closeWelcomeInfoModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!localStorage.getItem('krokatSimWelcomeShown')) {
+    if (!localStorage.getItem('krokatFeralSimWelcomeShown')) {
         const welcomeModal = document.getElementById('welcomeInfoModal');
         if (welcomeModal) {
             welcomeModal.classList.remove('hidden');
         }
         
-        localStorage.setItem('krokatSimWelcomeShown', 'true');
+        localStorage.setItem('krokatFeralSimWelcomeShown', 'true');
     }
 });
