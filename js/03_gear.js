@@ -1,14 +1,3 @@
-/**
- * Feral Simulation - File 3: Gear Planner Logic & Database
- * Updated for Turtle WoW 1.18 (Feral Cat)
- * Implements Checkbox-based Buffs/Consumables and expanded Stats Display.
- * FIX: Gear Score is now calculated dynamically (Total EP).
- * FIX: 2H/Offhand Mutual Exclusion.
- * FIX: Enchant Score Display.
- * UPDATED: Set & Trinket Detection for new Sets/Items
- * UPDATED: Generic AP Equip Effects & Dynamic Set Bonus Scoring
- */
-
 var ITEM_ID_MAP = {};
 
 // ============================================================================
@@ -848,16 +837,22 @@ function calculateGearStats() {
         var eid = ENCHANT_SELECTION[slot];
         if (eid && eid !== 0) {
             var ench = ENCHANT_DB.find(e => e.id == eid);
-            if (ench && ench.effects) {
-                // Add Enchant Score
+            if (ench) {
+                // Add Enchant Score (wird nun immer ausgeführt)
                 totalScore += calculateEnchantScore(ench);
 
-                bonus.str += (ench.effects.strength || 0);
-                bonus.agi += (ench.effects.agility || 0);
-                bonus.ap += (ench.effects.attackPower || 0);
-                bonus.crit += (ench.effects.crit || 0);
-                bonus.hit += (ench.effects.Hit || 0);
-                bonus.haste += (ench.effects.attackSpeed || 0);
+                var e = ench.effects || {};
+
+                // Root-Stats (direkt auf dem Enchant-Objekt)
+                bonus.str += (ench.strength || 0);
+                bonus.agi += (ench.agility || 0);
+                bonus.int += (ench.intellect || 0);
+
+                // Effect-Stats (im effects-Objekt)
+                bonus.ap += (e.attackPower || 0);
+                bonus.crit += (e.crit || 0);
+                bonus.hit += (e.Hit || 0);
+                bonus.haste += (e.attackSpeed || 0);
             }
         }
     }

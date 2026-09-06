@@ -73,7 +73,6 @@ function init() {
         if (SIM_LIST.length === 0) addSim(true);
     });
 
-    populateBiSDropdown();
 }
 
 
