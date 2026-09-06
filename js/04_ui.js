@@ -44,6 +44,73 @@ const HELP_TEXTS = {
     //"buff_ft_totem": "Flametongue Totem. Adds fire damage to each hit. Does not stack with other weapon imbues usually, but allowed here per settings."
 };
 
+const BUFF_TOOLTIPS = {
+    "consum_mongoose": { name: "Elixir of the Mongoose", desc: "Use: Increases Agility by 25 and chance to get a critical hit by 2% for 3600 sec.", color: "#1eff00" },
+    "consum_scorpok": { name: "Ground Scorpok Assay", desc: "Use: Increases Agility by 25 when consumed. Effect lasts for 60 minutes.", color: "#1eff00" },
+    "consum_roids": { name: "R.O.I.D.S.", desc: "Use: Increases Strength by 25 when consumed. Effect lasts for 60 minutes.", color: "#1eff00" },
+    "consum_firewater": { name: "Winterfall Firewater", desc: "Use: Increases your melee attack power by 35 and size for 1200 sec.", color: "#1eff00" },
+    "consum_potion_quickness": { name: "Potion of Quickness", desc: "Use: Increases haste by 5% for 30 sec.", color: "#1eff00" },
+    "consum_mighty_rage": { name: "Mighty Rage Potion", desc: "Use: Increases Rage by 45 to 346 and increases Strength by 60 for 20 sec.", color: "#1eff00" },
+    "consum_elemental": { name: "Elemental Sharpening Stone", desc: "Use: Increase critical chance on a melee weapon by 2% for 30 minutes.", color: "#1eff00" },
+    "consum_consecrated": { name: "Consecrated Sharpening Stone", desc: "Use: While applied to target weapon it increases attack power against undead by 100. Lasts for 1 hour.", color: "#1eff00" },
+    "consum_juju_might": { name: "Juju Might", desc: "Use: Increases attack power by 40 for 600 sec.", color: "#1eff00" },
+    "consum_juju_power": { name: "Juju Power", desc: "Use: Increases the target's Strength by 30 for 1800 sec.", color: "#1eff00" },
+    "consum_juju_flurry": { name: "Juju Flurry", desc: "Use: Increases the target's attack speed by 3% for 20 sec.", color: "#1eff00" },
+    "consum_food_str": { name: "Smoked Desert Dumplings", desc: "Use: Restores 2148 health over 30 sec. Must remain seated while eating. If you spend at least 10 seconds eating you will become well fed and gain 20 Strength for 900 sec.", color: "#1eff00" },
+    "consum_food_agi": { name: "Sour Mountain Berry", desc: "Use: Restores 874.8 health over 27 sec. Must remain seated while eating. If you eat for 10 seconds will also increase your Agility by 10 for 600 sec.", color: "#1eff00" },
+    "consum_food_haste": { name: "Tel'abim Medley", desc: "Use: Restores 3186 health over 30 sec. Must remain seated while eating. If you spend at least 10 seconds eating you will become well fed and gain 2% Haste for 900 sec.", color: "#1eff00" },
+    "buff_motw": { name: "Mark of the Wild (Improved)", desc: "Increases the friendly target's armor by 384, all attributes by 16 and all resistances by 27 for 1800 sec.", color: "#ff8000" },
+    "buff_kings": { name: "Blessing of Kings", desc: "Places a Blessing on the friendly target, increasing total stats by 10% for 300 sec. Players may only have one Blessing on them per Paladin at any one time.", color: "#ff8000" },
+    "buff_might": { name: "Blessing of Might (Improved)", desc: "Places a Blessing on the friendly target, increasing melee attack power by 185 for 300 sec. Players may only have one Blessing on them per Paladin at any one time.", color: "#ff8000" },
+    "buff_bs": { name: "Battle Shout (Improved)", desc: "The warrior shouts, increasing the melee attack power of all party members within 20 yards by 232. Lasts 120 sec.", color: "#ff8000" },
+    "buff_lotp": { name: "Leader of the Pack", desc: "While in Cat, Bear or Dire Bear Form, the Leader of the pack increases ranged and melee critical chance of all party members within 45 yards by 3%.", color: "#ff8000" },
+    "buff_tsa": { name: "Trueshot Aura", desc: "Increases the attack power of party members within 45 yards by 100. Lasts 1800 sec.", color: "#ff8000" },
+    "buff_wf_totem": { name: "Windfury Totem", desc: "Wind Totem. Summons a Windfury Totem with 5 health at the feet of the caster. The totem enchants all party members main-hand weapons with wind, if they are within 20 yards. Each hit has a 20% chance of granting the attacker 1 extra attack with 315 extra attack power. Lasts 90 sec.", color: "#ff8000" },
+    "buff_ft_totem": { name: "Flametongue Totem", desc: "Fire Totem. Summons a Flametongue Totem with 5 health at the feet of the caster.  The totem enchants all party members' main-hand weapons with fire if they are within 20 yards.  Each hit causes 15.805 to 48.68 additional Fire damage, based on the speed of the weapon.  Slower weapons cause more fire damage per swing.  Lasts 2 min.", color: "#ff8000" },
+    "buff_soe_totem": { name: "Strength of Earth Totem", desc: "Earth Totem. Summons a Strength of Earth Totem with 5 health at the feet of the caster. The totem increases the strength of party members within 20 yards by 77. Lasts 120 sec.", color: "#ff8000" },
+    "buff_goe_totem": { name: "Grace of Air", desc: "Tools: Air Totem. Summons a Grace of Air Totem with 5 health at the feet of the caster. The totem increases the agility of party members within 20 yards by 77. Lasts 120 sec.", color: "#ff8000" }
+};
+
+function showBuffTooltip(e, buffId) {
+    var buff = BUFF_TOOLTIPS[buffId];
+    if (!buff) return;
+    
+    var tt = document.getElementById("wowTooltip");
+    if (!tt) return;
+    tt.style.display = "block";
+    
+    // Titel ist jetzt hartcodiert weiß (#ffffff), Text bleibt tt-green
+    var html = '<div class="tt-header"><div style="flex:1"><div class="tt-name" style="color: #ffffff;">' + buff.name + '</div></div></div>';
+    html += '<div class="tt-spacer"></div>';
+    html += '<div class="tt-green" style="font-size: 0.85rem; line-height: 1.4;">' + buff.desc + '</div>';
+    
+    tt.innerHTML = html;
+    
+    if (typeof moveTooltip === "function") moveTooltip(e);
+}
+
+function updateBuffCounter() {
+    var counterEl = document.getElementById("buffCounterText");
+    if (!counterEl) return;
+
+    // Finde alle Checkboxen innerhalb der Buff-Kategorien
+    var buffCheckboxes = document.querySelectorAll(".buff-grid input[type='checkbox']");
+    if (buffCheckboxes.length === 0) return;
+
+    var activeCount = 0;
+    buffCheckboxes.forEach(function (cb) {
+        if (cb.checked) activeCount++;
+    });
+
+    if (activeCount > 0) {
+        counterEl.innerText = activeCount + " Active";
+        counterEl.style.color = "#1eff00"; // Grün, sobald mindestens ein Buff an ist
+    } else {
+        counterEl.innerText = "0 Active";
+        counterEl.style.color = "#aaa";    // Grau, wenn leer
+    }
+}
+
 // Global View State
 var CURRENT_RESULT_VIEW = 'avg'; // 'min', 'avg', 'max'
 var LOG_BUFF_KEYS = []; // To store dynamic column headers
@@ -632,6 +699,7 @@ function setupUIListeners() {
 
                 updatePlayerStats();
                 updateEnemyInfo();
+                updateBuffCounter();
             }
         });
     });
@@ -1538,9 +1606,8 @@ function applyConfigToUI(cfg) {
         if (typeof calculateGearStats === 'function') calculateGearStats();
         if (typeof renderTalentTree === 'function') renderTalentTree();
         if (typeof recalcItemScores === 'function') recalcItemScores();
-        
-        // NEU: Visuelle Constraints für geladene Rotationseinstellungen aktualisieren
         if (typeof updateRotationConstraints === 'function') updateRotationConstraints();
+        updateBuffCounter();
 
     } catch (e) {
         console.error("Error applying config:", e);
@@ -1795,13 +1862,13 @@ function toggleSection(containerId, state) {
     if (!container) return;
 
     var checkboxes = container.querySelectorAll("input[type='checkbox']");
-
-    // Set to track which mutual exclusion groups have already been handled in this pass
     var handledGroups = new Set();
 
     checkboxes.forEach(function (box) {
+        // NEU: Wenn die Checkbox gesperrt ist (z.B. durch ein Talent), wird sie ignoriert!
+        if (box.disabled) return; 
+
         if (state) {
-            // "Select All" Logic with Mutual Exclusion checks
             var groupClass = null;
             if (box.classList.contains("mut-ex-wep")) groupClass = "mut-ex-wep";
             else if (box.classList.contains("mut-ex-food")) groupClass = "mut-ex-food";
@@ -1810,7 +1877,6 @@ function toggleSection(containerId, state) {
             else if (box.classList.contains("mut-ex-potion")) groupClass = "mut-ex-potion";
 
             if (groupClass) {
-                // Only check if we haven't checked an item from this group yet
                 if (!handledGroups.has(groupClass)) {
                     box.checked = true;
                     handledGroups.add(groupClass);
@@ -1818,18 +1884,20 @@ function toggleSection(containerId, state) {
                     box.checked = false;
                 }
             } else {
-                // No restriction
                 box.checked = true;
             }
         } else {
-            // "Select None" - just uncheck everything
             box.checked = false;
         }
     });
 
     // Update simulation
+    if (typeof calculateGearStats === 'function') calculateGearStats(); // NEU: Wichtig, damit die Stats nach All/None neu berechnet werden!
     if (typeof updatePlayerStats === 'function') updatePlayerStats();
     if (typeof updateEnemyInfo === 'function') updateEnemyInfo();
+    
+    // Zähler updaten (aus dem vorherigen Schritt)
+    if (typeof updateBuffCounter === 'function') updateBuffCounter(); 
 }
 
 function updateDamageScaling() {

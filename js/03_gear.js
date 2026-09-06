@@ -981,6 +981,21 @@ function calculateGearStats() {
     var elP_Haste = document.getElementById("gp_haste"); if (elP_Haste) elP_Haste.innerText = bonus.haste.toFixed(2) + "%";
 
     // 9. DETECT AND SET "SPECIAL GEAR" CHECKBOXES
+    // NEU: Leader of the Pack Checkbox-Logik (Talent überschreibt Buff)
+    var elLotp = document.getElementById("buff_lotp");
+    if (elLotp) {
+        var hasLotpTalent = getTal("leaderOfThePack") > 0;
+        var lblLotp = elLotp.closest('.buff-icon-label'); // Sucht das umschließende Label-Element
+
+        if (hasLotpTalent) {
+            elLotp.checked = true; // Zwingend aktivieren
+            elLotp.disabled = true; // Input sperren, Klicks ändern den Status nun nicht mehr
+            if (lblLotp) lblLotp.style.cursor = "default"; // Hand-Symbol entfernen, aber Tooltip-Events bleiben intakt!
+        } else {
+            elLotp.disabled = false; // Input freigeben
+            if (lblLotp) lblLotp.style.cursor = "pointer"; // Hand-Symbol wiederherstellen
+        }
+    }
     // Helper to check set counts using likely names
     var checkSet = function (id, namePart, threshold) {
         var el = document.getElementById(id);

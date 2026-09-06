@@ -477,52 +477,179 @@
                             
                             <div class="card full-width collapsed">
                                 <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-                                    <h2>✨ Buffs & Consumables</h2>
+                                    <h2>✨ Buffs & Consumables <span id="buffCounterText" style="font-size:0.8rem; font-weight:normal; margin-left:15px; color:#aaa;">0 Active</span></h2>
                                 </div>
                                 <div class="card-body">
-                                        
-                                    <div id="grp_consumables_main">
-                                        <div class="gear-section-title">Consumables <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_consumables_main', true)">[All]</a> <a onclick="toggleSection('grp_consumables_main', false)">[None]</a></span></div>
-                                        <div class="checkbox-grid">
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_elemental" class="mut-ex-wep"><span class="checkmark"></span> Elemental Sharpening Stone (2% Crit)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_consecrated" class="mut-ex-wep"><span class="checkmark"></span> Consecrated Sharpening Stone (100 AP vs Undead)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_mongoose"><span class="checkmark"></span> Elixir of the Mongoose</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_potion_quickness" class="mut-ex-potion"><span class="checkmark"></span> Potion of Quickness (5% Haste)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_mighty_rage" class="mut-ex-potion"><span class="checkmark"></span> Mighty Rage Potion (60 Str)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_str" class="mut-ex-food"><span class="checkmark"></span> Smoked Dumplings (20 Str)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_agi" class="mut-ex-food"><span class="checkmark"></span> Sour Mountain Berry (10 Agi)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_food_haste" class="mut-ex-food"><span class="checkmark"></span> Tel'abim Medley (2% Haste)</label>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                                        <!-- WEAPON BUFFS -->
+                                        <div id="grp_weapon_buffs" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Weapon Buffs 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_weapon_buffs', true)">[All]</a> <a onclick="toggleSection('grp_weapon_buffs', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_elemental')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_elemental" class="mut-ex-wep">
+                                                    <img src="data/wow-icons/inv_stone_02.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_consecrated')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_consecrated" class="mut-ex-wep">
+                                                    <img src="data/wow-icons/inv_stone_sharpeningstone_02.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div id="grp_consumables_special">
-                                        <div class="gear-section-title">Special <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_consumables_special', true)">[All]</a> <a onclick="toggleSection('grp_consumables_special', false)">[None]</a></span></div>
-                                        <div class="checkbox-grid">
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_scorpok" class="mut-ex-bl" ><span class="checkmark"></span> Scorpok Assay (25 Agi)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_roids" class="mut-ex-bl"><span class="checkmark"></span> R.O.I.D.S (25 Str)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_juju_might" class="mut-ex-juju"><span class="checkmark"></span> Juju Might (40 AP)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_firewater" class="mut-ex-juju"><span class="checkmark"></span> Winterfall Firewater (35 AP)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_juju_power"><span class="checkmark"></span> Juju Power (30 Str)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="consum_juju_flurry"><span class="checkmark"></span> Juju Flurry (3% Haste)</label>
+                                        <!-- ELIXIRS -->
+                                        <div id="grp_elixirs" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Elixirs 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_elixirs', true)">[All]</a> <a onclick="toggleSection('grp_elixirs', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_mongoose')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_mongoose">
+                                                    <img src="data/wow-icons/inv_potion_32.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_scorpok')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_scorpok" class="mut-ex-bl">
+                                                    <img src="data/wow-icons/inv_misc_dust_07.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_roids')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_roids" class="mut-ex-bl">
+                                                    <img src="data/wow-icons/inv_stone_15.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_firewater')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_firewater" class="mut-ex-juju">
+                                                    <img src="data/wow-icons/inv_potion_92.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div id="grp_raidbuffs">
-                                        <div class="gear-section-title">Raid Buffs <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_raidbuffs', true)">[All]</a> <a onclick="toggleSection('grp_raidbuffs', false)">[None]</a></span></div>
-                                        <div class="checkbox-grid">
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_motw"><span class="checkmark"></span> Mark of the Wild (Imp)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_kings"><span class="checkmark"></span> Blessing of Kings</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_might"><span class="checkmark"></span> Blessing of Might (Imp)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_bs"><span class="checkmark"></span> Battle Shout (Imp)</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_lotp"><span class="checkmark"></span> Leader of the Pack</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_tsa"><span class="checkmark"></span> Trueshot Aura</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_wf_totem"><span class="checkmark"></span> Windfury Totem</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_ft_totem" ><span class="checkmark"></span> Flametongue Totem</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_soe_totem" ><span class="checkmark"></span> Strength of Earth</label>
-                                            <label class="custom-checkbox"><input type="checkbox" id="buff_goe_totem" ><span class="checkmark"></span> Grace of Air</label>
+                                        <!-- POTIONS -->
+                                        <div id="grp_potions" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Potions 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_potions', true)">[All]</a> <a onclick="toggleSection('grp_potions', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_potion_quickness')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_potion_quickness" class="mut-ex-potion">
+                                                    <img src="data/wow-icons/inv_potion_08.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_mighty_rage')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_mighty_rage" class="mut-ex-potion">
+                                                    <img src="data/wow-icons/inv_potion_125.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
                                         </div>
-                                    </div>
 
+                                        <!-- JUJUS -->
+                                        <div id="grp_jujus" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Jujus 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_jujus', true)">[All]</a> <a onclick="toggleSection('grp_jujus', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_juju_might')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_juju_might" class="mut-ex-juju">
+                                                    <img src="data/wow-icons/inv_misc_monsterscales_07.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_juju_power')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_juju_power">
+                                                    <img src="data/wow-icons/inv_misc_monsterscales_11.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_juju_flurry')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_juju_flurry">
+                                                    <img src="data/wow-icons/inv_misc_monsterscales_17.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- FOOD & DRINKS -->
+                                        <div id="grp_food" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Food & Drinks 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_food', true)">[All]</a> <a onclick="toggleSection('grp_food', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_food_str')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_food_str" class="mut-ex-food">
+                                                    <img src="data/wow-icons/inv_misc_food_64.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_food_agi')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_food_agi" class="mut-ex-food">
+                                                    <img src="data/wow-icons/inv_misc_food_74.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'consum_food_haste')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="consum_food_haste" class="mut-ex-food">
+                                                    <img src="data/wow-icons/inv_misc_food_73.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- BUFFS -->
+                                        <div id="grp_buffs" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Buffs 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_buffs', true)">[All]</a> <a onclick="toggleSection('grp_buffs', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_motw')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_motw">
+                                                    <img src="data/wow-icons/spell_nature_regeneration.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_kings')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_kings">
+                                                    <img src="data/wow-icons/spell_magic_magearmor.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_might')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_might">
+                                                    <img src="data/wow-icons/spell_holy_fistofjustice.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_bs')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_bs">
+                                                    <img src="data/wow-icons/ability_warrior_battleshout.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- AURAS -->
+                                        <div id="grp_auras" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Aura 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_auras', true)">[All]</a> <a onclick="toggleSection('grp_auras', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_lotp')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_lotp">
+                                                    <img src="data/wow-icons/spell_nature_unyeildingstamina.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_tsa')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_tsa">
+                                                    <img src="data/wow-icons/ability_trueshot.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- TOTEMS -->
+                                        <div id="grp_totems" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">
+                                            <div class="gear-section-title" style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:10px;">Totems 
+                                                <span style="float:right; font-size:0.8em; cursor:pointer; font-weight:normal;"><a onclick="toggleSection('grp_totems', true)">[All]</a> <a onclick="toggleSection('grp_totems', false)">[None]</a></span>
+                                            </div>
+                                            <div class="buff-grid" style="padding:0;">
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_wf_totem')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_wf_totem">
+                                                    <img src="data/wow-icons/spell_nature_windfury.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_ft_totem')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_ft_totem">
+                                                    <img src="data/wow-icons/spell_nature_guardianward.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_soe_totem')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_soe_totem">
+                                                    <img src="data/wow-icons/spell_nature_earthbindtotem.jpg" class="buff-icon">
+                                                </label>
+                                                <label class="buff-icon-label" onmouseenter="showBuffTooltip(event, 'buff_goe_totem')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()">
+                                                    <input type="checkbox" id="buff_goe_totem">
+                                                    <img src="data/wow-icons/spell_nature_invisibilitytotem.jpg" class="buff-icon">
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                    </div>
                                 </div>
                             </div>
 
@@ -671,10 +798,10 @@
 
                             <div class="card full-width collapsed">
                                 <div class="card-header" onclick="this.parentElement.classList.toggle('collapsed')">
-                                    <h2>🛡️ Gear & Sets</h2>
+                                    <h2>🛡️ Detected Gear & Sets</h2>
                                 </div>
                                 <div class="card-body">
-                                    <div class="gear-section-title">Active Idols (Detected)</div>
+                                    <div class="gear-section-title">Active Idols</div>
                                     <div class="checkbox-grid">
                                         <label class="custom-checkbox"><input type="checkbox" id="idol_savagery" disabled><span class="checkmark"></span> Idol of Savagery (Rake/Rip duration)</label>
                                         <label class="custom-checkbox"><input type="checkbox" id="idol_emeral_rot" disabled><span class="checkmark"></span> Idol of the Emerald Rot (Nature Proc)</label>
@@ -682,7 +809,7 @@
                                         <label class="custom-checkbox"><input type="checkbox" id="idol_laceration" disabled><span class="checkmark"></span> Idol of Laceration (Energy Refund)</label>
                                     </div>
 
-                                    <div class="gear-section-title">Active Sets (Detected)</div>
+                                    <div class="gear-section-title">Active Sets</div>
                                     <div class="checkbox-grid">
                                         <label class="custom-checkbox"><input type="checkbox" id="set_t05_4p" disabled><span class="checkmark"></span> T0.5 (4pc)</label>
                                         <label class="custom-checkbox"><input type="checkbox" id="set_cenarion_5p" disabled><span class="checkmark"></span> Cenarion (5pc)</label>
@@ -696,7 +823,7 @@
                                         <label class="custom-checkbox"><input type="checkbox" id="set_stormshroud_4p" disabled><span class="checkmark"></span> Stormshroud (4pc)</label>
                                     </div>
 
-                                    <div class="gear-section-title">Spellstrike & Special (Detected)</div>
+                                    <div class="gear-section-title">Spellstrike & Special</div>
                                     <div class="checkbox-grid">
                                         <label class="custom-checkbox"><input type="checkbox" id="gear_blade_eternal_darkness" disabled><span class="checkmark"></span> Blade of Eternal Darkness</label>
                                         <label class="custom-checkbox"><input type="checkbox" id="gear_ring_electrical_binding" disabled><span class="checkmark"></span> Ring of Elec. Binding</label>
@@ -711,7 +838,7 @@
                                         <label class="custom-checkbox"><input type="checkbox" id="set_incendosaur_3p" disabled><span class="checkmark"></span> Incendosaur (3pc)</label>
                                     </div>
                                     
-                                    <div class="gear-section-title">Active Trinkets (Detected)</div>
+                                    <div class="gear-section-title">Active Trinkets</div>
                                     <div class="checkbox-grid">
                                         <label class="custom-checkbox"><input type="checkbox" id="trinket_swarmguard" disabled><span class="checkmark"></span> Swarmguard</label>
                                         <label class="custom-checkbox"><input type="checkbox" id="trinket_slayer" disabled><span class="checkmark"></span> Slayer's Crest</label>
