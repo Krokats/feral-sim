@@ -259,7 +259,7 @@
                 <div id="armoryImportModal" class="modal-overlay hidden" onclick="if(event.target === this) closeArmoryModal()">
                     <div class="modal-box">
                         <div class="modal-header">
-                            <span class="modal-title">Import from Turtle Armory</span>
+                            <span class="modal-title">Import from Chronicle</span>
                             <span class="modal-close" onclick="closeArmoryModal()">×</span>
                         </div>
                         <div class="modal-body" style="padding: 20px;">
@@ -271,9 +271,9 @@
                                 <label>Realm</label>
                                 <div class="select-wrapper">
                                     <select id="armoryRealm">
-                                        <option value="Nordanaar" selected>Nordanaar</option>
-                                        <option value="Tel'Abim">Tel'Abim</option>
-                                        <option value="Ambershire">Ambershire</option>
+                                        <option value="C'Thun">C'Thun</option>
+                                        <option value="N'Zoth" selected>N'Zoth</option>
+                                        <option value="Y'Shaarj">Y'Shaarj</option>
                                     </select>
                                 </div>
                             </div>
@@ -348,9 +348,11 @@
 
                             <div class="char-middle">
 
-                                <button class="btn-mini primary-btn" style="margin: 7px; padding: 8px 20px; white-space: nowrap; font-weight: bold;" onclick="openCommunityModal('gear')">🌍 Presets & Community</button>
-                               
-                                
+                                <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 7px 0 15px 0;">
+                                    <button class="btn-mini primary-btn" style="padding: 8px 20px; white-space: nowrap; font-weight: bold;" onclick="openCommunityModal('gear')">🌍 Presets & Community</button>
+                                    <button class="btn-mini primary-btn" style="padding: 8px 20px; white-space: nowrap; font-weight: bold;" onclick="openArmoryModal()">📥 Chronicles Armory Import</button>
+                                </div>
+
                                 <div style="margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; position: relative;">
                                     <label style="white-space: nowrap; margin: 0; color: var(--text-color); font-size: 0.85rem;">Allowed Item Sources:</label>
                                     

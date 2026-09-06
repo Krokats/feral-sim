@@ -1970,6 +1970,22 @@ function closeArmoryModal() {
     setText("armoryStatus", "");
 }
 
+// ============================================================================
+// ARMORY IMPORT LOGIC (OCTO CHRONICLE API)
+// ============================================================================
+
+function openArmoryModal() {
+    var m = document.getElementById("armoryImportModal");
+    if (m) m.classList.remove("hidden");
+    document.getElementById("armoryName").focus();
+}
+
+function closeArmoryModal() {
+    var m = document.getElementById("armoryImportModal");
+    if (m) m.classList.add("hidden");
+    setText("armoryStatus", "");
+}
+
 async function runArmoryImport() {
     var name = document.getElementById("armoryName").value.trim();
     var realm = document.getElementById("armoryRealm").value;
@@ -1981,46 +1997,53 @@ async function runArmoryImport() {
         return;
     }
 
-    status.innerText = "Fetching HTML from turtlecraft.gg...";
+    status.innerText = "Fetching data from Octo Chronicle...";
     status.style.color = "#aaa";
 
-   var targetUrl = `https://turtlecraft.gg/armory/${realm}/${name}`;
-
-    var workerUrl = `https://turtle-armory.johnrdoe89.workers.dev/?url=`; 
-    var finalUrl = workerUrl + encodeURIComponent(targetUrl);
-    
-    
+    // Ziel-API von Octo Chronicle
+    // Ziel-API von Octo Chronicle
+    var targetUrl = `https://octo.chronicleclassic.com/api/v1/armory/${realm}/${name}`;
+    var proxyUrl = `https://chronicle-proxy.krokat.workers.dev/?url=${encodeURIComponent(targetUrl)}`;
     try {
-        var response = await fetch(finalUrl);
+        var response = await fetch(proxyUrl);
 
         if (!response.ok) {
             throw new Error("Network Error or Character not found (Status " + response.status + ")");
         }
 
-        var htmlText = await response.text();
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(htmlText, 'text/html');
+        var jsonData = await response.json();
 
-        // NEU: Rasse aus dem HTML/JSON extrahieren
-        var raceString = "Tauren"; // Fallback
-        var raceMatch = htmlText.match(/&quot;race&quot;:(\d+)/) || htmlText.match(/"race":(\d+)/);
-        if (raceMatch) {
-            var rId = parseInt(raceMatch[1]);
-            if (rId === 4) raceString = "NightElf";
-            if (rId === 6) raceString = "Tauren";
+        if (jsonData.error) {
+            throw new Error(jsonData.error);
         }
 
-        // Extract Data (Items & Enchants)
-        var uniqueFoundItems = extractItemsFromHtml(doc);
-        if (uniqueFoundItems.length === 0) {
-            throw new Error("No items found on page. Character might be naked or parsing failed.");
+        // 1. Rasse extrahieren und für das Format der Simulation (NightElf statt Night Elf) anpassen
+        var raceString = jsonData.race || "Tauren";
+        if (raceString === "Night Elf") raceString = "NightElf"; 
+
+        // 2. Items & Enchants extrahieren
+        var importedItems = [];
+        if (jsonData.gear && Array.isArray(jsonData.gear)) {
+            jsonData.gear.forEach(function(item) {
+                // Item ID 0 (leerer Slot) überspringen
+                if (item.item_id && item.item_id !== 0) {
+                    importedItems.push({
+                        itemId: item.item_id,
+                        effectId: item.enchant_id || 0 // enchant_id direkt aus der API übernehmen
+                    });
+                }
+            });
         }
 
-        // Apply Data & Get Match Statistics
-        var results = applyImportData(uniqueFoundItems, raceString, name);
+        if (importedItems.length === 0) {
+            throw new Error("No items found. Character might be naked or parsing failed.");
+        }
+
+        // 3. Daten anwenden & Match-Statistik erhalten (Die existierende Funktion applyImportData übernimmt das Mapping)
+        var results = applyImportData(importedItems, raceString, name);
         
-        // Feedback Message
-        var msg = "Armory Scan: Found " + uniqueFoundItems.length + " unique Item-IDs.<br>";
+        // Feedback Message aufbauen
+        var msg = "Armory Scan: Found " + importedItems.length + " Items.<br>";
 
         if (results.matched > 0) {
             msg += "<span style='color:#4caf50'>Successfully imported " + results.matched + " items.</span>";
@@ -2028,8 +2051,8 @@ async function runArmoryImport() {
             msg += "<span style='color:#f44336'>No items matched your local DB.</span>";
         }
 
-        if (results.matched < uniqueFoundItems.length) {
-            msg += "<br><span style='font-size:0.8em; color:#888;'>(" + (uniqueFoundItems.length - results.matched) + " items skipped - not in local DB)</span>";
+        if (results.matched < importedItems.length) {
+            msg += "<br><span style='font-size:0.8em; color:#888;'>(" + (importedItems.length - results.matched) + " items skipped - not in local DB)</span>";
         }
 
         status.innerHTML = msg;
@@ -2042,45 +2065,6 @@ async function runArmoryImport() {
         status.innerText = "Error: " + e.message;
         status.style.color = "#f44336";
     }
-}
-/**
- * Scans HTML for item links and returns a UNIQUE list of objects.
- */
-function extractItemsFromHtml(doc) {
-    var foundMap = new Map();
-
-    // 1. Items aus den regulären Links auslesen
-    var links = doc.querySelectorAll('a[href*="item="]');
-    links.forEach(function (a) {
-        var href = a.getAttribute('href');
-        var itemMatch = href.match(/item=(\d+)/);
-
-        if (itemMatch) {
-            var iId = parseInt(itemMatch[1]);
-            if (!foundMap.has(iId)) {
-                foundMap.set(iId, { itemId: iId });
-            }
-        }
-    });
-
-    // 2. NEU: Quelltext nach dem versteckten JSON (itemEntry & enchantments) durchsuchen
-    var htmlString = doc.documentElement.innerHTML;
-    var regex = /&quot;itemEntry&quot;:(\d+)[^}]*?&quot;enchantments&quot;:(\d+)/g;
-    var match;
-
-    while ((match = regex.exec(htmlString)) !== null) {
-        var iId = parseInt(match[1]);
-        var eId = parseInt(match[2]);
-
-        // Trage die effectId bei dem Item ein
-        if (foundMap.has(iId)) {
-            foundMap.get(iId).effectId = eId;
-        } else {
-            foundMap.set(iId, { itemId: iId, effectId: eId });
-        }
-    }
-
-    return Array.from(foundMap.values());
 }
 
 /**
